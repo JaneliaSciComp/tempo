@@ -88,7 +88,7 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     %handles.detectorTypeNames = cell(length(detectorDirs), 1);
     detectorCount = 0;
     for i = 1:length(detectorDirs)
-        if detectorDirs(i).isdir && ~strcmp(detectorDirs(i).name, '.') && ~strcmp(detectorDirs(i).name, '..')
+        if detectorDirs(i).isdir && detectorDirs(i).name(1) ~= '.'
             detectorCount = detectorCount + 1;
             handles.detectorClassNames{detectorCount} = detectorDirs(i).name;
             addpath(fullfile(detectorsDir, filesep, detectorDirs(i).name));
@@ -238,6 +238,8 @@ end
 
 
 function syncGUIWithTime(handles)
+    % This is the main GUI update function.
+    
     if isfield(handles, 'videoObj')
         frameNum = min([floor(handles.selectedTime * handles.video.sampleRate + 1) handles.video.videoReader.NumberOfFrames]);
         if isfield(handles, 'videoBuffer')
@@ -262,7 +264,7 @@ function syncGUIWithTime(handles)
         audioWindowSize = handles.audio.duration/ handles.zoom;
         windowSampleCount = floor(audioWindowSize * handles.audio.sampleRate);
         import java.text.*
-        v = DecimalFormat;
+%        v = DecimalFormat;
 %        set(handles.zoomSlider, 'ToolTipString', [char(v.format(windowSampleCount)) ' samples']);
         
         minSample = sampleNum - floor(windowSampleCount/2);
@@ -334,6 +336,7 @@ function syncGUIWithTime(handles)
         end
         
         %% Update the features
+        % TODO: does this really need to be done everytime the current time changes?  could update after each detection and then just change xlim...
         axes(handles.features);
         labels = {};
         if ~isempty(handles.detectors)
@@ -343,6 +346,10 @@ function syncGUIWithTime(handles)
             for i = 1:numel(handles.detectors)
                 features = handles.detectors{i}.features();
                 featureTypes = handles.detectors{i}.featureTypes;
+                for y = 1:length(featureTypes)
+                    featureType = featureTypes{y};
+                    text(1, vertPos + y + 0.25, featureType, 'VerticalAlignment', 'bottom');
+                end
                 labels = horzcat(labels, featureTypes); %#ok<AGROW>
                 for feature = features
                     if feature.sampleRange(1) < maxSample && feature.sampleRange(2) > minSample
