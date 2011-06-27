@@ -313,6 +313,7 @@ function syncGUIWithTime(handles)
             set(handles.oscillogram, 'XLimMode', 'manual');
             set(handles.oscillogram, 'XLim', [1 windowSampleCount]);
             set(handles.oscillogram, 'YLimMode', 'manual');
+            set(handles.oscillogram, 'TickLength', [0.01 0.01]);
 
             % Create the current time indicator.
             handles.oscillogramTimeLine = line([sampleNum - minSample + 1 sampleNum - minSample + 1], [-maxAmp maxAmp], 'Color', [1 0 0]);
@@ -322,6 +323,8 @@ function syncGUIWithTime(handles)
             set(handles.oscillogramPlot, 'HitTest', 'off');
             set(handles.oscillogramTimeLine, 'HitTest', 'off');
             
+            handles.timeScaleText = text(10, 0, '', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
+            
         end
         handles.oscillogramWindow = [minSample windowSampleCount];
         if isfield(handles, 'playTimer2')
@@ -329,6 +332,22 @@ function syncGUIWithTime(handles)
             disp(mean(handles.tocs));
         end
         guidata(get(handles.oscillogram, 'Parent'), handles);
+        
+        % Update the time ticks and scale label.
+        timeScale = fix(log10(audioWindowSize));
+        if audioWindowSize < 1
+            timeScale = timeScale - 1;
+        end
+        tickSpacing = 10 ^ timeScale * handles.audio.sampleRate;
+        set(handles.oscillogram, 'XTick', tickSpacing-mod(minSample, tickSpacing):tickSpacing:windowSampleCount);
+        if timeScale == 0
+            string = '1 sec';
+        elseif timeScale == 1
+            string = '10 sec';
+        else
+            string = ['10^{' num2str(timeScale) '} sec'];
+        end
+        set(handles.timeScaleText, 'Position', [windowSampleCount -maxAmp], 'String', string);
         
         curYLim = get(handles.oscillogram, 'YLim');
         if curYLim(1) ~= -maxAmp || curYLim(2) ~= maxAmp
