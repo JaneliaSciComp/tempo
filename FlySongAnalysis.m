@@ -357,10 +357,9 @@ function syncGUIWithTime(handles)
         %% Update the features
         % TODO: does this really need to be done everytime the current time changes?  could update after each detection and then just change xlim...
         axes(handles.features);
+        cla
         labels = {};
         if ~isempty(handles.detectors)
-            cla(handles.features)
-            %drawnow
             vertPos = 0;
             for i = 1:numel(handles.detectors)
                 features = handles.detectors{i}.features();
@@ -399,67 +398,35 @@ function syncGUIWithTime(handles)
         
         %% Update the spectrogram
         set(handles.figure1, 'CurrentAxes', handles.spectrogram);
-        if ~handles.showSpectrogram    %isfield(handles, 'playTimer')
-            %cla
-        else
-            %tic;
-            if false %#ok<UNRCH>
-                % TODO: limit spectrogram to a user-specified frequency range
-                %freqs = 130:(180-130)/128:180;
-                if true %windowSampleCount < 10000
-                    [S, F, T, P] = spectrogram(audioWindow, 256, 250, 256); 
-                    surf(T, F, 10 * log10(P), 'edgecolor', 'none');
-                else
-                    cla;
-                end
-                axis tight;
-                view(0, 90);
-            else
-                %figure
-                set(gca, 'Units', 'pixels');
-                pos = get(gca, 'Position');
-                pixelWidth = pos(3);
-                %height = pos(4);
-                
-                % length(x) / fc / wind = 1024
-                % wind = length(x) / fc / 1024
-                %%pixelWidth = 1024;
-                windowWidth = windowSampleCount / handles.audio.sampleRate / pixelWidth;
-                
-                if true
-                    window = ceil(handles.audio.sampleRate * windowWidth);
-                    %noverlap=ceil(window*.5);                           % degree of window overlap
-                    noverlap=0;
+        cla;
+        if handles.showSpectrogram
+            set(gca, 'Units', 'pixels');
+            pos = get(gca, 'Position');
+            pixelWidth = pos(3);
+            pixelHeight = pos(4);
+            % TODO: get freq range from prefs
+            freqMin = 0;
+            freqMax = 1000;
+            freqStep = ceil((freqMax - freqMin) / pixelHeight); % always at least 1
 
-                    nfft=2^10;
-
-                    x = audioWindow;    % - mean(audioWindow);  % subtract any dc
-                    
-                    % TODO: determine freq range and step from prefs and vertical pixel size
-                    [b, ~, ~] = spectrogram(x, window, noverlap, 0:4:496, handles.audio.sampleRate); %nfft, handles.audioSampleRate);
-                    ba = abs(b);
-                    ban = 2*(ba./(window/2));                                 % normalizing to amplitude (1)
-                    %ban = horzcat(zeros(size(ban, 1), fix(window/2)), ban, zeros(size(ban, 1), fix(window/2)));
-                    h = image(size(ban, 2), size(ban, 1), ban);
-                    set(h,'CDataMapping','scaled'); % (5)
-%                     set(gca, 'xlimmode','manual',...
-%                            'ylimmode','manual',...
-%                            'zlimmode','manual',...
-%                            'climmode','manual',...
-%                            'alimmode','manual')
-                    colormap('jet');
-                    %axis([0 size(ban, 2) 0 size(ban, 1)]);
-                    %axis([0 1475 0 1000]);
-                    %set(gca,'YDir','reverse');
-                    %ylim([0 100])
-                    axis xy;    %fill;
-                    %view(0, 90);
-                else
-                    r_specgram_fly_wind(audioWindow, handles.audio.sampleRate, windowWidth);
-                    axis tight;
-                end
+            % Base the window size on the number of pixels we want to render.
+            window = ceil(windowSampleCount / pixelWidth) * 2;
+            if window < 100
+                window = 100;
             end
-            %toc
+            noverlap = ceil(window*.25);
+
+            [~, ~, ~, P] = spectrogram(audioWindow, window, noverlap, freqMin:freqStep:freqMax, handles.audio.sampleRate);
+            h = image(size(P, 2), size(P, 1), 10 * log10(P));
+            set(h,'CDataMapping','scaled'); % (5)
+            colormap('jet');
+            axis xy;
+            set(handles.spectrogram, 'XTick', []);
+            
+            % "axis xy" or something is doing weird things with the limits of the axes.
+            % The lower-left corner is not (0, 0) but the size of P.
+            text(size(P, 2) * 2, size(P, 1) * 2 - 1, [num2str(freqMax) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
+            text(size(P, 2) * 2, size(P, 1), [num2str(freqMin) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'baseline');
         end
     end
     
