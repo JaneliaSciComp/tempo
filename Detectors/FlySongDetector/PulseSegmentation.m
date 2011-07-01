@@ -162,7 +162,6 @@ xs  = xs(:);
 xn = xempty;
 
 %% Prepare for CWT
-fprintf('PREPARING FOR CWT.\n');
 ngw = numel(sp.DoGwvlt);
 fc  = sp.fc;
 fs  = sp.fs;
@@ -177,13 +176,10 @@ end
 sc = zeros(ngw+1,numel(fc));
 
 for i = 1:numel(wvlt)
-    fprintf('\tComputing scales for %s.\n',wvlt{i});
     sc(i,:) = scales_for_freqs(fc,1/fs,wvlt{i});
 end
-fprintf('DONE.\n');
 
 %% Perform CWT on Signal
-fprintf('PERFORMING CWT SUITE.\n');
 
 cmo = zeros(1,numel(xs)); % Storage for the maximum morlet wavelet
                           % coefficient for each bin.
@@ -201,14 +197,11 @@ cmh_dog = cmo;            % Storage for the order of the
 cmh_sc = cmo;             % Storage for the scale at which the
                           % highest mexican hat coefficient occured.
 for i= 1:numel(wvlt)
-    fprintf('\t%s\n',wvlt{i});
-    tic;
-    fprintf('\t\t...on Signal\n');
     Cs = cwt(xs,sc(i,:),wvlt{i});
-    fprintf('\t\tComputing power.\n');
+    % Compute power
     Ps = Cs.*conj(Cs);
     
-    fprintf('\t\tFinding the maximum coefficient for each bin.\n');
+    % Find the maximum coefficient for each bin.
     [cs,ci] = max(abs(Cs));    
     if (isequal(wvlt{i},'morl'))
         cmo = cs;
@@ -229,18 +222,15 @@ for i= 1:numel(wvlt)
         cmh_dog = (i-1).*cmh1gtcmh+cmh_dog.*~cmh1gtcmh; 
         
     end
-    tend = toc;
-    fprintf('\tDONE after %2.3f sec.\n',tend);
 end
 
 
 %% Use output of putativepulse2 (pps) to identify regions of song that may contain pulses
 %  Compute sine (morlet) and pulse (DoG) envelopes and Extract cmh>cmo clips 
 
-tic;
-for i=1:numel(pps.clips);
-    a = pps.clips(i);
-    b = size(a{1},1);
+for i=1:numel(pps.start);
+    a = xsong(round(pps.start(i)*Fs):round(pps.stop(i)*Fs));
+    b = size(a,1);
     pps.stop2(1,i) = round(pps.start(i)*Fs) + round(b) - 1;
 end
 putpul = struct('i0',round(pps.start*Fs), 'i1', pps.stop2);
@@ -256,8 +246,6 @@ end
 if putpul.i1(B) > A;
     putpul.i1(B) = A;
 end
-
-fprintf('EXTRACTING CANDIDATE PULSES.\n');
 
 pulses = {};
 pulse_start_times = [];
@@ -291,13 +279,10 @@ pcndInfo = struct('i0',double(pulse_start_times),'i1', double(pulse_stop_times),
            'ok',zz,...
            'dog',zz,'scmx',zz,'fcmx',zz,'w0',zz,'w1',zz,'wc',zz);
 
-       tend = toc;
-fprintf('\tDONE after %2.3f sec.\n',tend);
 
 %% Winnow pulses
 indPulse = 0*xs;
 np = numel(pulses);
-fprintf('WINNOWING PULSES.\n');
 npad = 10000;
 
 xsp = [zeros(npad,1);xs;zeros(npad,1)];
@@ -323,8 +308,6 @@ pulseInfo.x = cell(1,np); % the signals themselves
 pulseInfo.mxv = zz;
 pulseInfo.aven = zz;
 for i = 1:np
-   fprintf('\tEvaluating pulse %d/%d: [%d - %d]\n',i,np,pcndInfo.i0(i),pcndInfo.i1(i));
-      
    pcndInfo.comment{i}='OK';
    
    % find the location of the correlation peak and set the pulse window
@@ -355,18 +338,12 @@ for i = 1:np
    i0 = pcndInfo.i0(i);
    i1 = pcndInfo.i1(i);
    y = max(abs(xs(i0:i1)));
-   fprintf('\t\tMax |V|: % 2.3f\t',y);
    if (y<sp.wnwMinAbsVoltage)
-       fprintf('%d', i);
-       fprintf('TOO LOW.\n');
        pcndInfo.comment{i} = 'tlav';    
        continue;
-   else
-       fprintf('OK.\n');
    end
    
    indPulse(max(pcndInfo.w0(i),1):min(pcndInfo.w1(i),numel(xs)))=1;
-   fprintf('\tOK.\n');
    pcndInfo.ok(i) = 1;
    nOk = nOk+1;
    
@@ -405,7 +382,6 @@ end
 %now that you have collected pulses in pulseInfo, winnow further:
 indPulse = 0*xs;
 np = length(pulseInfo.x);
-fprintf('WINNOWING PULSES FURTHER.\n');
 npad = 10000;
 xsp = [zeros(npad,1);xs;zeros(npad,1)];
 nOk = 0;
@@ -429,11 +405,7 @@ for i = 1:np;
 %======Don't include pulse > certain frequency==========
 
 if pulseInfo.fcmx(i)>sp.frequency
-    fprintf('%d', i);
-    fprintf('PULSE IS > k.\n');
     continue
-else
-     fprintf('OK.\n');
 end
 
 %======Don't include pulses without another pulse (either before or after) within segParams.IPI samples==========:
@@ -453,12 +425,8 @@ end
         c = pulseInfo.w0(i);
     end
     
-    if b-a>sp.IPI & a-c>sp.IPI; 
-        fprintf('%d', i);
-        fprintf('NO PULSE WITHIN j samples.\n');
+    if b-a>sp.IPI && a-c>sp.IPI; 
         continue;
-    else
-         fprintf('OK.\n');
     end
     
 %=====If pulses are close together (within 10ms), keep the larger pulse===========
@@ -491,16 +459,10 @@ end
         y0 = y;
     end
     
-    if b0-a0 < sp.close & y<y1; %if the pulse is within 10ms of the pulse after it and is smaller in amplitude 
-        fprintf('%d', i);
-        fprintf('NOT A TRUE PULSE - too close.\n');
+    if b0-a0 < sp.close && y<y1; %if the pulse is within 10ms of the pulse after it and is smaller in amplitude 
         continue;
-    elseif a0-c0 < sp.close & y<y0; %if the pulse is within 10ms of the pulse before it and is smaller in amplitude
-        fprintf('%d', i);
-        fprintf('NOT A TRUE PULSE - too close.\n');
+    elseif a0-c0 < sp.close && y<y0; %if the pulse is within 10ms of the pulse before it and is smaller in amplitude
         continue;  
-    else
-          fprintf('OK.\n');
     end
        
     
@@ -535,19 +497,12 @@ end
     
     factor = sp.tiny;
     
-    if b0-a0 > round(Fs/100) | a0-c0 > round(Fs/100); %if the pulse is not within 100ms of a pulse on either side
-        fprintf('OK.\n');
-    elseif factor*y<y0 & factor*y<y1; 
-        fprintf('%d', i);
-        fprintf('NOT A TRUE PULSE - too small.\n');
+    if b0-a0 <= round(Fs/100) && a0-c0 <= round(Fs/100) && factor*y<y0 && factor*y<y1; %if the pulse is not within 100ms of a pulse on either side
         continue;
-    else
-         fprintf('OK.\n');
     end
     
    
    indPulse(max(pulseInfo.w0(i),1):min(pulseInfo.w1(i),numel(xs)))=1;
-   fprintf('\tOK.\n');
    pulseInfo2.ok(i) = 1;
    nOk = nOk+1;
    
@@ -579,8 +534,4 @@ if (nOk)
   pulseInfo2.clipped = pulseInfo2.clipped(1:nOk);
   pulseInfo2.mxv = pulseInfo2.mxv(1:nOk);
 end
-
-
-fprintf('%d/%d (%2.1f %%) pulses passed.\n',nOk,np,nOk*100/np)
-fprintf('DONE.\n');
 

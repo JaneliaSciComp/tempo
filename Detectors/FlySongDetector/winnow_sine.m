@@ -89,12 +89,6 @@ length = sine_stop - sine_start;
 
 NumBouts = numel(sine_start);
 
-sine_clips = cell(NumBouts,1);
-
-for i = 1:NumBouts
-    sine_clips{i} = ssf.d((round(sine_start(i)*ssf.fs)):(round(sine_stop(i)*ssf.fs)));
-end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %For each clip, get original F-test events that overlap with times between 
 %sine_start and sine_stop
@@ -116,9 +110,6 @@ for i = 1:NumBouts
     %get indices of values in events that are also found in sine_bout
     event_times = find(ismember(events,sine_bout));
 
-    
-    values = [];
-    
     values = ssf.events(event_times,2);
     
     values = values(values>=min);%take only values that fall between min and max
@@ -135,7 +126,6 @@ winnowed_sine.stop = sine_stop';
 winnowed_sine.length = length;
 winnowed_sine.MeanFundFreq = MeanFundFreq';
 winnowed_sine.MedianFundFreq=MedianFundFreq';
-winnowed_sine.clips = sine_clips;
 winnowed_sine.events = sine_bout_events;
 
 %winnowed_sine.all_sine = all_sine;

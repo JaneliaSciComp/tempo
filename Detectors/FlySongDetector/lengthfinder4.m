@@ -26,8 +26,6 @@ sinemin=min;
 sinemax=max;
 allevents=ssf.events;%column 1 = time in sec, column 2 is freq in Hz
 stepsize=ssf.dS;
-fs=ssf.fs;
-data = ssf.d;
 inRangeEvents=[];
 
 for n=1:numel(ssf.events(:,1))
@@ -169,27 +167,7 @@ for x = NumEvents:-1:1
 end
 
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Now use start and stop times to calculate other parameters of interest
-%and to grab clips
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-rdcdNumBouts = numel(sine_start);
-NumBouts=rdcdNumBouts;
-
-length=zeros(NumBouts,1);
-MeanFundFreq=zeros(NumBouts,1);
-MedianFundFreq=zeros(NumBouts,1);
-sine_clips = cell(NumBouts,1);
-statevents =[];
-
-
 length = sine_stop - sine_start;
-
-for x = 1:NumBouts;
-    sine_clips{x} = data((int32(sine_start(x)*fs)):int32(sine_stop(x)*fs));
-end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Produce output
@@ -198,7 +176,6 @@ sinesong.num_events = numel(sine_start);
 sinesong.start = sine_start';
 sinesong.stop = sine_stop';
 sinesong.length = length;
-sinesong.clips = sine_clips;
  
 
 end

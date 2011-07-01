@@ -75,7 +75,6 @@ for(i=1:size(Fval,2))
    end
 end
 
-SSF.d=d;
 SSF.fs=fs;
 SSF.NW=NW;
 SSF.K=K;
@@ -84,6 +83,5 @@ SSF.dS=dS;
 SSF.pval=pval;
 SSF.t=t;
 SSF.f=f;
-SSF.A=A;
-SSF.Fval=Fval;
+SSF.summedPower = sum(abs(A(:,1:size(A,2))));
 SSF.events=events;

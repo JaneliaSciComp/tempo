@@ -15,22 +15,13 @@ function pps = putativepulse2(ssf,sine,noise_ssf,cutoff_quantile,range,combine_t
 %combine_time = 10;%metric is step_size. i.e. this * step_size in ms
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%get sample size of noise
-noise_N = size(noise_ssf.A,2);
-
 %get summed power of noise
-noise_power = sum(abs(noise_ssf.A(:,1:noise_N)));
+noise_power = noise_ssf.summedPower;
 
-%get # time intervals
 step_size = ssf.dS;
-window_size = ssf.dT;
-song_length = numel(ssf.d)/ssf.fs;
 
-%get sample size of ssf
-data_N = size(ssf.A,2);
-
-%get summed power of ssf
-signal_power = sum(abs(ssf.A(:,1:data_N)));
+%get summed power of signal
+signal_power = ssf.summedPower;
 
 %determine cutoff power value
 cutoff = quantile(noise_power,cutoff_quantile);
@@ -83,46 +74,11 @@ for y = 1:numel(put_start)
         stop_t=put_stop(y)+step_size*ssf.fs*range;
         start(num_clips) = start_t./ssf.fs;
         stop(num_clips) = stop_t./ssf.fs;
-        clips{num_clips} = ssf.d(start_t:stop_t);
     end
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%if first start time is < window_size, then make first start time = 0
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if start(1)/ssf.fs < window_size
-    start(1) = 1/ssf.fs;
-    end_of_first = round(stop(1)*ssf.fs);
-    clips{1} = ssf.d(1:end_of_first);
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%if last stop time is < window_size away from end, then make last stop time
-%= end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-if song_length - stop(numel(stop)) < window_size
-    last_clip = numel(start);
-    stop(last_clip) = song_length;
-    clips{last_clip} = ssf.d(start(last_clip)*ssf.fs:stop(last_clip)*ssf.fs);
-end
-
-
-
-% start = runs(:,1)*step_size-step_size + 1/ssf.fs;
-% stop = runs(:,2)*step_size+step_size;
-% size_clips = size(start,1);
-% for y = 1:size_clips
-%     begin = round(start(y,1)*ssf.fs);
-%     finish = round(stop(y,1)*ssf.fs);
-%     clips{y} = ssf.d(begin:finish);
-% end
-
-
-
 pps.start = start;
 pps.stop = stop;
-pps.clips = clips;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %function to identify contiguous segments of data with a defined step size
