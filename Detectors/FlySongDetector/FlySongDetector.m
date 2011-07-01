@@ -9,14 +9,14 @@ classdef FlySongDetector < FeatureDetector
         pValue = 0.02;
         
         % Sine song properties
-        sineFreqMin = 250;  %hz
-        sineFreqMax = 1000; %hz
-        sineGapMaxPercent = 0.2;
+        sineFreqMin = 100;          %hz
+        sineFreqMax = 300;          %hz
+        sineGapMaxPercent = 0.2;    % "search within ± this percent to determine whether consecutive events are continuous sine"
         sineEventsMin = 3;
         
         % Pulse song properties
-        ipiMin = 100;               % really Fs/100...
-        ipiMax = 2;                 % really Fs/2...
+        ipiMin = 100;               % Fs/100...
+        ipiMax = 5000;              % Fs/2...
         pulseMinAmp = 5;            % factor times the mean of xempty - only pulses larger than this amplitude are counted as true pulses
         pulseMaxScale = 700;        % if best matched scale is greater than this frequency, then don't include pulse as true pulse
         putativePulseFudge = 1.3;   % expand putative pulse by this number of steps on either side
@@ -68,21 +68,17 @@ classdef FlySongDetector < FeatureDetector
         function detectFeatures(obj)
             obj.updateProgress('Running multitaper analysis on signal...', 0/6)
             [songSSF] = sinesongfinder(obj.recording.data, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue);
-            whos
             
             obj.updateProgress('Running multitaper analysis on background noise...', 1/6)
             [backgroundSSF] = sinesongfinder(obj.backgroundNoise.data, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue);
-            whos
             
             obj.updateProgress('Finding putative sine and power...', 2/6)
             [putativeSine] = lengthfinder4(songSSF, obj.sineFreqMin, obj.sineFreqMax, obj.sineGapMaxPercent, obj.sineEventsMin);
-            whos
             
             obj.updateProgress('Finding segments of putative pulse...', 3/6)
             % TBD: expose this as a user-definable setting?
             cutoff_quantile = 0.8;
             [putativePulse] = putativepulse2(songSSF, putativeSine, backgroundSSF, cutoff_quantile, obj.putativePulseFudge, obj.pulseMaxGapSize);
-            whos
             
             obj.updateProgress('Detecting pulses...', 4/6)
             % TBD: expose these as user-definable settings?
@@ -105,13 +101,13 @@ classdef FlySongDetector < FeatureDetector
             
             % Add all of the detected features.
             for n = 1:size(winnowedSine.start, 1)
-                x_start = 3300000 + round(winnowedSine.start(n) * songSSF.fs);
-                x_stop = round(x_start + size(winnowedSine.clips{n}, 1)) - 1;
+                x_start = round(winnowedSine.start(n) * songSSF.fs);
+                x_stop = round(winnowedSine.stop(n) * songSSF.fs) - 1;
                 obj.addFeature(Feature('Sine Song', x_start, x_stop));
             end
             
             for i = 1:length(pulses.x)
-                x = 3300000 + pulses.wc(i); %/songSSF.fs;
+                x = pulses.wc(i); %/songSSF.fs;
                 obj.addFeature(Feature('Pulse', x, x, 'maxVoltage', pulses.mxv(i)));
             end
             
@@ -123,7 +119,7 @@ classdef FlySongDetector < FeatureDetector
             
             for n = 1:length(putativePulse.start);
                 x_start = round(putativePulse.start(n) * songSSF.fs);
-                x_stop = round(x_start + size(putativePulse.clips{n}, 1)) - 1;
+                x_stop = round(putativePulse.stop(n) * songSSF.fs) - 1;
                 obj.addFeature(Feature('Putative Pulse Region', x_start, x_stop));
             end
             
