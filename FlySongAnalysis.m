@@ -100,7 +100,9 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     
     
     %% Set defaults
-    handles.selectedTime = 0.0;
+    handles.currentTime = 0.0;          % The time currently being "rendered" from the recordings indicated by a red line in the oscillogram.
+    handles.displayedTime = 0.0;        % The time on which the displays are centered.
+    handles.selectedTime = [0.0 0.0];   % The highlighted range indicated by a light red box in the oscillogram.
     handles.maxMediaTime = 0.0;
     handles.zoom = 1.0;
     handles.detectors = {};
@@ -116,7 +118,9 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
         addlistener(handles.gainSlider, 'ContinuousValueChange', @gainSlider_Listener);
     end
     
-    showSpectrogramCallback(0, 0, handles);    
+    showSpectrogramCallback(0, 0, handles);
+    
+    set(handles.figure1, 'WindowButtonDownFcn', @windowButtonDownFcn);
 end
 
 
@@ -127,7 +131,26 @@ end
 
 function timeSlider_Listener(hObject, ~)
     handles = guidata(hObject);
-    handles.selectedTime = get(hObject, 'Value');
+    
+    newTime = get(hObject, 'Value');
+    
+    timeRange = displayedTimeRange(handles);
+    if handles.currentTime == handles.displayedTime || newTime < timeRange(1) || newTime > timeRange(2)
+        % Shift the current time and the displayed time together.
+        handles.displayedTime = newTime;
+    else
+        % Shift the current time slowly back towards the displayed time which will put the red line back at the center of the display.
+        if abs(newTime - handles.displayedTime) > abs(handles.currentTime - handles.displayedTime)
+            offset = (handles.currentTime - handles.displayedTime) * 0.9;
+            if abs(offset) < (timeRange(2) - timeRange(1)) / 1000
+                handles.displayedTime = newTime;
+            else
+                handles.displayedTime = newTime - offset;
+            end
+        end
+    end
+    handles.currentTime = newTime;
+    
     guidata(hObject, handles);
     syncGUIWithTime(handles)
 end
@@ -171,11 +194,11 @@ function zoomSlider_Listener(hObject, ~)
         % Calculate the duration of audio that should be displayed based on the zoom.
         totalDuration = length(handles.audio.data) / handles.audio.sampleRate;
         zoom = 1.0 - get(handles.zoomSlider, 'Value');
-        handles.audioWindowSize = 0.1 + (totalDuration - 0.1) * zoom * zoom;
+        timeRangeSize = 0.1 + (totalDuration - 0.1) * zoom * zoom;
         guidata(handles.figure1, handles);
         
         % Update the step and page sizes of the time slider.
-        stepSize = handles.audioWindowSize / totalDuration;
+        stepSize = timeRangeSize / totalDuration;
         set(handles.timeSlider, 'SliderStep', [stepSize / 50.0 stepSize]);
 
         % TODO: set(handles.timeSlider, 'Value') so that it stays in bounds
@@ -215,7 +238,7 @@ function playMediaCallback(hObject, ~, handles) %#ok<*DEFNU>
     handles.tocs = [];
     guidata(hObject, handles);
     
-    play(handles.audioPlayer, handles.selectedTime * handles.audio.sampleRate);
+    play(handles.audioPlayer, handles.currentTime * handles.audio.sampleRate);
     start(handles.playTimer);
 end
 
@@ -237,7 +260,7 @@ function syncGUIToAudio(timerObj, ~)
     
     curSample = get(handles.audioPlayer, 'CurrentSample');
     
-    handles.selectedTime = curSample / handles.audio.sampleRate;
+    handles.currentTime = curSample / handles.audio.sampleRate;
     
     tic;
     syncGUIWithTime(handles);
@@ -250,11 +273,29 @@ function syncGUIToAudio(timerObj, ~)
 end
 
 
+function range = displayedTimeRange(handles)
+    timeRangeSize = handles.maxMediaTime / handles.zoom;
+    range = [handles.displayedTime - timeRangeSize / 2 handles.displayedTime + timeRangeSize / 2];
+    if range(2) - range(1) > handles.maxMediaTime
+        range = [0.0 handles.maxMediaTime];
+    elseif range(1) < 0.0
+        range = [0.0 timeRangeSize];
+    elseif range(2) > handles.maxMediaTime
+        range = [handles.maxMediaTime - timeRangeSize handles.maxMediaTime];
+    end
+end
+
+
 function syncGUIWithTime(handles)
     % This is the main GUI update function.
     
+    % Calculate the range of time currently being displayed.
+    timeRange = displayedTimeRange(handles);
+    timeRangeSize = timeRange(2) - timeRange(1);
+    
     if isfield(handles, 'videoObj')
-        frameNum = min([floor(handles.selectedTime * handles.video.sampleRate + 1) handles.video.videoReader.NumberOfFrames]);
+        % Display the current frame of video.
+        frameNum = min([floor(handles.currentTime * handles.video.sampleRate + 1) handles.video.videoReader.NumberOfFrames]);
         if isfield(handles, 'videoBuffer')
             if frameNum >= handles.videoBufferStartFrame && frameNum < handles.videoBufferStartFrame + handles.videoBufferSize
                 % TODO: is it worth optimizing the overlap case?
@@ -270,29 +311,21 @@ function syncGUIWithTime(handles)
         set(handles.videoImage, 'CData', frame);
         set(handles.videoFrame, 'XTick', [], 'YTick', []);
     end
+    
     if isfield(handles, 'audio')
-        sampleNum = floor(handles.selectedTime * handles.audio.sampleRate);
-%        zoom = 1.0 - get(handles.zoomSlider, 'Value');
-        %audioWindowSize = 0.1 + (handles.audioWindowSize - 0.1) * handles.zoom * handles.zoom;
-        audioWindowSize = handles.audio.duration/ handles.zoom;
-        windowSampleCount = floor(audioWindowSize * handles.audio.sampleRate);
-        import java.text.*
-%        v = DecimalFormat;
-%        set(handles.zoomSlider, 'ToolTipString', [char(v.format(windowSampleCount)) ' samples']);
+        currentSample = floor(handles.currentTime * handles.audio.sampleRate);
         
-        minSample = sampleNum - floor(windowSampleCount/2);
-        maxSample = minSample + windowSampleCount - 1;
-        if maxSample - minSample > numel(handles.audio.data)
+        % Calculate the sample range being displayed in the oscillogram.
+        minSample = ceil(timeRange(1) * handles.audio.sampleRate);
+        maxSample = ceil(timeRange(2) * handles.audio.sampleRate);
+        if minSample < 1
             minSample = 1;
-            maxSample = numel(handles.audio.data);
-        elseif minSample < 1
-            minSample = 1;
-            maxSample = windowSampleCount;
-        elseif maxSample > numel(handles.audio.data)
-            maxSample = numel(handles.audio.data);
-            minSample = maxSample - windowSampleCount + 1;
+        end
+        if maxSample > length(handles.audio.data)
+            maxSample = length(handles.audio.data);
         end
         audioWindow = handles.audio.data(minSample:maxSample);
+        windowSampleCount = maxSample - minSample + 1;
         
         %% Update the waveform.
         if get(handles.autoGainCheckBox, 'Value') == 1.0
@@ -306,16 +339,23 @@ function syncGUIWithTime(handles)
         end
         if isfield(handles, 'oscillogramPlot')
             % Update the existing oscillogram pieces for faster rendering.
-            if windowSampleCount ~= handles.oscillogramWindow(2)
+            if windowSampleCount ~= timeRangeSize
                 % the number of samples changed
                 set(handles.oscillogramPlot, 'XData', 1:windowSampleCount, 'YData', audioWindow);
                 handles.oscillogramSampleCount = windowSampleCount;
                 set(handles.oscillogram, 'XLim', [1 windowSampleCount]);
-            elseif minSample ~= handles.oscillogramWindow(1)
+            elseif minSample ~= timeRange(1)
                 % the number of samples is the same but the time point is different
                 set(handles.oscillogramPlot, 'YData', audioWindow);
             end
-            set(handles.oscillogramTimeLine, 'XData', [sampleNum - minSample + 1 sampleNum - minSample + 1]);
+            set(handles.oscillogramTimeLine, 'XData', [currentSample - minSample + 1 currentSample - minSample + 1]);
+            if handles.selectedTime(1) ~= handles.selectedTime(2)
+                selectionStart = floor(min(handles.selectedTime) * handles.audio.sampleRate);
+                selectionEnd = floor(max(handles.selectedTime) * handles.audio.sampleRate);
+                set(handles.oscillogramSelection, 'Position', [selectionStart - minSample + 1 -maxAmp selectionEnd - selectionStart maxAmp * 2], 'Visible', 'on');
+            else
+                set(handles.oscillogramSelection, 'Visible', 'off');
+            end
         else
             % Do a one-time creation of the oscillogram pieces.
             set(handles.figure1, 'CurrentAxes', handles.oscillogram);
@@ -327,19 +367,23 @@ function syncGUIWithTime(handles)
             set(handles.oscillogram, 'XLim', [1 windowSampleCount]);
             set(handles.oscillogram, 'YLimMode', 'manual');
             set(handles.oscillogram, 'TickLength', [0.01 0.01]);
-
+            
             % Create the current time indicator.
-            handles.oscillogramTimeLine = line([sampleNum - minSample + 1 sampleNum - minSample + 1], [-maxAmp maxAmp], 'Color', [1 0 0]);
+            handles.oscillogramTimeLine = line([currentSample - minSample + 1 currentSample - minSample + 1], [-maxAmp maxAmp], 'Color', [1 0 0]);
+            
+            % Create the current selection indicator.
+            handles.oscillogramSelection = rectangle('Position', [currentSample - minSample + 1 -maxAmp 1 maxAmp * 2], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9], 'Visible', 'off');
+            uistack(handles.oscillogramSelection, 'bottom');
             
             % Add a button down function to handle clicks on the oscillogram and make sure it always gets called.
-            set(handles.oscillogram, 'ButtonDownFcn', @oscillogram_ButtonDownFcn);
+            %set(handles.oscillogram, 'ButtonDownFcn', @oscillogram_ButtonDownFcn);
             set(handles.oscillogramPlot, 'HitTest', 'off');
             set(handles.oscillogramTimeLine, 'HitTest', 'off');
+            set(handles.oscillogramSelection, 'HitTest', 'off');
             
             handles.timeScaleText = text(10, 0, '', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
             
         end
-        handles.oscillogramWindow = [minSample windowSampleCount];
         if isfield(handles, 'playTimer2')
             handles.tocs = [handles.tocs toc];
             disp(mean(handles.tocs));
@@ -347,8 +391,8 @@ function syncGUIWithTime(handles)
         guidata(get(handles.oscillogram, 'Parent'), handles);
         
         % Update the time ticks and scale label.
-        timeScale = fix(log10(audioWindowSize));
-        if audioWindowSize < 1
+        timeScale = fix(log10(timeRangeSize));
+        if timeRangeSize < 1
             timeScale = timeScale - 1;
         end
         tickSpacing = 10 ^ timeScale * handles.audio.sampleRate;
@@ -380,11 +424,11 @@ function syncGUIWithTime(handles)
                     featureTypes = handles.detectors{i}.featureTypes;
                     for y = 1:length(featureTypes)
                         featureType = featureTypes{y};
-                        text(1, vertPos + y + 0.25, featureType, 'VerticalAlignment', 'bottom');
+                        text(timeRange(1), vertPos + y + 0.25, featureType, 'VerticalAlignment', 'bottom');
                     end
                     labels = horzcat(labels, featureTypes); %#ok<AGROW>
                     for feature = features
-                        if feature.sampleRange(1) < maxSample && feature.sampleRange(2) > minSample
+                        if feature.sampleRange(1) <= timeRange(2) && feature.sampleRange(2) >= timeRange(1)
                             y = vertPos + find(strcmp(featureTypes, feature.type));
                             if feature.sampleRange(1) == feature.sampleRange(2)
                                 text(feature.sampleRange(1), y, 'x', 'HorizontalAlignment', 'center');
@@ -404,11 +448,7 @@ function syncGUIWithTime(handles)
                 end
             end
             
-            %axis tight
-            %axis(handles.features, [minSample maxSample 0.5 numel(handles.detectors) + 0.5]);
-            axis(handles.features, [minSample maxSample 0.5 vertPos + 0.5]);
-            %xlim(handles.features, [minSample maxSample]);
-            %ylim(handles.features, [0.5 numel(handles.detectors) + 0.5]);
+            axis(handles.features, [timeRange(1) timeRange(2) 0.5 vertPos + 0.5]);
             
             set(handles.features, 'YTick', 1:numel(labels));
             set(handles.features, 'YTickLabel', labels);
@@ -451,7 +491,7 @@ function syncGUIWithTime(handles)
         end
     end
     
-    set(handles.timeSlider, 'Value', handles.selectedTime);
+    set(handles.timeSlider, 'Value', handles.currentTime);
     
     drawnow
 end
@@ -489,6 +529,7 @@ function openRecordingCallback(~, ~, handles)
             elseif rec.isVideo
                 setVideoRecording(rec);
             end
+            syncGUIWithTime(handles);
         catch ME
         end
     end
@@ -519,7 +560,6 @@ function setAudioRecording(rec)
     handles.audio = rec;
     handles.audioPlayer = audioplayer(handles.audio.data, handles.audio.sampleRate);
     handles.audioPlayer.TimerPeriod = 1.0 / 15.0;
-    %handles.audioWindowSize = numel(handles.audio.data) / handles.audio.sampleRate;
     handles.audioMax = max(abs(handles.audio.data));
 
     handles.maxMediaTime = max([handles.maxMediaTime handles.audio.duration]);
@@ -589,7 +629,11 @@ function addDetectorCallback(~, ~, className, hObject)
 
         detector.startProgress();
         try
-            detector.detectFeatures();
+            if handles.selectedTime(2) > handles.selectedTime(1)
+                detector.detectFeatures(handles.selectedTime);
+            else
+                detector.detectFeatures([0.0 handles.maxMediaTime]);
+            end
             detector.endProgress();
         catch ME
             detector.endProgress();
@@ -653,13 +697,49 @@ end
 
 
 % --- Executes on mouse press over axes background.
-function oscillogram_ButtonDownFcn(hObject, ~)
+function windowButtonDownFcn(hObject, ~)
     handles = guidata(hObject);
-    clickedPoint = get(hObject,'CurrentPoint');
-    clickedSample = handles.oscillogramWindow(1) - 1 + clickedPoint(1, 1);
-    handles.selectedTime = clickedSample / handles.audio.sampleRate;
+    
+    timeRange = displayedTimeRange(handles);
+
+    clickedPoint = get(handles.oscillogram, 'CurrentPoint');
+    clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
+    clickedTime = clickedSample / handles.audio.sampleRate;
+    if strcmp(get(gcf, 'SelectionType'), 'extend')
+        if clickedTime >= handles.selectedTime(1)
+            handles.selectedTime = [handles.selectedTime(1) clickedTime];
+        else
+            handles.selectedTime = [clickedTime handles.selectedTime(2)];
+        end
+    else
+        handles.currentTime = clickedTime;
+        handles.selectedTime = [clickedTime clickedTime];
+        set(handles.figure1, 'WindowButtonMotionFcn', @windowButtonMotionFcn);
+        set(handles.figure1, 'WindowButtonUpFcn', @windowButtonUpFcn);
+    end
     guidata(hObject, handles);
     syncGUIWithTime(handles);
+    
+    function windowButtonMotionFcn(hObject, ~)
+        handles = guidata(hObject);
+        clickedPoint = get(handles.oscillogram, 'CurrentPoint');
+        clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
+        handles.selectedTime = [handles.selectedTime(1) clickedSample / handles.audio.sampleRate];
+        guidata(hObject, handles);
+        syncGUIWithTime(handles);
+        drawnow;
+    end
+    
+    function windowButtonUpFcn(hObject, ~)
+        handles = guidata(hObject);
+        clickedPoint = get(handles.oscillogram, 'CurrentPoint');
+        clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
+        handles.selectedTime = sort([handles.selectedTime(1) clickedSample / handles.audio.sampleRate]);
+        guidata(hObject, handles);
+        syncGUIWithTime(handles);
+        set(handles.figure1, 'WindowButtonMotionFcn', []);
+        set(handles.figure1, 'WindowButtonUpFcn', []);
+    end
 end
 
 

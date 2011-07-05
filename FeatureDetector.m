@@ -128,7 +128,7 @@ classdef FeatureDetector < handle
     methods (Abstract)
         
         % Subclasses must define this method.
-        detectFeatures(obj)
+        detectFeatures(obj, timeRange)
         
     end
     

@@ -65,9 +65,12 @@ classdef FlySongDetector < FeatureDetector
         end
         
         
-        function detectFeatures(obj)
+        function detectFeatures(obj, timeRange)
+            dataRange = ceil(timeRange * obj.recording.sampleRate);
+            audioData = obj.recording.data(dataRange(1):dataRange(2));
+            
             obj.updateProgress('Running multitaper analysis on signal...', 0/6)
-            [songSSF] = sinesongfinder(obj.recording.data, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue);
+            [songSSF] = sinesongfinder(audioData, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue);
             
             obj.updateProgress('Running multitaper analysis on background noise...', 1/6)
             [backgroundSSF] = sinesongfinder(obj.backgroundNoise.data, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue);
@@ -88,7 +91,7 @@ classdef FlySongDetector < FeatureDetector
             e = round(obj.recording.sampleRate/1000); %Minimum distance for morlet wavelet peaks to be considered separate. (peak detection step)                            
             f = round(obj.recording.sampleRate/3000); %factor for computing window around pulse peak (this determines how much of the signal before and after the peak is included in the pulse, and sets the paramters w0 and w1.)
             h = round(obj.recording.sampleRate/50); % Width of the window to measure peak-to-peak voltage for a single pulse
-            [~, pulses, ~] = PulseSegmentation(obj.recording.data, obj.backgroundNoise.data, putativePulse, a, obj.recording.sampleRate, c, d, e, f, obj.pulseMinAmp, h, obj.ipiMax, obj.pulseMinRelAmp, obj.pulseMaxScale, obj.ipiMin, obj.recording.sampleRate);
+            [~, pulses, ~] = PulseSegmentation(audioData, obj.backgroundNoise.data, putativePulse, a, obj.recording.sampleRate, c, d, e, f, obj.pulseMinAmp, h, obj.ipiMax, obj.pulseMinRelAmp, obj.pulseMaxScale, obj.ipiMin, obj.recording.sampleRate);
 
             obj.updateProgress('Removing overlapping sine song...', 5/6)
             % TBD: expose this as a user-definable setting?
@@ -101,25 +104,25 @@ classdef FlySongDetector < FeatureDetector
             
             % Add all of the detected features.
             for n = 1:size(winnowedSine.start, 1)
-                x_start = round(winnowedSine.start(n) * songSSF.fs);
-                x_stop = round(winnowedSine.stop(n) * songSSF.fs) - 1;
+                x_start = timeRange(1) + winnowedSine.start(n);
+                x_stop = timeRange(1) + winnowedSine.stop(n);
                 obj.addFeature(Feature('Sine Song', x_start, x_stop));
             end
             
             for i = 1:length(pulses.x)
-                x = pulses.wc(i); %/songSSF.fs;
+                x = timeRange(1) + pulses.wc(i) / obj.recording.sampleRate;
                 obj.addFeature(Feature('Pulse', x, x, 'maxVoltage', pulses.mxv(i)));
             end
             
             for i = 1:length(pulses.x);
-                a = pulses.w0(i);
-                b = pulses.w1(i);
+                a = timeRange(1) + pulses.w0(i) / obj.recording.sampleRate;
+                b = timeRange(1) + pulses.w1(i) / obj.recording.sampleRate;
                 obj.addFeature(Feature('Pulse Window', a, b));
             end
             
             for n = 1:length(putativePulse.start);
-                x_start = round(putativePulse.start(n) * songSSF.fs);
-                x_stop = round(putativePulse.stop(n) * songSSF.fs) - 1;
+                x_start = timeRange(1) + putativePulse.start(n);
+                x_stop = timeRange(1) + putativePulse.stop(n);
                 obj.addFeature(Feature('Putative Pulse Region', x_start, x_stop));
             end
             
