@@ -108,9 +108,13 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     
     guidata(hObject, handles);
     
-    addlistener(handles.timeSlider, 'Action', @timeSlider_Listener);
-%    addlistener(handles.zoomSlider, 'Action', @zoomSlider_Listener);
-    addlistener(handles.gainSlider, 'Action', @gainSlider_Listener);
+    if verLessThan('matlab', '7.12.0')
+        addlistener(handles.timeSlider, 'Action', @timeSlider_Listener);
+        addlistener(handles.gainSlider, 'Action', @gainSlider_Listener);
+    else
+        addlistener(handles.timeSlider, 'ContinuousValueChange', @timeSlider_Listener);
+        addlistener(handles.gainSlider, 'ContinuousValueChange', @gainSlider_Listener);
+    end
     
     showSpectrogramCallback(0, 0, handles);    
 end
@@ -138,8 +142,17 @@ function setZoom(zoom, handles)
     guidata(handles.figure1, handles);
 
     % Update the step and page sizes of the time slider.
-    stepSize = 1 / zoom;
-    set(handles.timeSlider, 'SliderStep', [stepSize / 50.0 stepSize]);
+    % MATLAB has a weird way of setting the size of the scrollbar thumb.
+    if zoom == 1
+        % Closest we can get to a thumb that completely fills the slider.
+        majorStep = inf;
+        minorStep = 1;
+    else
+        % This formula was determined by manually measuring the scrollbar size with various majorStep settings.
+        majorStep = 3 * (1 / zoom) ^ 1.585;
+        minorStep = majorStep / 50;
+    end
+    set(handles.timeSlider, 'SliderStep', [minorStep majorStep]);
     
     if zoom > 1
         set(handles.zoomOutTool, 'Enable', 'on')
@@ -363,27 +376,32 @@ function syncGUIWithTime(handles)
             vertPos = 0;
             for i = 1:numel(handles.detectors)
                 features = handles.detectors{i}.features();
-                featureTypes = handles.detectors{i}.featureTypes;
-                for y = 1:length(featureTypes)
-                    featureType = featureTypes{y};
-                    text(1, vertPos + y + 0.25, featureType, 'VerticalAlignment', 'bottom');
-                end
-                labels = horzcat(labels, featureTypes); %#ok<AGROW>
-                for feature = features
-                    if feature.sampleRange(1) < maxSample && feature.sampleRange(2) > minSample
-                        y = vertPos + find(strcmp(featureTypes, feature.type));
-                        if feature.sampleRange(1) == feature.sampleRange(2)
-                            text(feature.sampleRange(1), y, 'x', 'HorizontalAlignment', 'center');
-                        else
-                            rectangle('Position', [feature.sampleRange(1), y - 0.25, feature.sampleRange(2) - feature.sampleRange(1), 0.5], 'FaceColor', 'b');
+                if ~isempty(features)
+                    featureTypes = handles.detectors{i}.featureTypes;
+                    for y = 1:length(featureTypes)
+                        featureType = featureTypes{y};
+                        text(1, vertPos + y + 0.25, featureType, 'VerticalAlignment', 'bottom');
+                    end
+                    labels = horzcat(labels, featureTypes); %#ok<AGROW>
+                    for feature = features
+                        if feature.sampleRange(1) < maxSample && feature.sampleRange(2) > minSample
+                            y = vertPos + find(strcmp(featureTypes, feature.type));
+                            if feature.sampleRange(1) == feature.sampleRange(2)
+                                text(feature.sampleRange(1), y, 'x', 'HorizontalAlignment', 'center');
+                            else
+                                rectangle('Position', [feature.sampleRange(1), y - 0.25, feature.sampleRange(2) - feature.sampleRange(1), 0.5], 'FaceColor', 'b');
+                            end
                         end
                     end
-                end
-%                 features = features(features.sampleRange(0) >= minSample & features.sampleRange(1) <= maxSample);
-%                 line(features - 0, ones(1, numel(features)) * i, 'LineStyle', 'none', 'Marker', 'o');
-                %plotmatrix(features, ones(1, numel(features)) * i);
+    %                 features = features(features.sampleRange(0) >= minSample & features.sampleRange(1) <= maxSample);
+    %                 line(features - 0, ones(1, numel(features)) * i, 'LineStyle', 'none', 'Marker', 'o');
+                    %plotmatrix(features, ones(1, numel(features)) * i);
 
-                vertPos = vertPos + numel(featureTypes);
+                    vertPos = vertPos + numel(featureTypes);
+                else
+                    % TODO: some visual indication that no features were found?
+                    vertPos = vertPos + 1;
+                end
             end
             
             %axis tight
@@ -407,7 +425,8 @@ function syncGUIWithTime(handles)
             % TODO: get freq range from prefs
             freqMin = 0;
             freqMax = 1000;
-            freqStep = ceil((freqMax - freqMin) / pixelHeight); % always at least 1
+            freqRange = freqMax - freqMin;
+            freqStep = ceil(freqRange / pixelHeight); % always at least 1
 
             % Base the window size on the number of pixels we want to render.
             window = ceil(windowSampleCount / pixelWidth) * 2;
@@ -422,6 +441,8 @@ function syncGUIWithTime(handles)
             colormap('jet');
             axis xy;
             set(handles.spectrogram, 'XTick', []);
+%             if freqRange < 100
+%                 set(handles.spectrogram, 'YTick', 1:freqRange:
             
             % "axis xy" or something is doing weird things with the limits of the axes.
             % The lower-left corner is not (0, 0) but the size of P.
@@ -572,7 +593,7 @@ function addDetectorCallback(~, ~, className, hObject)
             detector.endProgress();
         catch ME
             detector.endProgress();
-            throw(ME);
+            rethrow(ME);
         end
 
             % Update the features axes.
