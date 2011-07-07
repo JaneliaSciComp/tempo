@@ -49,7 +49,10 @@ classdef FlySongDetector < FeatureDetector
             obj.name = 'Fly Song Detector';
             
             % Set default background noise so you don't have to pick it every time...
-            backgroundNoisePath = getpref('FlySongDetector', 'BackgroundNoisePath', '');
+            thisPath = mfilename('fullpath');
+            parentDir = fileparts(thisPath);
+            defaultBackgroundWav = fullfile(parentDir, 'BackgroundNoise.wav');
+            backgroundNoisePath = getpref('FlySongDetector', 'BackgroundNoisePath', defaultBackgroundWav);
             try
                 rec = Recording(backgroundNoisePath);
                 obj.backgroundNoise = rec;

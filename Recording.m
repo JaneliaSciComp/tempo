@@ -27,8 +27,9 @@ classdef Recording < handle
             
             if strcmp(ext, '.wav')
                 obj.isAudio = true;
-                [obj.data, obj.sampleRate] = wavread(filePath);
-                obj.duration = numel(obj.data) / obj.sampleRate;
+                [obj.data, obj.sampleRate] = wavread(filePath, 'native');
+                obj.data = double(obj.data);
+                obj.duration = length(obj.data) / obj.sampleRate;
             elseif strcmp(ext, '.avi')
                 obj.isVideo = true;
                 obj.videoReader = VideoReader(videoPath);
