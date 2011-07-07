@@ -161,6 +161,7 @@ function setZoom(zoom, handles)
         zoom = 1;
     end
     
+    handles.displayedTime = handles.currentTime;
     handles.zoom = zoom;
     guidata(handles.figure1, handles);
 
@@ -451,21 +452,22 @@ function syncGUIWithTime(handles)
                 % Add a horizontal line to separate the detectors from each other.
                 line([timeRange(1) timeRange(2)], [vertPos + 0.5 vertPos + 0.5], 'Color', 'k');
             end
-            
-            axis(handles.features, [timeRange(1) timeRange(2) 0.5 vertPos + 0.5]);
-            
-            set(handles.features, 'YTick', 1:numel(labels));
-            set(handles.features, 'YTickLabel', labels);
+        else
+            vertPos = 1;
         end
+        axis(handles.features, [timeRange(1) timeRange(2) 0.5 vertPos + 0.5]);
+
+        set(handles.features, 'YTick', 1:numel(labels));
+        set(handles.features, 'YTickLabel', labels);
         
         % Add the current time indicator.
-        line([handles.currentTime handles.currentTime], [0 vertPos + 1], 'Color', [1 0 0]);
+        line([handles.currentTime handles.currentTime], [0 vertPos + 0.5], 'Color', [1 0 0]);
 
         % Add the current selection indicator.
         if handles.selectedTime(1) ~= handles.selectedTime(2)
             selectionStart = min(handles.selectedTime);
             selectionEnd = max(handles.selectedTime);
-            h = rectangle('Position', [selectionStart 0 selectionEnd - selectionStart vertPos + 1], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9]);
+            h = rectangle('Position', [selectionStart 0 selectionEnd - selectionStart vertPos + 0.5], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9]);
             uistack(h, 'bottom');
         end
         
@@ -579,7 +581,7 @@ function setAudioRecording(rec)
 
     handles.maxMediaTime = max([handles.maxMediaTime handles.audio.duration]);
 
-    handles.playTimer = timer('ExecutionMode', 'fixedRate', 'TimerFcn', @syncGUIToAudio, 'Period', 1.0 / 30.0, 'UserData', handles.oscillogram, 'StartDelay', 0.1);
+    handles.playTimer = timer('ExecutionMode', 'fixedRate', 'TimerFcn', @syncGUIToAudio, 'Period', round(1.0 / 30.0 * 1000) / 1000, 'UserData', handles.oscillogram, 'StartDelay', 0.1);
 
     set(handles.timeSlider, 'Max', handles.maxMediaTime);
     
