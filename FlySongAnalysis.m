@@ -650,6 +650,7 @@ function addDetectorCallback(~, ~, className, hObject)
                 detector.detectFeatures([0.0 handles.maxMediaTime]);
             end
             detector.endProgress();
+            syncGUIWithTime(handles);
         catch ME
             detector.endProgress();
             rethrow(ME);
