@@ -15,9 +15,9 @@ classdef FlySongDetector < FeatureDetector
         sineEventsMin = 3;
         
         % Pulse song properties
-        ipiMin = 100;               % Fs/100...
+        ipiMin = 200;               % Fs/100...
         ipiMax = 5000;              % Fs/2...
-        pulseMinAmp = 5;            % factor times the mean of xempty - only pulses larger than this amplitude are counted as true pulses
+        pulseMinAmp = 20;           % factor times the mean of xempty - only pulses larger than this amplitude are counted as true pulses
         pulseMaxScale = 700;        % if best matched scale is greater than this frequency, then don't include pulse as true pulse
         putativePulseFudge = 1.3;   % expand putative pulse by this number of steps on either side
         pulseMaxGapSize = 15;       % combine putative pulse if within this step size. i.e. this # * step_size in ms
@@ -66,7 +66,13 @@ classdef FlySongDetector < FeatureDetector
         
         
         function detectFeatures(obj, timeRange)
-            dataRange = ceil(timeRange * obj.recording.sampleRate);
+            dataRange = round(timeRange * obj.recording.sampleRate);
+            if dataRange(1) < 1
+                dataRange(1) = 1;
+            end
+            if dataRange(2) > length(obj.recording.data)
+                dataRange(2) = length(obj.recording.data);
+            end
             audioData = obj.recording.data(dataRange(1):dataRange(2));
             
             obj.updateProgress('Running multitaper analysis on signal...', 0/6)
