@@ -413,11 +413,12 @@ function syncGUIWithTime(handles)
         
         %% Update the features
         % TODO: does this really need to be done everytime the current time changes?  could update after each detection and then just change xlim...
+        % TODO: draw current time and selection indicators on the features as well?
         axes(handles.features);
         cla
         labels = {};
+        vertPos = 0;
         if ~isempty(handles.detectors)
-            vertPos = 0;
             for i = 1:numel(handles.detectors)
                 features = handles.detectors{i}.features();
                 if ~isempty(features)
@@ -441,17 +442,31 @@ function syncGUIWithTime(handles)
     %                 line(features - 0, ones(1, numel(features)) * i, 'LineStyle', 'none', 'Marker', 'o');
                     %plotmatrix(features, ones(1, numel(features)) * i);
 
-                    vertPos = vertPos + numel(featureTypes);
+                    vertPos = vertPos + numel(featureTypes) + 0.5;
                 else
                     % TODO: some visual indication that no features were found?
                     vertPos = vertPos + 1;
                 end
+                
+                % Add a horizontal line to separate the detectors from each other.
+                line([timeRange(1) timeRange(2)], [vertPos + 0.5 vertPos + 0.5], 'Color', 'k');
             end
             
             axis(handles.features, [timeRange(1) timeRange(2) 0.5 vertPos + 0.5]);
             
             set(handles.features, 'YTick', 1:numel(labels));
             set(handles.features, 'YTickLabel', labels);
+        end
+        
+        % Add the current time indicator.
+        line([handles.currentTime handles.currentTime], [0 vertPos + 1], 'Color', [1 0 0]);
+
+        % Add the current selection indicator.
+        if handles.selectedTime(1) ~= handles.selectedTime(2)
+            selectionStart = min(handles.selectedTime);
+            selectionEnd = max(handles.selectedTime);
+            h = rectangle('Position', [selectionStart 0 selectionEnd - selectionStart vertPos + 1], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9]);
+            uistack(h, 'bottom');
         end
         
         %% Update the spectrogram
