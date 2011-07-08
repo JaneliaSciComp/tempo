@@ -239,17 +239,46 @@ function playMediaCallback(hObject, ~, handles) %#ok<*DEFNU>
     handles.tocs = [];
     guidata(hObject, handles);
     
-    play(handles.audioPlayer, handles.currentTime * handles.audio.sampleRate);
+    if handles.selectedTime(1) ~= handles.selectedTime(2)
+        % Only play with the selected range.
+        if handles.currentTime >= handles.selectedTime(1) && handles.currentTime < handles.selectedTime(2)
+            playRange = [handles.currentTime handles.selectedTime(2)];
+        else
+            playRange = [handles.selectedTime(1) handles.selectedTime(2)];
+        end
+    else
+        % Play the whole song, starting at the current time unless it's at the end.
+        if handles.currentTime < handles.audio.duration
+            playRange = [handles.currentTime handles.audio.duration];
+        else
+            playRange = [0.0 handles.audio.duration];
+        end
+    end
+    playRange = round(playRange * handles.audio.sampleRate);
+    if playRange(1) == 0
+        playRange(1) = 1;
+    end
+    play(handles.audioPlayer, playRange);
     start(handles.playTimer);
 end
 
 
-function pauseMediaCallback(~, ~, handles)
+function pauseMediaCallback(hObject, ~, handles)
     set(handles.playTool, 'Enable', 'on');
     set(handles.pauseTool, 'Enable', 'off');
     
-    stop(handles.playTimer);
     stop(handles.audioPlayer);
+    stop(handles.playTimer);
+    
+    if isempty(hObject)
+        % The audio played to the end without the user clicking the pause button.
+        if handles.selectedTime(1) ~= handles.selectedTime(2)
+            handles.currentTime = handles.selectedTime(2);
+        else
+            handles.currentTime = handles.audio.duration;
+        end
+        handles.displayedTime = handles.currentTime;
+    end
     
     syncGUIWithTime(handles);
 end
@@ -259,18 +288,23 @@ function syncGUIToAudio(timerObj, ~)
     hObject = get(timerObj, 'UserData');
     handles = guidata(hObject);
     
-    curSample = get(handles.audioPlayer, 'CurrentSample');
-    
-    handles.currentTime = curSample / handles.audio.sampleRate;
-    
-    tic;
-    syncGUIWithTime(handles);
-    handles.tocs = [handles.tocs toc];
-    
-    guidata(hObject, handles);
-    
-%    set(handles.playButton, 'ToolTipString', num2str(mean(handles.tocs), '%g seconds to render media'));
-%    set(handles.stopButton, 'ToolTipString', num2str(mean(handles.tocs), '%g seconds to render media'));
+    if isplaying(handles.audioPlayer)
+        curSample = get(handles.audioPlayer, 'CurrentSample');
+        if curSample > 1
+            handles.currentTime = curSample / handles.audio.sampleRate;
+            handles.displayedTime = handles.currentTime;
+
+            tic;
+            syncGUIWithTime(handles);
+            handles.tocs = [handles.tocs toc];
+
+            guidata(hObject, handles);
+            
+%            disp(num2str(mean(handles.tocs), '%g seconds to render media'));
+        end
+    else
+        pauseMediaCallback([], [], handles);
+    end
 end
 
 
@@ -718,25 +752,27 @@ end
 function windowButtonDownFcn(hObject, ~)
     handles = guidata(hObject);
     
-    timeRange = displayedTimeRange(handles);
+    if isfield(handles, 'audio')
+        timeRange = displayedTimeRange(handles);
 
-    clickedPoint = get(handles.oscillogram, 'CurrentPoint');
-    clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
-    clickedTime = clickedSample / handles.audio.sampleRate;
-    if strcmp(get(gcf, 'SelectionType'), 'extend')
-        if clickedTime >= handles.selectedTime(1)
-            handles.selectedTime = [handles.selectedTime(1) clickedTime];
+        clickedPoint = get(handles.oscillogram, 'CurrentPoint');
+        clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
+        clickedTime = clickedSample / handles.audio.sampleRate;
+        if strcmp(get(gcf, 'SelectionType'), 'extend')
+            if clickedTime >= handles.selectedTime(1)
+                handles.selectedTime = [handles.selectedTime(1) clickedTime];
+            else
+                handles.selectedTime = [clickedTime handles.selectedTime(2)];
+            end
         else
-            handles.selectedTime = [clickedTime handles.selectedTime(2)];
+            handles.currentTime = clickedTime;
+            handles.selectedTime = [clickedTime clickedTime];
+            set(handles.figure1, 'WindowButtonMotionFcn', @windowButtonMotionFcn);
+            set(handles.figure1, 'WindowButtonUpFcn', @windowButtonUpFcn);
         end
-    else
-        handles.currentTime = clickedTime;
-        handles.selectedTime = [clickedTime clickedTime];
-        set(handles.figure1, 'WindowButtonMotionFcn', @windowButtonMotionFcn);
-        set(handles.figure1, 'WindowButtonUpFcn', @windowButtonUpFcn);
+        guidata(hObject, handles);
+        syncGUIWithTime(handles);
     end
-    guidata(hObject, handles);
-    syncGUIWithTime(handles);
     
     function windowButtonMotionFcn(hObject, ~)
         handles = guidata(hObject);
