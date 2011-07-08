@@ -32,7 +32,7 @@ classdef Recording < handle
                 obj.duration = length(obj.data) / obj.sampleRate;
             elseif strcmp(ext, '.avi')
                 obj.isVideo = true;
-                obj.videoReader = VideoReader(videoPath);
+                obj.videoReader = VideoReader(filePath);
                 obj.data = [];
                 obj.sampleRate = get(obj.videoReader, 'FrameRate');
                 obj.duration = get(obj.videoReader, 'Duration');

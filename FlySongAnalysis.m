@@ -328,7 +328,7 @@ function syncGUIWithTime(handles)
     timeRange = displayedTimeRange(handles);
     timeRangeSize = timeRange(2) - timeRange(1);
     
-    if isfield(handles, 'videoObj')
+    if isfield(handles, 'video')
         % Display the current frame of video.
         frameNum = min([floor(handles.currentTime * handles.video.sampleRate + 1) handles.video.videoReader.NumberOfFrames]);
         if isfield(handles, 'videoBuffer')
@@ -582,6 +582,8 @@ function openRecordingCallback(~, ~, handles)
             end
             syncGUIWithTime(handles);
         catch ME
+            disp('Error opening media file.');
+            disp(getReport(ME));
         end
     end
 %    handles = guidata(hObject);
@@ -589,6 +591,8 @@ end
 
     
 function setVideoRecording(rec)
+    handles = guidata(gcbo);
+    
     handles.video = rec;
 
     axes(handles.videoFrame);
@@ -597,7 +601,7 @@ function setVideoRecording(rec)
 
     handles.maxMediaTime = max([handles.maxMediaTime handles.video.duration]);
 
-    guidata(hObject, handles);
+    guidata(gcbo, handles);
 
     set(handles.timeSlider, 'Max', handles.maxMediaTime);
 
