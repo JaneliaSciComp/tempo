@@ -10,7 +10,7 @@ classdef SineSongDetector < FeatureDetector
     methods(Static)
         
         function n = typeName()
-            n = 'Sine Song';
+            n = 'Roian''s Sine Song';
         end
         
     end
@@ -20,7 +20,7 @@ classdef SineSongDetector < FeatureDetector
         
         function obj = SineSongDetector(recording)
             obj = obj@FeatureDetector(recording);
-            obj.name = 'Sine Song';
+            obj.name = 'Roian''s Sine Song';
         end
         
         

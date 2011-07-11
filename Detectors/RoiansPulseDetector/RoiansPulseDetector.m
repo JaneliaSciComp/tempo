@@ -10,7 +10,7 @@ classdef RoiansPulseDetector < FeatureDetector
     methods(Static)
         
         function n = typeName()
-            n = 'Pulse Song';
+            n = 'Roian''s Pulse Song';
         end
         
     end
@@ -20,7 +20,7 @@ classdef RoiansPulseDetector < FeatureDetector
         
         function obj = RoiansPulseDetector(recording)
             obj = obj@FeatureDetector(recording);
-            obj.name = 'Pulses';
+            obj.name = 'Roian''s Pulse Song';
         end
         
         
