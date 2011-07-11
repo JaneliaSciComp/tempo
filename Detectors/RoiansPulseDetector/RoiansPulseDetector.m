@@ -3,7 +3,7 @@ classdef RoiansPulseDetector < FeatureDetector
     properties
         freqMin = 250;  %hz
         freqMax = 1000; %hz
-        threshold = 3.0;
+        threshold = 0.75;
     end
     
     
@@ -24,36 +24,37 @@ classdef RoiansPulseDetector < FeatureDetector
         end
         
         
-        function editParams(obj, ~) %#ok<MANU>
-            
+        function edited = editSettings(obj) %#ok<*MANU>
+            edited = true;
         end
         
         
-        function p = params(obj)
-            p.freqMin = obj.freqMin;
-            p.freqMax = obj.freqMax;
-            p.threshold = obj.threshold;
-        end
-        
-        
-        function detectFeatures(obj)
+        function detectFeatures(obj, timeRange)
+            dataRange = round(timeRange * obj.recording.sampleRate);
+            if dataRange(1) < 1
+                dataRange(1) = 1;
+            end
+            if dataRange(2) > length(obj.recording.data)
+                dataRange(2) = length(obj.recording.data);
+            end
+            audioData = obj.recording.data(dataRange(1):dataRange(2));
 
             %[ban, ~, f] = r_specgram_noplot(data, sampleRate);
             window = ceil(obj.recording.sampleRate * .015);             % 15 ms hanning window (in samples)
             noverlap = ceil(window * 0);                                % degree of window overlap (in samples)
             nfft = 2^10;
-            data = obj.recording.data - mean(obj.recording.data);                     % subtract any dc
-            [b, f, ~] = spectrogram(obj.recording.data, window, noverlap, nfft, obj.recording.sampleRate);
+            audioData = audioData - mean(audioData);                     % subtract any dc
+            [b, f, ~] = spectrogram(audioData, window, noverlap, nfft, obj.recording.sampleRate);
             ba = abs(b);
             ban = 2 * (ba ./ (window / 2));                             % normalizing to amplitude
 
             startFreq = rpfind(f, obj.freqMin);
             stopFreq = rpfind(f, obj.freqMax);
 
-            newban = sum(ban(startFreq:stopFreq, :));
+            newban = sum(ban(startFreq:stopFreq, :)) / 2^15;
             
-            for pulseIndex = find(newban > obj.threshold) / numel(newban) * numel(data)
-                obj.addFeature(Feature('Pulse', pulseIndex));
+            for pulseIndex = find(newban > obj.threshold) / length(newban) * length(audioData)
+                obj.addFeature(Feature('Pulse', (dataRange(1) + pulseIndex) / obj.recording.sampleRate));
             end
         end
         
