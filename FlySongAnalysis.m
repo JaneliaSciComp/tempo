@@ -65,12 +65,6 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     set(handles.videoGroup, 'Parent', handles.leftSplit, 'Position', [0 0 1 1]);
     set(handles.audioGroup, 'Parent', handles.rightSplit, 'Position', [0 0 1 1]);
     
-%     audioPos(1) = 5;
-%     set(handles.audioGroup, 'Position', audioPos);
-%     
-%     set(handles.videoGroup, 'Units', 'normalized');
-%     set(handles.audioGroup, 'Units', 'normalized');
-    
     %% Add the "Add detector" tool to the toolbar
     handles.addDetectorTool = uisplittool('parent', handles.toolbar);
     icon = fullfile(matlabroot,'/toolbox/matlab/icons/greencircleicon.gif');
@@ -103,6 +97,7 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     handles.currentTime = 0.0;          % The time currently being "rendered" from the recordings indicated by a red line in the oscillogram.
     handles.displayedTime = 0.0;        % The time on which the displays are centered.
     handles.selectedTime = [0.0 0.0];   % The highlighted range indicated by a light red box in the oscillogram.
+    handles.selectingTimeRange = false; % true when dragging in the oscillogram.
     handles.maxMediaTime = 0.0;
     handles.zoom = 1.0;
     handles.detectors = {};
@@ -121,6 +116,8 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     showSpectrogramCallback(0, 0, handles);
     
     set(handles.figure1, 'WindowButtonDownFcn', @windowButtonDownFcn);
+    set(handles.figure1, 'WindowButtonMotionFcn', @windowButtonMotionFcn);
+    set(handles.figure1, 'WindowButtonUpFcn', @windowButtonUpFcn);
 end
 
 
@@ -423,7 +420,6 @@ function syncGUIWithTime(handles)
             handles.tocs = [handles.tocs toc];
             disp(mean(handles.tocs));
         end
-        guidata(get(handles.oscillogram, 'Parent'), handles);
         
         % Update the time ticks and scale label.
         timeScale = fix(log10(timeRangeSize));
@@ -531,7 +527,7 @@ function syncGUIWithTime(handles)
             set(h,'CDataMapping','scaled'); % (5)
             colormap('jet');
             axis xy;
-            set(handles.spectrogram, 'XTick', []);
+            set(handles.spectrogram, 'XTick', [], 'YTick', []);
 %             if freqRange < 100
 %                 set(handles.spectrogram, 'YTick', 1:freqRange:
             
@@ -539,10 +535,15 @@ function syncGUIWithTime(handles)
             % The lower-left corner is not (0, 0) but the size of P.
             text(size(P, 2) * 2, size(P, 1) * 2 - 1, [num2str(freqMax) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
             text(size(P, 2) * 2, size(P, 1), [num2str(freqMin) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'baseline');
+            
+            % Add a text object to show the time and frequency of where the mouse is currently hovering.
+            handles.spectrogramTooltip = text(size(P, 2), size(P, 1), '', 'BackgroundColor', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'bottom', 'Visible', 'off');
         end
     end
     
     set(handles.timeSlider, 'Value', handles.currentTime);
+    
+    guidata(handles.figure1, handles);
     
     drawnow
 end
@@ -771,32 +772,59 @@ function windowButtonDownFcn(hObject, ~)
         else
             handles.currentTime = clickedTime;
             handles.selectedTime = [clickedTime clickedTime];
-            set(handles.figure1, 'WindowButtonMotionFcn', @windowButtonMotionFcn);
-            set(handles.figure1, 'WindowButtonUpFcn', @windowButtonUpFcn);
+            handles.selectingTimeRange = true;
         end
         guidata(hObject, handles);
         syncGUIWithTime(handles);
     end
+end
+
+
+function windowButtonMotionFcn(hObject, ~)
+    handles = guidata(hObject);
     
-    function windowButtonMotionFcn(hObject, ~)
-        handles = guidata(hObject);
+    if handles.selectingTimeRange
+        timeRange = displayedTimeRange(handles);
         clickedPoint = get(handles.oscillogram, 'CurrentPoint');
         clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
         handles.selectedTime = [handles.selectedTime(1) clickedSample / handles.audio.sampleRate];
         guidata(hObject, handles);
         syncGUIWithTime(handles);
         drawnow;
+    elseif handles.showSpectrogram
+        freqMin = 0;
+        freqMax = 1000;
+
+        currentPoint = get(handles.spectrogram, 'CurrentPoint');
+        xLim = get(handles.spectrogram, 'XLim');
+        yLim = get(handles.spectrogram, 'YLim');
+        x = (currentPoint(1, 1) - xLim(1)) / (xLim(2) - xLim(1));
+        y = (currentPoint(1, 2) - yLim(1)) / (yLim(2) - yLim(1));
+        if x >=0 && x <= 1 && y >= 0 && y <= 1
+            timeRange = displayedTimeRange(handles);
+            currentTime = timeRange(1) + (timeRange(2) - timeRange(1)) * x;
+            frequency = freqMin + (freqMax - freqMin) * y;
+            tip = sprintf('Time: %0.2f\nFreq: %.1f', currentTime, frequency);
+            set(handles.spectrogramTooltip, 'String', tip, 'Visible', 'on');
+        else
+            tip = '';
+            set(handles.spectrogramTooltip, 'String', tip, 'Visible', 'off');
+        end
     end
+end
+
+
+function windowButtonUpFcn(hObject, ~)
+    handles = guidata(hObject);
     
-    function windowButtonUpFcn(hObject, ~)
-        handles = guidata(hObject);
+    if handles.selectingTimeRange
+        timeRange = displayedTimeRange(handles);
         clickedPoint = get(handles.oscillogram, 'CurrentPoint');
         clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
         handles.selectedTime = sort([handles.selectedTime(1) clickedSample / handles.audio.sampleRate]);
+        handles.selectingTimeRange = false;
         guidata(hObject, handles);
         syncGUIWithTime(handles);
-        set(handles.figure1, 'WindowButtonMotionFcn', []);
-        set(handles.figure1, 'WindowButtonUpFcn', []);
     end
 end
 
