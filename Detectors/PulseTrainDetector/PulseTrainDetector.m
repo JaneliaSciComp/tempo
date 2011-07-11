@@ -1,4 +1,4 @@
-classdef PulseTrainDetector < FeatureDetector
+classdef PulseTrainDetector% < FeatureDetector
     
     properties
         ipiMin = .015;  %seconds

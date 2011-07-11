@@ -83,10 +83,14 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     detectorCount = 0;
     for i = 1:length(detectorDirs)
         if detectorDirs(i).isdir && detectorDirs(i).name(1) ~= '.'
-            detectorCount = detectorCount + 1;
-            handles.detectorClassNames{detectorCount} = detectorDirs(i).name;
-            addpath(fullfile(detectorsDir, filesep, detectorDirs(i).name));
-            eval([detectorDirs(i).name '.initialize()'])
+            try
+                addpath(fullfile(detectorsDir, filesep, detectorDirs(i).name));
+                eval([detectorDirs(i).name '.initialize()'])
+                detectorCount = detectorCount + 1;
+                handles.detectorClassNames{detectorCount} = detectorDirs(i).name;
+            catch ME %#ok<NASGU>
+                addpath(fullfile(detectorsDir, filesep, detectorDirs(i).name));
+            end
         end
     end
     handles.detectorClassNames = handles.detectorClassNames(1:detectorCount);
