@@ -1,8 +1,8 @@
 classdef SineSongDetector < FeatureDetector
     
     properties
-        freqMin = 250;  %hz
-        freqMax = 1000; %hz
+        freqMin = 100;  %hz
+        freqMax = 300; %hz
         threshold = 3.0;
     end
     
@@ -18,18 +18,35 @@ classdef SineSongDetector < FeatureDetector
     
     methods
         
-        function obj = SineSongDetector(varargin)
-            obj = obj@FeatureDetector();
+        function obj = SineSongDetector(recording)
+            obj = obj@FeatureDetector(recording);
             obj.name = 'Sine Song';
         end
         
         
-        function detectFeatures(obj, data, sampleRate, ~)
-            %y = sine_song_detector(handles.audioData, handles.audioSampleRate);
-            %z = detect_sine_runs(y, 3);
-            %z(:,3) = z(:,2) - z(:,1);
+        function edited = editSettings(obj) %#ok<*MANU>
+            edited = true;
+        end
+        
+        
+        function detectFeatures(obj, timeRange)
+            dataRange = round(timeRange * obj.recording.sampleRate);
+            if dataRange(1) < 1
+                dataRange(1) = 1;
+            end
+            if dataRange(2) > length(obj.recording.data)
+                dataRange(2) = length(obj.recording.data);
+            end
+            audioData = obj.recording.data(dataRange(1):dataRange(2));
             
-            %obj.features = find(newban > obj.threshold);
+            y = sine_song_detector(audioData, obj.recording.sampleRate);
+            scale = length(audioData) / length(y);
+            sineRuns = detect_sine_runs(y, 3);
+            sineRuns = (sineRuns * scale + dataRange(1)) / obj.recording.sampleRate;
+            
+            for i = 1:size(sineRuns, 1)
+                obj.addFeature(Feature('Sine Song', sineRuns(i, 1), sineRuns(i, 2)));
+            end
         end
         
     end
