@@ -469,9 +469,6 @@ function syncGUIWithTime(handles)
                             end
                         end
                     end
-    %                 features = features(features.sampleRange(0) >= minSample & features.sampleRange(1) <= maxSample);
-    %                 line(features - 0, ones(1, numel(features)) * i, 'LineStyle', 'none', 'Marker', 'o');
-                    %plotmatrix(features, ones(1, numel(features)) * i);
 
                     vertPos = vertPos + numel(featureTypes) + 0.5;
                 else
@@ -497,7 +494,7 @@ function syncGUIWithTime(handles)
         if handles.selectedTime(1) ~= handles.selectedTime(2)
             selectionStart = min(handles.selectedTime);
             selectionEnd = max(handles.selectedTime);
-            h = rectangle('Position', [selectionStart 0 selectionEnd - selectionStart vertPos + 0.5], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9]);
+            h = rectangle('Position', [selectionStart 0.5 selectionEnd - selectionStart vertPos], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9]);
             uistack(h, 'bottom');
         end
         
@@ -581,7 +578,6 @@ function openRecordingCallback(~, ~, handles)
             elseif rec.isVideo
                 setVideoRecording(rec);
             end
-            syncGUIWithTime(handles);
         catch ME
             disp('Error opening media file.');
             disp(getReport(ME));
