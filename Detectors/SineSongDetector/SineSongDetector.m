@@ -47,6 +47,8 @@ classdef SineSongDetector < FeatureDetector
             for i = 1:size(sineRuns, 1)
                 obj.addFeature(Feature('Sine Song', sineRuns(i, 1), sineRuns(i, 2)));
             end
+            
+            obj.timeRangeDetected(timeRange);
         end
         
     end

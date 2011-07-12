@@ -343,6 +343,10 @@ function syncGUIWithTime(handles)
             frame = handles.videoBuffer(:, :, :, frameNum - handles.videoBufferStartFrame + 1);
         else
             frame = read(handles.video.videoReader, frameNum);
+            
+            % Window button callbacks can occur during the read call.
+            % The callbacks can update the handles so grab a fresh copy.
+            handles = guidata(handles.figure1);
         end
         set(handles.videoImage, 'CData', frame);
         set(handles.videoFrame, 'XTick', [], 'YTick', []);
@@ -453,11 +457,30 @@ function syncGUIWithTime(handles)
         cla
         labels = {};
         vertPos = 0;
+        grayRects = {};
         if ~isempty(handles.detectors)
             for i = 1:numel(handles.detectors)
+                featureTypes = handles.detectors{i}.featureTypes;
+                
+                % First gray out areas that haven't been detected.
+                lastTime = 0.0;
+                if isempty(featureTypes)
+                    height = 0.5;
+                else
+                    height = length(featureTypes);
+                end
+                for j = 1:size(handles.detectors{i}.detectedTimeRanges, 1)
+                    detectedTimeRange = handles.detectors{i}.detectedTimeRanges(j, :);
+                    
+                    grayRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 detectedTimeRange(1) - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none'); %#ok<AGROW>
+                    
+                    lastTime = detectedTimeRange(2);
+                end
+                grayRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 handles.maxMediaTime - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none'); %#ok<AGROW>
+                
+                % Draw the features that have been detected.
                 features = handles.detectors{i}.features();
                 if ~isempty(features)
-                    featureTypes = handles.detectors{i}.featureTypes;
                     for y = 1:length(featureTypes)
                         featureType = featureTypes{y};
                         text(timeRange(1), vertPos + y + 0.25, featureType, 'VerticalAlignment', 'bottom');
@@ -500,6 +523,9 @@ function syncGUIWithTime(handles)
             selectionEnd = max(handles.selectedTime);
             h = rectangle('Position', [selectionStart 0.5 selectionEnd - selectionStart vertPos], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9]);
             uistack(h, 'bottom');
+        end
+        for i = 1:length(grayRects)
+            uistack(grayRects{i}, 'bottom');
         end
         
         %% Update the spectrogram
@@ -551,43 +577,49 @@ end
 
 
 function openRecordingCallback(~, ~, handles)
-    [fileName, pathName] = uigetfile2('Select an audio or video file to analyze');
+    [fileNames, pathName] = uigetfile2('Select an audio or video file to analyze');
     
-    if fileName ~= 0
-        fullPath = fullfile(pathName, fileName);
-        try
-            rec = Recording(fullPath);
-            if rec.isAudio
-                % TODO: allow the recording to change?  Yes...
-                if isfield(handles, 'handles.audio')
-                    error('You have already chosen the audio file.')
+    if ischar(fileNames)
+        fileNames = {fileNames};
+    end
+    
+    if iscell(fileNames)
+        for i = 1:length(fileNames)
+            fileName = fileNames{i};
+            fullPath = fullfile(pathName, fileName);
+            try
+                rec = Recording(fullPath);
+                if rec.isAudio
+                    % TODO: allow the recording to change?  Yes...
+                    if isfield(handles, 'handles.audio')
+                        error('You have already chosen the audio file.')
+                    end
+                    setAudioRecording(rec);
+
+                    %% Populate the list of detectors from the 'Detectors' folder.
+                    % TODO: It would be nice to do this at initialization but it crashes there...
+                    jAddDetector = get(handles.addDetectorTool, 'JavaContainer');
+                    jMenu = get(jAddDetector, 'MenuComponent');
+                    jMenu.removeAll;
+                    warning('off', 'MATLAB:hg:JavaSetHGProperty');
+                    for i = 1:numel(handles.detectorClassNames)
+                        className = handles.detectorClassNames{i};
+                        typeName = eval([className '.typeName()']);
+                        jActionItem = jMenu.add(['Add ' typeName ' Detector']);
+                        set(jActionItem, 'ActionPerformedCallback', {@addDetectorCallback, className, handles.features});
+                    end
+                    warning('on', 'MATLAB:hg:JavaSetHGProperty');
+                    jToolbar = get(get(handles.toolbar,'JavaContainer'),'ComponentPeer');
+                    jToolbar.revalidate;
+                elseif rec.isVideo
+                    setVideoRecording(rec);
                 end
-                setAudioRecording(rec);
-                
-                %% Populate the list of detectors from the 'Detectors' folder.
-                % TODO: It would be nice to do this at initialization but it crashes there...
-                jAddDetector = get(handles.addDetectorTool, 'JavaContainer');
-                jMenu = get(jAddDetector, 'MenuComponent');
-                jMenu.removeAll;
-                warning('off', 'MATLAB:hg:JavaSetHGProperty');
-                for i = 1:numel(handles.detectorClassNames)
-                    className = handles.detectorClassNames{i};
-                    typeName = eval([className '.typeName()']);
-                    jActionItem = jMenu.add(['Add ' typeName ' Detector']);
-                    set(jActionItem, 'ActionPerformedCallback', {@addDetectorCallback, className, handles.features});
-                end
-                warning('on', 'MATLAB:hg:JavaSetHGProperty');
-                jToolbar = get(get(handles.toolbar,'JavaContainer'),'ComponentPeer');
-                jToolbar.revalidate;
-            elseif rec.isVideo
-                setVideoRecording(rec);
+            catch ME
+                disp('Error opening media file.');
+                disp(getReport(ME));
             end
-        catch ME
-            disp('Error opening media file.');
-            disp(getReport(ME));
         end
     end
-%    handles = guidata(hObject);
 end
 
     
@@ -790,8 +822,7 @@ function windowButtonMotionFcn(hObject, ~)
         handles.selectedTime = [handles.selectedTime(1) clickedSample / handles.audio.sampleRate];
         guidata(hObject, handles);
         syncGUIWithTime(handles);
-        drawnow;
-    elseif handles.showSpectrogram
+    elseif handles.showSpectrogram && isfield(handles, 'spectrogramTooltip')
         freqMin = 0;
         freqMax = 1000;
 

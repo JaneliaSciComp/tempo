@@ -137,6 +137,8 @@ classdef FlySongDetector < FeatureDetector
             
             % TBD: Is there any value in holding on to the winnowedSine, putativePulse or pulses structs?
             %      They could be set as properties of the detector...
+            
+            obj.timeRangeDetected(timeRange);
         end
         
     end

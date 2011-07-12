@@ -4,6 +4,7 @@ classdef FeatureDetector < handle
         name
         featureTypes
         waitBarHandle
+        detectedTimeRanges = [];    % An nx2 matrix of non-overlapping time ranges (start, end) in ascending order.
     end
     
     
@@ -48,8 +49,9 @@ classdef FeatureDetector < handle
             obj = obj@handle();
             
             obj.recording = recording;
+            
+            % TODO: what if the detector wants to look at the video?
         end
-        
         
         
         function f = settingsFunc(obj)
@@ -91,6 +93,35 @@ classdef FeatureDetector < handle
             s = struct();
             for setting = obj.settingNames()
                 s.(setting) = obj.(setting{1});
+            end
+        end
+        
+        
+        function timeRangeDetected(obj, timeRange)
+            % Merge the new time range with the existing time ranges.
+            % The new range can intersect or completely replace existing ranges.
+            
+            if isempty(obj.detectedTimeRanges)
+                obj.detectedTimeRanges = timeRange;
+            elseif timeRange(2) < obj.detectedTimeRanges(1, 1)
+                obj.detectedTimeRanges = vertcat(timeRange, obj.detectedTimeRanges);
+            elseif timeRange(1) > obj.detectedTimeRanges(end, 2)
+                obj.detectedTimeRanges = vertcat(obj.detectedTimeRanges, timeRange);
+            else
+                firstRange = find(obj.detectedTimeRanges(:,2) >= timeRange(1), 1, 'first');
+                lastRange = find(obj.detectedTimeRanges(:,1) < timeRange(2), 1, 'last');
+
+                if obj.detectedTimeRanges(firstRange, 1) < timeRange(1)
+                    timeRange(1) = obj.detectedTimeRanges(firstRange, 1);
+                end
+                if obj.detectedTimeRanges(lastRange, 2) > timeRange(2)
+                    timeRange(2) = obj.detectedTimeRanges(lastRange, 2);
+                end
+
+                if lastRange > firstRange
+                    obj.detectedTimeRanges(firstRange+1:lastRange, :) = [];
+                end
+                obj.detectedTimeRanges(firstRange,:) = timeRange;
             end
         end
         
