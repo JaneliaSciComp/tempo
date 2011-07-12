@@ -898,8 +898,9 @@ end
 function windowButtonDownFcn(hObject, ~)
     handles = guidata(hObject);
     
+    clickedObject = get(handles.figure1, 'CurrentObject');
+    
     if strcmp(get(gcf, 'SelectionType'), 'alt')
-        clickedObject = get(handles.figure1, 'CurrentObject');
         contextualMenu = get(clickedObject, 'UIContextMenu');
         if ~isempty(contextualMenu)
             set(contextualMenu, 'Position', get(handles.figure1, 'CurrentPoint'), 'Visible', 'On');
@@ -907,7 +908,7 @@ function windowButtonDownFcn(hObject, ~)
         end
     end
     
-    if isfield(handles, 'audio')
+    if isfield(handles, 'audio') && (clickedObject == handles.oscillogram || clickedObject == handles.features || clickedObject == handles.spectrogram)
         timeRange = displayedTimeRange(handles);
         
         clickedPoint = get(handles.oscillogram, 'CurrentPoint');
