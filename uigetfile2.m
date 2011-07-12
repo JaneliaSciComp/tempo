@@ -1,5 +1,5 @@
 function [fileName, pathName] = uigetfile2(title)
-    if ismac
+    if ismac && verLessThan('matlab', '7.12')
         % Use the older AWT-style file dialog which has a native Mac look and feel.
         %desktop = com.mathworks.mde.desk.MLDesktop.getInstance();
         %mainFrame = desktop.getMainFrame();
@@ -14,6 +14,6 @@ function [fileName, pathName] = uigetfile2(title)
         pathName = char(fd.getDirectory());
         fileName = char(fd.getFile());
     else
-        [fileName, pathName] = uigetfile('*', title);
+        [fileName, pathName] = uigetfile('*', title, 'MultiSelect', 'on');
     end
 end
