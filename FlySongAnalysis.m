@@ -324,11 +324,40 @@ end
 
 function syncGUIWithTime(handles)
     % This is the main GUI update function.
-    
+
     % Calculate the range of time currently being displayed.
     timeRange = displayedTimeRange(handles);
-    timeRangeSize = timeRange(2) - timeRange(1);
+
+    % Calculate the sample range being displayed.
+    if isfield(handles, 'audio')
+        minSample = ceil(timeRange(1) * handles.audio.sampleRate);
+        maxSample = ceil(timeRange(2) * handles.audio.sampleRate);
+        if minSample < 1
+            minSample = 1;
+        end
+        if maxSample > length(handles.audio.data)
+            maxSample = length(handles.audio.data);
+        end
+        audioWindow = handles.audio.data(minSample:maxSample);
+    else
+        minSample = 0;
+        audioWindow = [];
+    end
     
+    handles = updateVideo(handles);
+    handles = updateOscillogram(handles, timeRange, audioWindow, minSample);
+    handles = updateFeatures(handles, timeRange, audioWindow, minSample);
+    handles = updateSpectrogram(handles, timeRange, audioWindow, minSample);
+    
+    set(handles.timeSlider, 'Value', handles.currentTime);
+    
+    guidata(handles.figure1, handles);
+    
+    drawnow
+end
+
+
+function newHandles = updateVideo(handles)
     if isfield(handles, 'video')
         % Display the current frame of video.
         frameNum = min([floor(handles.currentTime * handles.video.sampleRate + 1) handles.video.videoReader.NumberOfFrames]);
@@ -338,7 +367,7 @@ function syncGUIWithTime(handles)
                 %['Grabbing ' num2str(handles.videoBufferSize) ' more frames']
                 handles.videoBuffer = read(handles.video.videoReader, [frameNum frameNum + handles.videoBufferSize - 1]);
                 handles.videoBufferStartFrame = frameNum;
-                guidata(get(handles.videoFrame, 'Parent'), handles);
+                guidata(get(handles.videoFrame, 'Parent'), handles);    % TODO: necessary with newFeatures?
             end
             frame = handles.videoBuffer(:, :, :, frameNum - handles.videoBufferStartFrame + 1);
         else
@@ -352,22 +381,19 @@ function syncGUIWithTime(handles)
         set(handles.videoFrame, 'XTick', [], 'YTick', []);
     end
     
+    newHandles = handles;
+end
+
+
+function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSample)
     if isfield(handles, 'audio')
         currentSample = floor(handles.currentTime * handles.audio.sampleRate);
+    
+        timeRangeSize = timeRange(2) - timeRange(1);
         
-        % Calculate the sample range being displayed in the oscillogram.
-        minSample = ceil(timeRange(1) * handles.audio.sampleRate);
-        maxSample = ceil(timeRange(2) * handles.audio.sampleRate);
-        if minSample < 1
-            minSample = 1;
-        end
-        if maxSample > length(handles.audio.data)
-            maxSample = length(handles.audio.data);
-        end
-        audioWindow = handles.audio.data(minSample:maxSample);
-        windowSampleCount = maxSample - minSample + 1;
+        windowSampleCount = length(audioWindow);
         
-        %% Update the waveform.
+        % Update the waveform.
         if get(handles.autoGainCheckBox, 'Value') == 1.0
             maxAmp = max(abs(audioWindow));
         else
@@ -449,19 +475,25 @@ function syncGUIWithTime(handles)
         if curYLim(1) ~= -maxAmp || curYLim(2) ~= maxAmp
             set(handles.oscillogram, 'YLim', [-maxAmp maxAmp]);
         end
-        
-        %% Update the features
-        % TODO: does this really need to be done everytime the current time changes?  could update after each detection and then just change xlim...
-        % TODO: draw current time and selection indicators on the features as well?
-        axes(handles.features);
-        cla
+    end
+    
+    newHandles = handles;
+end
+
+
+function newHandles = updateFeatures(handles, timeRange, ~, ~)
+    % TODO: does all of this really need to be done everytime the current time changes?  could update after each detection and then just change xlim...
+    % TODO: draw current time and selection indicators on the features as well?
+    axes(handles.features);
+    cla
+    if isfield(handles, 'audio')
         labels = {};
         vertPos = 0;
         grayRects = {};
         if ~isempty(handles.detectors)
             for i = 1:numel(handles.detectors)
                 featureTypes = handles.detectors{i}.featureTypes;
-                
+
                 % First gray out areas that haven't been detected.
                 lastTime = 0.0;
                 if isempty(featureTypes)
@@ -471,13 +503,13 @@ function syncGUIWithTime(handles)
                 end
                 for j = 1:size(handles.detectors{i}.detectedTimeRanges, 1)
                     detectedTimeRange = handles.detectors{i}.detectedTimeRanges(j, :);
-                    
+
                     grayRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 detectedTimeRange(1) - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none'); %#ok<AGROW>
-                    
+
                     lastTime = detectedTimeRange(2);
                 end
                 grayRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 handles.maxMediaTime - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none'); %#ok<AGROW>
-                
+
                 % Draw the features that have been detected.
                 features = handles.detectors{i}.features();
                 if ~isempty(features)
@@ -502,7 +534,7 @@ function syncGUIWithTime(handles)
                     % TODO: some visual indication that no features were found?
                     vertPos = vertPos + 1;
                 end
-                
+
                 % Add a horizontal line to separate the detectors from each other.
                 line([timeRange(1) timeRange(2)], [vertPos + 0.5 vertPos + 0.5], 'Color', 'k');
             end
@@ -513,7 +545,7 @@ function syncGUIWithTime(handles)
 
         set(handles.features, 'YTick', 1:numel(labels));
         set(handles.features, 'YTickLabel', labels);
-        
+
         % Add the current time indicator.
         line([handles.currentTime handles.currentTime], [0 vertPos + 0.5], 'Color', [1 0 0]);
 
@@ -527,52 +559,52 @@ function syncGUIWithTime(handles)
         for i = 1:length(grayRects)
             uistack(grayRects{i}, 'bottom');
         end
-        
-        %% Update the spectrogram
-        set(handles.figure1, 'CurrentAxes', handles.spectrogram);
-        cla;
-        if handles.showSpectrogram
-            set(gca, 'Units', 'pixels');
-            pos = get(gca, 'Position');
-            pixelWidth = pos(3);
-            pixelHeight = pos(4);
-            % TODO: get freq range from prefs
-            freqMin = 0;
-            freqMax = 1000;
-            freqRange = freqMax - freqMin;
-            freqStep = ceil(freqRange / pixelHeight); % always at least 1
-
-            % Base the window size on the number of pixels we want to render.
-            window = ceil(windowSampleCount / pixelWidth) * 2;
-            if window < 100
-                window = 100;
-            end
-            noverlap = ceil(window*.25);
-
-            [~, ~, ~, P] = spectrogram(audioWindow, window, noverlap, freqMin:freqStep:freqMax, handles.audio.sampleRate);
-            h = image(size(P, 2), size(P, 1), 10 * log10(P));
-            set(h,'CDataMapping','scaled'); % (5)
-            colormap('jet');
-            axis xy;
-            set(handles.spectrogram, 'XTick', [], 'YTick', []);
-%             if freqRange < 100
-%                 set(handles.spectrogram, 'YTick', 1:freqRange:
-            
-            % "axis xy" or something is doing weird things with the limits of the axes.
-            % The lower-left corner is not (0, 0) but the size of P.
-            text(size(P, 2) * 2, size(P, 1) * 2 - 1, [num2str(freqMax) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
-            text(size(P, 2) * 2, size(P, 1), [num2str(freqMin) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'baseline');
-            
-            % Add a text object to show the time and frequency of where the mouse is currently hovering.
-            handles.spectrogramTooltip = text(size(P, 2), size(P, 1), '', 'BackgroundColor', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'bottom', 'Visible', 'off');
-        end
     end
     
-    set(handles.timeSlider, 'Value', handles.currentTime);
+    newHandles = handles;
+end
+
+
+function newHandles = updateSpectrogram(handles, ~, audioWindow, ~)
+    set(handles.figure1, 'CurrentAxes', handles.spectrogram);
+    cla;
+    if handles.showSpectrogram
+        set(gca, 'Units', 'pixels');
+        pos = get(gca, 'Position');
+        pixelWidth = pos(3);
+        pixelHeight = pos(4);
+        % TODO: get freq range from prefs
+        freqMin = 0;
+        freqMax = 1000;
+        freqRange = freqMax - freqMin;
+        freqStep = ceil(freqRange / pixelHeight); % always at least 1
+
+        % Base the window size on the number of pixels we want to render.
+        window = ceil(windowSampleCount / pixelWidth) * 2;
+        if window < 100
+            window = 100;
+        end
+        noverlap = ceil(window*.25);
+
+        [~, ~, ~, P] = spectrogram(audioWindow, window, noverlap, freqMin:freqStep:freqMax, handles.audio.sampleRate);
+        h = image(size(P, 2), size(P, 1), 10 * log10(P));
+        set(h,'CDataMapping','scaled'); % (5)
+        colormap('jet');
+        axis xy;
+        set(handles.spectrogram, 'XTick', [], 'YTick', []);
+%             if freqRange < 100
+%                 set(handles.spectrogram, 'YTick', 1:freqRange:
+
+        % "axis xy" or something is doing weird things with the limits of the axes.
+        % The lower-left corner is not (0, 0) but the size of P.
+        text(size(P, 2) * 2, size(P, 1) * 2 - 1, [num2str(freqMax) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
+        text(size(P, 2) * 2, size(P, 1), [num2str(freqMin) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'baseline');
+
+        % Add a text object to show the time and frequency of where the mouse is currently hovering.
+        handles.spectrogramTooltip = text(size(P, 2), size(P, 1), '', 'BackgroundColor', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'bottom', 'Visible', 'off');
+    end
     
-    guidata(handles.figure1, handles);
-    
-    drawnow
+    newHandles = handles;
 end
 
 
