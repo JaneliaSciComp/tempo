@@ -23,7 +23,7 @@ function varargout = FlySongSettings(varargin)
     % Edit the above text to modify the response to help FlySongSettings
 
     % Last Modified by GUIDE v2.5 25-Apr-2011 17:05:09
-
+    
     % Begin initialization code - DO NOT EDIT
     gui_Singleton = 1;
     gui_State = struct('gui_Name',       mfilename, ...
@@ -35,7 +35,7 @@ function varargout = FlySongSettings(varargin)
     if nargin && ischar(varargin{1})
         gui_State.gui_Callback = str2func(varargin{1});
     end
-
+    
     if nargout
         [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
     else
@@ -52,19 +52,31 @@ end
 
 % --- Executes just before FlySongSettings is made visible.
 function FlySongSettings_OpeningFcn(hObject, eventdata, handles, varargin)
-    if nargin ~= 4 || ~isa(varargin{1}, 'FlySongDetector')
+    if (nargin ~= 4 && nargin ~= 6) || ~isa(varargin{1}, 'FlySongDetector')
         error 'FlySongSettings() must be passed a single FlySongDetector object.'
     end
     
     handles.detector = varargin{1};
     handles.output = hObject;
     handles.recording = handles.detector.backgroundNoise;
+    
+    if nargin == 6 && strcmp(varargin{2}, 'Editable') && ~varargin{3}
+        handles.editable = false;
+        set(handles.cancelButton, 'Visible', 'off');
+        set(handles.chooseBackgroundNoiseButton, 'Enable', 'off');
+    else
+        handles.editable = true;
+    end
+    
     guidata(hObject, handles);
     
     % Populate the fields.
     %   Modelled after: set(handles.ipiMinEdit, 'String', num2str(handles.detector.ipiMin));
     for field = handles.detector.settingNames()
         eval(['set(handles.' field{1} 'Edit, ''String'', num2str(handles.detector.' field{1} '))'])
+        if ~handles.editable
+            eval(['set(handles.' field{1} 'Edit, ''Enable'', ''off'')'])
+        end
     end
     if isempty(handles.detector.backgroundNoise)
         set(handles.backgroundNoisePath, 'String', '');
@@ -109,16 +121,20 @@ end
 
 % --- Executes on button press in okButton.
 function okButton_Callback(hObject, eventdata, handles)
-    % Apply settings in GUI to detector
-    for field = handles.detector.settingNames()
-        value = eval(['get(handles.' field{1} 'Edit, ''String'')']);
-        handles.detector.(field{1}) = str2num(value); %#ok<ST2NM>
+    if handles.editable
+        % Apply settings in GUI to detector
+        for field = handles.detector.settingNames()
+            value = eval(['get(handles.' field{1} 'Edit, ''String'')']);
+            handles.detector.(field{1}) = str2num(value); %#ok<ST2NM>
+        end
+        handles.detector.backgroundNoise = handles.recording;
+
+        % Indicate that the user accepted the settings and trigger the close of
+        % the dialog.
+        handles.output = true;
+    else
+        handles.output = false;
     end
-    handles.detector.backgroundNoise = handles.recording;
-    
-    % Indicate that the user accepted the settings and trigger the close of
-    % the dialog.
-    handles.output = true;
     guidata(hObject, handles);
     uiresume(handles.settingsFigure);
 end

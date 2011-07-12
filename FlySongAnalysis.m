@@ -485,15 +485,22 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
     % TODO: does all of this really need to be done everytime the current time changes?  could update after each detection and then just change xlim...
     % TODO: draw current time and selection indicators on the features as well?
     axes(handles.features);
+    
+    % Window button callbacks can occur during the axes call.
+    % The callbacks can update the handles so grab a fresh copy.
+    handles = guidata(handles.figure1);
+    
     cla
     if isfield(handles, 'audio')
         labels = {};
         vertPos = 0;
-        grayRects = {};
+        timeRangeRects = {};
         if ~isempty(handles.detectors)
             for i = 1:numel(handles.detectors)
-                featureTypes = handles.detectors{i}.featureTypes;
-
+                detector = handles.detectors{i};
+                
+                featureTypes = detector.featureTypes;
+                
                 % First gray out areas that haven't been detected.
                 lastTime = 0.0;
                 if isempty(featureTypes)
@@ -501,17 +508,25 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                 else
                     height = length(featureTypes);
                 end
-                for j = 1:size(handles.detectors{i}.detectedTimeRanges, 1)
-                    detectedTimeRange = handles.detectors{i}.detectedTimeRanges(j, :);
-
-                    grayRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 detectedTimeRange(1) - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none'); %#ok<AGROW>
-
+                for j = 1:size(detector.detectedTimeRanges, 1)
+                    detectedTimeRange = detector.detectedTimeRanges(j, :);
+                    
+                    if detectedTimeRange(1) > lastTime
+                        % Add a gray background before the current range.
+                        timeRangeRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 detectedTimeRange(1) - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'UIContextMenu', detector.contextualMenu); %#ok<AGROW>
+                    end
+                    
+                    % Add a white background for this range.
+                    timeRangeRects{end + 1} = rectangle('Position', [detectedTimeRange(1) vertPos + 0.5 detectedTimeRange(2) - detectedTimeRange(1) height + 0.5], 'FaceColor', 'white', 'EdgeColor', 'none', 'UIContextMenu', detector.contextualMenu); %#ok<AGROW>
+                    
                     lastTime = detectedTimeRange(2);
                 end
-                grayRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 handles.maxMediaTime - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none'); %#ok<AGROW>
-
+                if lastTime < handles.maxMediaTime
+                    timeRangeRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 handles.maxMediaTime - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'UIContextMenu', detector.contextualMenu); %#ok<AGROW>
+                end
+                
                 % Draw the features that have been detected.
-                features = handles.detectors{i}.features();
+                features = detector.features();
                 if ~isempty(features)
                     for y = 1:length(featureTypes)
                         featureType = featureTypes{y};
@@ -528,13 +543,13 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                             end
                         end
                     end
-
+                    
                     vertPos = vertPos + numel(featureTypes) + 0.5;
                 else
                     % TODO: some visual indication that no features were found?
                     vertPos = vertPos + 1;
                 end
-
+                
                 % Add a horizontal line to separate the detectors from each other.
                 line([timeRange(1) timeRange(2)], [vertPos + 0.5 vertPos + 0.5], 'Color', 'k');
             end
@@ -542,13 +557,13 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
             vertPos = 1;
         end
         axis(handles.features, [timeRange(1) timeRange(2) 0.5 vertPos + 0.5]);
-
+        
         set(handles.features, 'YTick', 1:numel(labels));
         set(handles.features, 'YTickLabel', labels);
-
+        
         % Add the current time indicator.
         line([handles.currentTime handles.currentTime], [0 vertPos + 0.5], 'Color', [1 0 0]);
-
+        
         % Add the current selection indicator.
         if handles.selectedTime(1) ~= handles.selectedTime(2)
             selectionStart = min(handles.selectedTime);
@@ -556,8 +571,8 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
             h = rectangle('Position', [selectionStart 0.5 selectionEnd - selectionStart vertPos], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9]);
             uistack(h, 'bottom');
         end
-        for i = 1:length(grayRects)
-            uistack(grayRects{i}, 'bottom');
+        for i = 1:length(timeRangeRects)
+            uistack(timeRangeRects{i}, 'bottom');
         end
     end
     
@@ -578,14 +593,14 @@ function newHandles = updateSpectrogram(handles, ~, audioWindow, ~)
         freqMax = 1000;
         freqRange = freqMax - freqMin;
         freqStep = ceil(freqRange / pixelHeight); % always at least 1
-
+        
         % Base the window size on the number of pixels we want to render.
         window = ceil(windowSampleCount / pixelWidth) * 2;
         if window < 100
             window = 100;
         end
         noverlap = ceil(window*.25);
-
+        
         [~, ~, ~, P] = spectrogram(audioWindow, window, noverlap, freqMin:freqStep:freqMax, handles.audio.sampleRate);
         h = image(size(P, 2), size(P, 1), 10 * log10(P));
         set(h,'CDataMapping','scaled'); % (5)
@@ -594,12 +609,12 @@ function newHandles = updateSpectrogram(handles, ~, audioWindow, ~)
         set(handles.spectrogram, 'XTick', [], 'YTick', []);
 %             if freqRange < 100
 %                 set(handles.spectrogram, 'YTick', 1:freqRange:
-
+        
         % "axis xy" or something is doing weird things with the limits of the axes.
         % The lower-left corner is not (0, 0) but the size of P.
         text(size(P, 2) * 2, size(P, 1) * 2 - 1, [num2str(freqMax) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
         text(size(P, 2) * 2, size(P, 1), [num2str(freqMin) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'baseline');
-
+        
         % Add a text object to show the time and frequency of where the mouse is currently hovering.
         handles.spectrogramTooltip = text(size(P, 2), size(P, 1), '', 'BackgroundColor', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'bottom', 'Visible', 'off');
     end
@@ -628,14 +643,14 @@ function openRecordingCallback(~, ~, handles)
                     end
                     setAudioRecording(rec);
 
-                    %% Populate the list of detectors from the 'Detectors' folder.
+                    % Populate the list of detectors from the 'Detectors' folder.
                     % TODO: It would be nice to do this at initialization but it crashes there...
                     jAddDetector = get(handles.addDetectorTool, 'JavaContainer');
                     jMenu = get(jAddDetector, 'MenuComponent');
                     jMenu.removeAll;
                     warning('off', 'MATLAB:hg:JavaSetHGProperty');
-                    for i = 1:numel(handles.detectorClassNames)
-                        className = handles.detectorClassNames{i};
+                    for j = 1:numel(handles.detectorClassNames)
+                        className = handles.detectorClassNames{j};
                         typeName = eval([className '.typeName()']);
                         jActionItem = jMenu.add(['Add ' typeName ' Detector']);
                         set(jActionItem, 'ActionPerformedCallback', {@addDetectorCallback, className, handles.features});
@@ -654,22 +669,78 @@ function openRecordingCallback(~, ~, handles)
     end
 end
 
+
+%% Features contextual menus callbacks
+
+function enableDetectorMenuItems(hObject, ~, detector)
+    handles = guidata(hObject);
     
+    % Enable or disable 'Detect Features in Selection' item in contextual menu based on whether there is a selection.
+    menuItem = findobj(detector.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem');
+    if handles.selectedTime(2) == handles.selectedTime(1)
+        set(menuItem, 'Enable', 'off');
+    else
+        set(menuItem, 'Enable', 'on');
+    end
+end
+
+
+function showDetectorSettings(~, ~, detector)
+    detector.showSettings();
+end
+
+
+function detectFeaturesInSelection(hObject, ~, detector)
+    handles = guidata(hObject);
+    
+    detector.startProgress();
+    try
+        detector.detectFeatures(handles.selectedTime);
+        detector.endProgress();
+        syncGUIWithTime(handles);
+    catch ME
+        detector.endProgress();
+        rethrow(ME);
+    end
+end
+
+
+function removeDetector(hObject, ~, detector)
+    answer = questdlg('Are you sure you wish to remove this detector?', 'Removing Detector', 'Cancel', 'Remove', 'Cancel');
+    if strcmp(answer, 'Remove')
+        handles = guidata(hObject);
+
+        for i = 1:length(handles.detectors)
+            if handles.detectors{i} == detector
+                handles.detectors(i) = [];
+            end
+        end
+
+        guidata(handles.figure1, handles);
+
+        syncGUIWithTime(handles);
+    end
+end
+
+
+%% Media opening
+
+
 function setVideoRecording(rec)
     handles = guidata(gcbo);
     
     handles.video = rec;
-
+    
     axes(handles.videoFrame);
     set(handles.videoFrame, 'XTick', [], 'YTick', []);
     handles.videoImage = image(zeros(handles.video.videoReader.Width, handles.video.videoReader.Height));
-
+    
     handles.maxMediaTime = max([handles.maxMediaTime handles.video.duration]);
-
+    
     guidata(gcbo, handles);
-
+    
     set(handles.timeSlider, 'Max', handles.maxMediaTime);
-
+    
     syncGUIWithTime(handles)
 end
 
@@ -681,28 +752,28 @@ function setAudioRecording(rec)
     handles.audioPlayer = audioplayer(handles.audio.data, handles.audio.sampleRate);
     handles.audioPlayer.TimerPeriod = 1.0 / 15.0;
     handles.audioMax = max(abs(handles.audio.data));
-
+    
     handles.maxMediaTime = max([handles.maxMediaTime handles.audio.duration]);
-
+    
     handles.playTimer = timer('ExecutionMode', 'fixedRate', 'TimerFcn', @syncGUIToAudio, 'Period', round(1.0 / 30.0 * 1000) / 1000, 'UserData', handles.oscillogram, 'StartDelay', 0.1);
-
+    
     set(handles.timeSlider, 'Max', handles.maxMediaTime);
     
     % TBD: do all this in opening function?
     axes(handles.oscillogram); %#ok<*MAXES>
     axis off
-
+    
     axes(handles.features);
     axis tight;
-
+    
     axes(handles.spectrogram);
     axis tight;
     view(0, 90);
-
+    
     guidata(gcbo, handles);
-
+    
     set(handles.timeSlider, 'Max', handles.maxMediaTime);
-
+    
     syncGUIWithTime(handles)
         
 % TODO: allow recording to be changed?  UI suggests that...
@@ -741,12 +812,18 @@ end
 function addDetectorCallback(~, ~, className, hObject)
     handles = guidata(hObject);
     detector = eval([className '(handles.audio)']);
-
+    
     if detector.editSettings()
         handles.detectors{numel(handles.detectors) + 1, 1} = detector;  %TODO: just use handles.audio.detectors() instead?
         handles.audio.addDetector(detector);
         guidata(hObject, handles);
-
+        
+        detector.contextualMenu = uicontextmenu('Callback', {@enableDetectorMenuItems, detector});
+        uimenu(detector.contextualMenu, 'Tag', 'detectorNameMenuItem', 'Label', detector.name, 'Enable', 'off');
+        uimenu(detector.contextualMenu, 'Tag', 'showDetectorSettingsMenuItem', 'Label', 'Show Detector Settings', 'Callback', {@showDetectorSettings, detector}, 'Separator', 'on');
+        uimenu(detector.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem', 'Label', 'Detect Features in Selection', 'Callback', {@detectFeaturesInSelection, detector});
+        uimenu(detector.contextualMenu, 'Tag', 'removeDetectorMenuItem', 'Label', 'Remove Detector...', 'Callback', {@removeDetector, detector}, 'Separator', 'on');
+        
         detector.startProgress();
         try
             if handles.selectedTime(2) > handles.selectedTime(1)
@@ -760,14 +837,14 @@ function addDetectorCallback(~, ~, className, hObject)
             detector.endProgress();
             rethrow(ME);
         end
-
+        
             % Update the features axes.
             % TBD: Use uicontrol instead of tick for each detector?
 %             detectors = [handles.detectors{:}];
 %             set(handles.features, 'YTick', 1:numel(handles.detectors));
 %             set(handles.features, 'YTickLabel', {detectors.name});
 %             set(handles.features, 'YLim', [0.5, numel(handles.detectors) + 0.5]);
-
+        
     end
 end
 
@@ -821,9 +898,18 @@ end
 function windowButtonDownFcn(hObject, ~)
     handles = guidata(hObject);
     
+    if strcmp(get(gcf, 'SelectionType'), 'alt')
+        clickedObject = get(handles.figure1, 'CurrentObject');
+        contextualMenu = get(clickedObject, 'UIContextMenu');
+        if ~isempty(contextualMenu)
+            set(contextualMenu, 'Position', get(handles.figure1, 'CurrentPoint'), 'Visible', 'On');
+            return
+        end
+    end
+    
     if isfield(handles, 'audio')
         timeRange = displayedTimeRange(handles);
-
+        
         clickedPoint = get(handles.oscillogram, 'CurrentPoint');
         clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
         clickedTime = clickedSample / handles.audio.sampleRate;
@@ -857,7 +943,7 @@ function windowButtonMotionFcn(hObject, ~)
     elseif handles.showSpectrogram && isfield(handles, 'spectrogramTooltip')
         freqMin = 0;
         freqMax = 1000;
-
+        
         currentPoint = get(handles.spectrogram, 'CurrentPoint');
         xLim = get(handles.spectrogram, 'XLim');
         yLim = get(handles.spectrogram, 'YLim');
@@ -905,35 +991,35 @@ function audioGroup_ResizeFcn(~, ~, handles)
     if isfield(handles, 'showSpectrogram') && handles.showSpectrogram
         h3 = uint16((h - ss) / 3) - 1;
         hr = h - ss - (h3 + 1) * 2 + 1;
-
+        
         set(handles.oscillogram, 'Position',        [1      ss+h3*2+2   w-ss    hr]);
         set(handles.autoGainCheckBox, 'Position',   [w-ss-1 h-16+1      ss+1    ss]);
         set(handles.gainSlider, 'Position',         [w-ss+1 ss+h3*2+2   ss      hr-ss]);
-
+        
         set(handles.features, 'Position',           [1      ss+h3+1     w-ss    h3]);
         set(handles.featureSlider, 'Position',      [w-ss+1 ss+h3       ss      h3+2]);
-
+        
         set(handles.spectrogram, 'Position',        [1      ss          w-ss    h3]);
-
+        
         set(handles.timeSlider, 'Position',         [1      0           w-ss+1  ss]);
     else
         h2 = uint16((h - ss) / 2) - 1;
         hr = h - ss - (h2 + 1) + 1;
-
+        
         set(handles.oscillogram, 'Position',        [1      ss+h2+1     w-ss    hr]);
         set(handles.autoGainCheckBox, 'Position',   [w-ss-1 h-16+1      ss+1    ss]);
         set(handles.gainSlider, 'Position',         [w-ss+1 ss+h2+1     ss      hr-ss]);
-
+        
         set(handles.features, 'Position',           [1      ss          w-ss    h2]);
         set(handles.featureSlider, 'Position',      [w-ss+1 ss          ss      h2+1]);
-
+        
         set(handles.timeSlider, 'Position',         [1      0           w-ss+1  ss]);
     end
 end
 
 
 % --- Executes on slider movement.
-function featureSlider_Callback(hObject, eventdata, handles)
+function featureSlider_Callback(~, ~, ~)
 % hObject    handle to featureSlider (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)

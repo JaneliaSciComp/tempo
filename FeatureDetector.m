@@ -1,9 +1,10 @@
 classdef FeatureDetector < handle
     
     properties
-        name
-        featureTypes
-        waitBarHandle
+        name;
+        featureTypes;
+        waitBarHandle;
+        contextualMenu;
         detectedTimeRanges = [];    % An nx2 matrix of non-overlapping time ranges (start, end) in ascending order.
     end
     
@@ -71,19 +72,29 @@ classdef FeatureDetector < handle
         end
         
         
-        function sn = settingNames(obj)
+        function sn = settingNames(obj) %#ok<MANU>
             % Return the names of all settings.
             sn = {};
         end
         
         
-        function edited = editSettings(obj) %#ok<*MANU>
+        function edited = editSettings(obj)
             % Present a GUI to edit this detector's settings.
             % Returns true if the settings were changed, false if the user cancelled.
             
             % Pass this detector to the GUI.
             settingsFunc = obj.settingsFunc();
             edited = settingsFunc(obj);
+        end
+        
+        
+        function showSettings(obj)
+            % Present a GUI to edit this detector's settings.
+            % Returns true if the settings were changed, false if the user cancelled.
+            
+            % Pass this detector to the GUI.
+            settingsFunc = obj.settingsFunc();
+            settingsFunc(obj, 'Editable', false);
         end
         
         
