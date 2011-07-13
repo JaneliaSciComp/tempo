@@ -482,12 +482,15 @@ end
 
 
 function newHandles = updateFeatures(handles, timeRange, ~, ~)
+    % Window button callbacks can occur during the axes call.
+    % The callbacks can update the handles so store the current copy.
+    guidata(handles.figure1, handles)
+    
     % TODO: does all of this really need to be done everytime the current time changes?  could update after each detection and then just change xlim...
     % TODO: draw current time and selection indicators on the features as well?
     axes(handles.features);
     
-    % Window button callbacks can occur during the axes call.
-    % The callbacks can update the handles so grab a fresh copy.
+    % Now grab a fresh copy in case the callbacks were triggered.
     handles = guidata(handles.figure1);
     
     cla
