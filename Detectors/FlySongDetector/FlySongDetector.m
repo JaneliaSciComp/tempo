@@ -57,6 +57,7 @@ classdef FlySongDetector < FeatureDetector
                 rec = Recording(backgroundNoisePath);
                 obj.backgroundNoise = rec;
             catch ME
+                waitfor(warndlg(['Could not open default background noise: ' ME.message]));
             end
         end
         
