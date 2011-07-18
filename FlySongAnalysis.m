@@ -65,36 +65,31 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     set(handles.videoGroup, 'Parent', handles.leftSplit, 'Position', [0 0 1 1]);
     set(handles.audioGroup, 'Parent', handles.rightSplit, 'Position', [0 0 1 1]);
     
-    %% Add the "Add detector" tool to the toolbar
-    handles.addDetectorTool = uisplittool('parent', handles.toolbar);
-    icon = fullfile(matlabroot,'/toolbox/matlab/icons/greencircleicon.gif');
-    [cdata,map] = imread(icon);
-    map(map(:,1)+map(:,2)+map(:,3)==3) = NaN;
-    cdataAdd = ind2rgb(cdata,map);
-    set(handles.addDetectorTool, 'cdata',cdataAdd, 'tooltip','Add a feature detector', 'Separator','on');
-    
     %% Populate the list of detectors from the 'Detectors' folder.
     analysisPath = mfilename('fullpath');
     parentDir = fileparts(analysisPath);
     detectorsDir = fullfile(parentDir, filesep, 'Detectors');
     detectorDirs = dir(detectorsDir);
     handles.detectorClassNames = cell(length(detectorDirs), 1);
-    %handles.detectorTypeNames = cell(length(detectorDirs), 1);
+    handles.detectorTypeNames = cell(length(detectorDirs), 1);
     detectorCount = 0;
     for i = 1:length(detectorDirs)
         if detectorDirs(i).isdir && detectorDirs(i).name(1) ~= '.'
+            className = detectorDirs(i).name;
             try
-                addpath(fullfile(detectorsDir, filesep, detectorDirs(i).name));
-                eval([detectorDirs(i).name '.initialize()'])
+                addpath(fullfile(detectorsDir, filesep, className));
+                eval([className '.initialize()'])
                 detectorCount = detectorCount + 1;
-                handles.detectorClassNames{detectorCount} = detectorDirs(i).name;
+                handles.detectorClassNames{detectorCount} = className;
+                handles.detectorTypeNames{detectorCount} = eval([className '.typeName()']);
             catch ME %#ok<NASGU>
-                addpath(fullfile(detectorsDir, filesep, detectorDirs(i).name));
+                warndlg(['Could not load detector ' detectorDirs(i).name ': ' ME.message]);
+                rmpath(fullfile(detectorsDir, filesep, detectorDirs(i).name));
             end
         end
     end
     handles.detectorClassNames = handles.detectorClassNames(1:detectorCount);
-    %handles.detectorTypeNames = handles.detectorTypeNames(1:detectorCount);
+    handles.detectorTypeNames = handles.detectorTypeNames(1:detectorCount);
     
     
     %% Set defaults
@@ -229,6 +224,7 @@ function showSpectrogramCallback(~, ~, handles)
         set(handles.spectrogram, 'Visible', 'off');
     end
     audioGroup_ResizeFcn(0, 0, handles);
+    guidata(handles.figure1, handles);
     syncGUIWithTime(handles);
 end
 
@@ -528,13 +524,15 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                     timeRangeRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 handles.maxMediaTime - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'UIContextMenu', detector.contextualMenu); %#ok<AGROW>
                 end
                 
+                % Draw the feature type names.
+                for y = 1:length(featureTypes)
+                    featureType = featureTypes{y};
+                    text(timeRange(1), vertPos + y + 0.25, featureType, 'VerticalAlignment', 'bottom');
+                end
+                
                 % Draw the features that have been detected.
                 features = detector.features();
                 if ~isempty(features)
-                    for y = 1:length(featureTypes)
-                        featureType = featureTypes{y};
-                        text(timeRange(1), vertPos + y + 0.25, featureType, 'VerticalAlignment', 'bottom');
-                    end
                     labels = horzcat(labels, featureTypes); %#ok<AGROW>
                     for feature = features
                         if feature.sampleRange(1) <= timeRange(2) && feature.sampleRange(2) >= timeRange(1)
@@ -546,12 +544,8 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                             end
                         end
                     end
-                    
-                    vertPos = vertPos + numel(featureTypes) + 0.5;
-                else
-                    % TODO: some visual indication that no features were found?
-                    vertPos = vertPos + 1;
                 end
+                vertPos = vertPos + length(featureTypes) + 0.5;
                 
                 % Add a horizontal line to separate the detectors from each other.
                 line([timeRange(1) timeRange(2)], [vertPos + 0.5 vertPos + 0.5], 'Color', 'k');
@@ -574,6 +568,8 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
             h = rectangle('Position', [selectionStart 0.5 selectionEnd - selectionStart vertPos], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9]);
             uistack(h, 'bottom');
         end
+        
+        % Make sure all of the time range rectangles are drawmn behind everything else.
         for i = 1:length(timeRangeRects)
             uistack(timeRangeRects{i}, 'bottom');
         end
@@ -598,7 +594,7 @@ function newHandles = updateSpectrogram(handles, ~, audioWindow, ~)
         freqStep = ceil(freqRange / pixelHeight); % always at least 1
         
         % Base the window size on the number of pixels we want to render.
-        window = ceil(windowSampleCount / pixelWidth) * 2;
+        window = ceil(length(audioWindow) / pixelWidth) * 2;
         if window < 100
             window = 100;
         end
@@ -623,53 +619,6 @@ function newHandles = updateSpectrogram(handles, ~, audioWindow, ~)
     end
     
     newHandles = handles;
-end
-
-
-function openRecordingCallback(~, ~, handles)
-    [fileNames, pathName] = uigetfile2('Select an audio or video file to analyze');
-    
-    if ischar(fileNames)
-        fileNames = {fileNames};
-    end
-    
-    if iscell(fileNames)
-        for i = 1:length(fileNames)
-            fileName = fileNames{i};
-            fullPath = fullfile(pathName, fileName);
-            try
-                rec = Recording(fullPath);
-                if rec.isAudio
-                    % TODO: allow the recording to change?  Yes...
-                    if isfield(handles, 'handles.audio')
-                        error('You have already chosen the audio file.')
-                    end
-                    setAudioRecording(rec);
-
-                    % Populate the list of detectors from the 'Detectors' folder.
-                    % TODO: It would be nice to do this at initialization but it crashes there...
-                    jAddDetector = get(handles.addDetectorTool, 'JavaContainer');
-                    jMenu = get(jAddDetector, 'MenuComponent');
-                    jMenu.removeAll;
-                    warning('off', 'MATLAB:hg:JavaSetHGProperty');
-                    for j = 1:numel(handles.detectorClassNames)
-                        className = handles.detectorClassNames{j};
-                        typeName = eval([className '.typeName()']);
-                        jActionItem = jMenu.add(['Add ' typeName ' Detector']);
-                        set(jActionItem, 'ActionPerformedCallback', {@addDetectorCallback, className, handles.features});
-                    end
-                    warning('on', 'MATLAB:hg:JavaSetHGProperty');
-                    jToolbar = get(get(handles.toolbar,'JavaContainer'),'ComponentPeer');
-                    jToolbar.revalidate;
-                elseif rec.isVideo
-                    setVideoRecording(rec);
-                end
-            catch ME
-                disp('Error opening media file.');
-                disp(getReport(ME));
-            end
-        end
-    end
 end
 
 
@@ -726,7 +675,61 @@ function removeDetector(hObject, ~, detector)
 end
 
 
-%% Media opening
+%% Media handling
+
+
+function openRecordingCallback(~, ~, handles)
+    [fileNames, pathName] = uigetfile2('Select an audio or video file to analyze');
+    
+    if ischar(fileNames)
+        fileNames = {fileNames};
+    end
+    
+    if iscell(fileNames)
+        for i = 1:length(fileNames)
+            fileName = fileNames{i};
+            fullPath = fullfile(pathName, fileName);
+            try
+                rec = Recording(fullPath);
+                if rec.isAudio
+                    % TODO: allow the recording to change?  Yes...
+                    if isfield(handles, 'handles.audio')
+                        error('You have already chosen the audio file.')
+                    end
+                    setAudioRecording(rec);
+                    audioChanged = true;
+                elseif rec.isVideo
+                    setVideoRecording(rec);
+                end
+            catch ME
+                warndlg(['Error opening media file:\n\n' getReport(ME)]);
+            end
+        end
+        
+        if audioChanged
+            handles = guidata(handles.figure1);
+            
+            % Inform all detectors that the audio recording changed.
+            for i = 1:length(handles.detectors)
+                handles.detectors{i}.setRecording(handles.audio);
+            end
+            
+            % Reset the display.
+            handles.currentTime = 0.0;
+            handles.displayedTime = 0.0;
+            handles.selectedTime = [0.0 0.0];
+            handles.selectingTimeRange = false;
+            if isfield(handles, 'video')
+                handles.maxMediaTime = max([handles.audio.duration handles.video.duration]);
+            else
+                handles.maxMediaTime = handles.audio.duration;
+            end
+            handles.zoom = 1.0;
+            guidata(handles.figure1, handles);
+            syncGUIWithTime(handles);
+        end
+    end
+end
 
 
 function setVideoRecording(rec)
@@ -743,8 +746,6 @@ function setVideoRecording(rec)
     guidata(gcbo, handles);
     
     set(handles.timeSlider, 'Max', handles.maxMediaTime);
-    
-    syncGUIWithTime(handles)
 end
 
 
@@ -760,7 +761,7 @@ function setAudioRecording(rec)
     
     handles.playTimer = timer('ExecutionMode', 'fixedRate', 'TimerFcn', @syncGUIToAudio, 'Period', round(1.0 / 30.0 * 1000) / 1000, 'UserData', handles.oscillogram, 'StartDelay', 0.1);
     
-    set(handles.timeSlider, 'Max', handles.maxMediaTime);
+    guidata(gcbo, handles);
     
     % TBD: do all this in opening function?
     axes(handles.oscillogram); %#ok<*MAXES>
@@ -773,18 +774,7 @@ function setAudioRecording(rec)
     axis tight;
     view(0, 90);
     
-    guidata(gcbo, handles);
-    
     set(handles.timeSlider, 'Max', handles.maxMediaTime);
-    
-    syncGUIWithTime(handles)
-        
-% TODO: allow recording to be changed?  UI suggests that...
-%     if ~isempty(handles.detectors)
-%         for detector = handles.detectors{:}
-%             detector.detectFeatures(handles.audioData, handles.audioSampleRate, handles.detectors);
-%         end
-%     end
 end
 
 
@@ -812,88 +802,48 @@ function figure1_CloseRequestFcn(hObject, ~, handles)
 end
 
 
-function addDetectorCallback(~, ~, className, hObject)
-    handles = guidata(hObject);
-    detector = eval([className '(handles.audio)']);
+function detectFeaturesCallback(~, ~, handles)
     
-    if detector.editSettings()
-        handles.detectors{numel(handles.detectors) + 1, 1} = detector;  %TODO: just use handles.audio.detectors() instead?
-        handles.audio.addDetector(detector);
-        guidata(hObject, handles);
-        
-        detector.contextualMenu = uicontextmenu('Callback', {@enableDetectorMenuItems, detector});
-        uimenu(detector.contextualMenu, 'Tag', 'detectorNameMenuItem', 'Label', detector.name, 'Enable', 'off');
-        uimenu(detector.contextualMenu, 'Tag', 'showDetectorSettingsMenuItem', 'Label', 'Show Detector Settings', 'Callback', {@showDetectorSettings, detector}, 'Separator', 'on');
-        uimenu(detector.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem', 'Label', 'Detect Features in Selection', 'Callback', {@detectFeaturesInSelection, detector});
-        uimenu(detector.contextualMenu, 'Tag', 'removeDetectorMenuItem', 'Label', 'Remove Detector...', 'Callback', {@removeDetector, detector}, 'Separator', 'on');
-        
-        detector.startProgress();
-        try
-            if handles.selectedTime(2) > handles.selectedTime(1)
-                detector.detectFeatures(handles.selectedTime);
-            else
-                detector.detectFeatures([0.0 handles.maxMediaTime]);
+    if ~isfield(handles, 'audio')
+        warndlg('You must open an audio file before you can detect features.', 'Fly Song Analysis', 'modal');
+    else
+        [index, ok] = listdlg('PromptString', 'Select the detector type:', ...
+                    'SelectionMode', 'single', ...
+                    'ListSize', [200 120], ...
+                    'ListString', handles.detectorTypeNames);
+
+        if ok
+            className = handles.detectorClassNames{index};
+            detector = eval([className '(handles.audio)']);
+
+            if detector.editSettings()
+                handles.detectors{numel(handles.detectors) + 1, 1} = detector;  %TODO: just use handles.audio.detectors() instead?
+                handles.audio.addDetector(detector);
+                guidata(handles.figure1, handles);
+                
+                % Create the contextual menu for this detector.
+                detector.contextualMenu = uicontextmenu('Callback', {@enableDetectorMenuItems, detector});
+                uimenu(detector.contextualMenu, 'Tag', 'detectorNameMenuItem', 'Label', detector.name, 'Enable', 'off');
+                uimenu(detector.contextualMenu, 'Tag', 'showDetectorSettingsMenuItem', 'Label', 'Show Detector Settings', 'Callback', {@showDetectorSettings, detector}, 'Separator', 'on');
+                uimenu(detector.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem', 'Label', 'Detect Features in Selection', 'Callback', {@detectFeaturesInSelection, detector});
+                uimenu(detector.contextualMenu, 'Tag', 'removeDetectorMenuItem', 'Label', 'Remove Detector...', 'Callback', {@removeDetector, detector}, 'Separator', 'on');
+
+                detector.startProgress();
+                try
+                    if handles.selectedTime(2) > handles.selectedTime(1)
+                        detector.detectFeatures(handles.selectedTime);
+                    else
+                        detector.detectFeatures([0.0 handles.maxMediaTime]);
+                    end
+                    detector.endProgress();
+                    syncGUIWithTime(handles);
+                catch ME
+                    detector.endProgress();
+                    rethrow(ME);
+                end
             end
-            detector.endProgress();
-            syncGUIWithTime(handles);
-        catch ME
-            detector.endProgress();
-            rethrow(ME);
-        end
-        
-            % Update the features axes.
-            % TBD: Use uicontrol instead of tick for each detector?
-%             detectors = [handles.detectors{:}];
-%             set(handles.features, 'YTick', 1:numel(handles.detectors));
-%             set(handles.features, 'YTickLabel', {detectors.name});
-%             set(handles.features, 'YLim', [0.5, numel(handles.detectors) + 0.5]);
-        
-    end
-end
-
-
-function addDetectorPopUp_CreateFcn(hObject, ~, handles)
-    if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-        set(hObject,'BackgroundColor','white');
-    end
-    
-    % Get the list of class names from the 'Detectors' folder.
-    analysisPath = mfilename('fullpath');
-    parentDir = fileparts(analysisPath);
-    detectorsDir = fullfile(parentDir, filesep, 'Detectors');
-    detectorDirs = dir(detectorsDir);
-    handles.detectorClassNames = cell(length(detectorDirs), 1);
-    handles.detectorTypeNames = cell(length(detectorDirs), 1);
-    detectorCount = 0;
-    jUndo = get(handles.addDetectorTool, 'JavaContainer');
-    jMenu = get(jUndo, 'MenuComponent');
-    jMenu.removeAll;
-    for i = 1:length(detectorDirs)
-        if detectorDirs(i).isdir && ~strcmp(detectorDirs(i).name, '.') && ~strcmp(detectorDirs(i).name, '..')
-            detectorCount = detectorCount + 1;
-            handles.detectorClassNames{detectorCount} = detectorDirs(i).name;
-            addpath(fullfile(detectorsDir, filesep, detectorDirs(i).name));
-            eval([detectorDirs(i).name '.initialize()'])
-            handles.detectorTypeNames{detectorCount} = [eval([detectorDirs(i).name '.typeName()']) ' Detector'];
-            jActionItem = jMenu.add(handles.detectorTypeNames{detectorCount});
-            set(jActionItem, 'ActionPerformedCallback', 'FlySongAnalysis(''addDetectorCallback'', hObject, eventdata, guidata(hObject))');
         end
     end
-    handles.detectorClassNames = handles.detectorClassNames(1:detectorCount);
-    handles.detectorTypeNames = handles.detectorTypeNames(1:detectorCount);
-    handles.detectors = {};
-    guidata(hObject, handles);
-    
-    jToolbar = get(get(handles.toolbar,'JavaContainer'),'ComponentPeer');
-    jToolbar.revalidate;
-    
-    
-    % Update the pop-up menu
-    % It should start with a single 'Add...' item to which we add a description of each detector type.
-    % TODO: Sometimes the list of types gets saved into the .fig along with the 'Add...'.  In that case the additional entries should be stripped.
-    string = {get(hObject, 'String')};
-    string(2:numel(handles.detectorTypeNames) + 1) = handles.detectorTypeNames;
-    set(hObject, 'String', string);
 end
 
 
@@ -911,7 +861,13 @@ function windowButtonDownFcn(hObject, ~)
         end
     end
     
-    if isfield(handles, 'audio') && (clickedObject == handles.oscillogram || clickedObject == handles.features || clickedObject == handles.spectrogram)
+    if strcmp(get(clickedObject, 'Type'), 'axes')
+        clickedAxes = clickedObject;
+    else
+        clickedAxes = get(clickedObject, 'Parent');
+    end
+    
+    if isfield(handles, 'audio') && (clickedAxes == handles.oscillogram || clickedAxes == handles.features || clickedAxes == handles.spectrogram)
         timeRange = displayedTimeRange(handles);
         
         clickedPoint = get(handles.oscillogram, 'CurrentPoint');
