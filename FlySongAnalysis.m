@@ -66,8 +66,14 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     set(handles.audioGroup, 'Parent', handles.rightSplit, 'Position', [0 0 1 1]);
     
     %% Populate the list of detectors from the 'Detectors' folder.
-    analysisPath = mfilename('fullpath');
-    parentDir = fileparts(analysisPath);
+    if isdeployed
+        % Look for the detectors in the CTF archive.
+        parentDir = ctfroot;
+    else
+        % Look for the detectors relative to this .m file.
+        analysisPath = mfilename('fullpath');
+        parentDir = fileparts(analysisPath);
+    end
     detectorsDir = fullfile(parentDir, filesep, 'Detectors');
     detectorDirs = dir(detectorsDir);
     handles.detectorClassNames = cell(length(detectorDirs), 1);
@@ -82,8 +88,8 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
                 detectorCount = detectorCount + 1;
                 handles.detectorClassNames{detectorCount} = className;
                 handles.detectorTypeNames{detectorCount} = eval([className '.typeName()']);
-            catch ME %#ok<NASGU>
-                warndlg(['Could not load detector ' detectorDirs(i).name ': ' ME.message]);
+            catch ME
+                waitfor(warndlg(['Could not load detector ' detectorDirs(i).name ': ' ME.message]));
                 rmpath(fullfile(detectorsDir, filesep, detectorDirs(i).name));
             end
         end
@@ -803,7 +809,6 @@ end
 
 
 function detectFeaturesCallback(~, ~, handles)
-    
     if ~isfield(handles, 'audio')
         warndlg('You must open an audio file before you can detect features.', 'Fly Song Analysis', 'modal');
     else
