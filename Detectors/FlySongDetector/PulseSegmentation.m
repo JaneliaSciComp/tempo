@@ -168,10 +168,12 @@ fs  = sp.fs;
 
 wvlt = cell(1,ngw+1);
 wvlt{1} = 'morl';
+%#function morlet
 
 for i = 1:ngw
     wvlt{i+1} = ['gaus' num2str(sp.DoGwvlt(i))];
 end
+%#function gauswavf
 
 sc = zeros(ngw+1,numel(fc));
 
