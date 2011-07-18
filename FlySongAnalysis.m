@@ -66,7 +66,7 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     set(handles.audioGroup, 'Parent', handles.rightSplit, 'Position', [0 0 1 1]);
     
     %% Populate the list of detectors from the 'Detectors' folder.
-    if isdeployed
+    if isdeployed && exist(fullfile(ctfroot, 'Detectors'), 'dir')
         % Look for the detectors in the CTF archive.
         parentDir = ctfroot;
     else
@@ -74,7 +74,7 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
         analysisPath = mfilename('fullpath');
         parentDir = fileparts(analysisPath);
     end
-    detectorsDir = fullfile(parentDir, filesep, 'Detectors');
+    detectorsDir = fullfile(parentDir, 'Detectors');
     detectorDirs = dir(detectorsDir);
     handles.detectorClassNames = cell(length(detectorDirs), 1);
     handles.detectorTypeNames = cell(length(detectorDirs), 1);
