@@ -5,17 +5,17 @@ classdef FeatureDetector < handle
         featureTypes;
         waitBarHandle;
         contextualMenu;
-        detectedTimeRanges = [];    % An nx2 matrix of non-overlapping time ranges (start, end) in ascending order.
+        detectedTimeRanges;    % An nx2 matrix of non-overlapping time ranges (start, end) in ascending order.
     end
     
     
     properties (Access = private)
-        featureList = Feature.empty();
+        featureList;
     end
     
     
     properties (SetAccess = private)
-        % Can only be set by initializer.
+        % Can only be changed by setRecording().
         recording
     end
     
@@ -49,9 +49,16 @@ classdef FeatureDetector < handle
         function obj = FeatureDetector(recording, varargin)
             obj = obj@handle();
             
-            obj.recording = recording;
+            obj.setRecording(recording);
             
             % TODO: what if the detector wants to look at the video?
+        end
+        
+        
+        function setRecording(obj, recording)
+            obj.recording = recording;
+            obj.featureList = Feature.empty();
+            obj.detectedTimeRanges = [];
         end
         
         
