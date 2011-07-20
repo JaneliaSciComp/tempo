@@ -166,19 +166,9 @@ function setZoom(zoom, handles)
     handles.displayedTime = handles.currentTime;
     handles.zoom = zoom;
     guidata(handles.figure1, handles);
-
-    % Update the step and page sizes of the time slider.
-    % MATLAB has a weird way of setting the size of the scrollbar thumb.
-    if zoom == 1
-        % Closest we can get to a thumb that completely fills the slider.
-        majorStep = inf;
-        minorStep = 1;
-    else
-        % This formula was determined by manually measuring the scrollbar size with various majorStep settings.
-        majorStep = 3 * (1 / zoom) ^ 1.585;
-        minorStep = majorStep / 50;
-    end
-    set(handles.timeSlider, 'SliderStep', [minorStep majorStep]);
+    
+    stepSize = 1 / zoom;
+    set(handles.timeSlider, 'SliderStep', [stepSize / 50.0 stepSize]);
     
     if zoom > 1
         set(handles.zoomOutTool, 'Enable', 'on')
