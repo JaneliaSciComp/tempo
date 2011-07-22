@@ -79,6 +79,13 @@ classdef FlySongDetector < FeatureDetector
             end
             audioData = obj.recording.data(dataRange(1):dataRange(2));
             
+            % Scale the background noise based on the amplitude that 90% of the audio has.
+            h = cumsum(hist(abs(audioData), 1000));
+            scale = find(h > length(audioData) * 0.9, 1, 'first');
+            newAmp = max(abs(audioData)) / scale;
+            curAmp = max(abs(obj.backgroundNoise.data));
+            obj.backgroundNoise.data = obj.backgroundNoise.data ./ curAmp .* newAmp;
+            
             obj.updateProgress('Running multitaper analysis on signal...', 0/6)
             [songSSF] = sinesongfinder(audioData, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue);
             
