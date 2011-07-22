@@ -682,12 +682,16 @@ function openRecordingCallback(~, ~, handles)
     end
     
     if iscell(fileNames)
+        audioChanged = false;
+        
         for i = 1:length(fileNames)
             fileName = fileNames{i};
             fullPath = fullfile(pathName, fileName);
             try
                 rec = Recording(fullPath);
-                if rec.isAudio
+                if isempty(rec)
+                    % The user cancelled.
+                elseif rec.isAudio
                     % TODO: allow the recording to change?  Yes...
                     if isfield(handles, 'handles.audio')
                         error('You have already chosen the audio file.')
