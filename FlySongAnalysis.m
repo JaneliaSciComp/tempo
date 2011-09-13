@@ -671,6 +671,32 @@ function removeDetector(hObject, ~, detector)
 end
 
 
+function saveDetectedFeatures(~, ~, detector)
+    [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'} ,'Save features as');
+    
+    if ischar(fileName)
+        features = detector.features();
+        if filterIndex == 1
+            % Save as a MATLAB file
+            featureTypes = {features.type}; %#ok<NASGU>
+            startTimes = arrayfun(@(a) a.sampleRange(1), features); %#ok<NASGU>
+            stopTimes = arrayfun(@(a) a.sampleRange(2), features); %#ok<NASGU>
+            save(fullfile(pathName, fileName), 'features', 'featureTypes', 'startTimes', 'stopTimes');
+        else
+            % Save as an Excel tsv file
+            fid = fopen(fullfile(pathName, fileName), 'w');
+            
+            for i = 1:length(features)
+                feature = features(i);
+                fprintf(fid, '%s\t%f\t%f\n', feature.type, feature.sampleRange(1), feature.sampleRange(2));
+            end
+
+            fclose(fid);
+        end
+    end
+end
+
+
 %% Media handling
 
 
@@ -825,6 +851,7 @@ function detectFeaturesCallback(~, ~, handles)
                 uimenu(detector.contextualMenu, 'Tag', 'detectorNameMenuItem', 'Label', detector.name, 'Enable', 'off');
                 uimenu(detector.contextualMenu, 'Tag', 'showDetectorSettingsMenuItem', 'Label', 'Show Detector Settings', 'Callback', {@showDetectorSettings, detector}, 'Separator', 'on');
                 uimenu(detector.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem', 'Label', 'Detect Features in Selection', 'Callback', {@detectFeaturesInSelection, detector});
+                uimenu(detector.contextualMenu, 'Tag', 'saveDetectedFeaturesMenuItem', 'Label', 'Save Detected Features...', 'Callback', {@saveDetectedFeatures, detector});
                 uimenu(detector.contextualMenu, 'Tag', 'removeDetectorMenuItem', 'Label', 'Remove Detector...', 'Callback', {@removeDetector, detector}, 'Separator', 'on');
 
                 detector.startProgress();
