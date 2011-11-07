@@ -19,11 +19,7 @@ classdef FlySongDetector < FeatureDetector
         % Pulse song properties
         ipiMin = 200;               % lowIPI: estimate of a very low IPI (even, rounded)  (Fs/50)
         ipiMax = 5000;              % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse) (Fs/2)
-        pulseMinAmp = 20;           % factor times the mean of xempty - only pulses larger than this amplitude are counted as true pulses
         pulseMaxScale = 700;        % if best matched scale is greater than this frequency, then don't include pulse as true pulse
-        putativePulseFudge = 1.3;   % expand putative pulse by this number of steps on either side
-        pulseMaxGapSize = 15;       % combine putative pulse if within this step size. i.e. this # * step_size in ms
-        pulseMinRelAmp = 3;         % if pulse peak height is more than this times smaller than the pulse peaks on either side (within 100ms) then don't include
         pulseMinDist = 250;         % Fs/40, if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
         
         noiseCutoffSD = 3;
@@ -56,7 +52,7 @@ classdef FlySongDetector < FeatureDetector
         function s = settingNames(~)
             s = {'taperTBP', 'taperNum', 'windowLength', 'windowStepSize', 'pValue', ...
                  'sineFreqMin', 'sineFreqMax', 'sineGapMaxPercent', 'sineEventsMin', ...
-                 'ipiMin', 'ipiMax', 'pulseMinAmp', 'pulseMaxScale', 'putativePulseFudge', 'pulseMaxGapSize', 'pulseMinRelAmp'};
+                 'ipiMin', 'ipiMax', 'pulseMaxScale'};
         end
         
         
