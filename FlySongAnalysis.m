@@ -645,6 +645,19 @@ function detectFeaturesInSelection(hObject, ~, detector)
     try
         detector.detectFeatures(handles.selectedTime);
         detector.endProgress();
+        
+        if isempty(detector.features())
+            beep;
+            
+            for i = 1:length(handles.detectors)
+                if handles.detectors{i} == detector
+                    handles.detectors(i) = [];
+                end
+            end
+
+            guidata(handles.figure1, handles);
+        end
+        
         syncGUIWithTime(handles);
     catch ME
         detector.endProgress();
