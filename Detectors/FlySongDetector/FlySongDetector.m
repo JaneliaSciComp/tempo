@@ -17,6 +17,8 @@ classdef FlySongDetector < FeatureDetector
         highFreqCutoff = 1000;
         
         % Pulse song properties
+        putativePulseFudge = 1.3;   % expand putative pulse by this number of steps on either side
+        pulseMaxGapSize = 15;       % combine putative pulse if within this step size. i.e. this # * step_size in ms
         ipiMin = 200;               % lowIPI: estimate of a very low IPI (even, rounded)  (Fs/50)
         ipiMax = 5000;              % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse) (Fs/2)
         pulseMaxScale = 700;        % if best matched scale is greater than this frequency, then don't include pulse as true pulse
@@ -52,7 +54,7 @@ classdef FlySongDetector < FeatureDetector
         function s = settingNames(~)
             s = {'taperTBP', 'taperNum', 'windowLength', 'windowStepSize', 'pValue', ...
                  'sineFreqMin', 'sineFreqMax', 'sineGapMaxPercent', 'sineEventsMin', ...
-                 'ipiMin', 'ipiMax', 'pulseMaxScale'};
+                 'putativePulseFudge', 'pulseMaxGapSize', 'ipiMin', 'ipiMax', 'pulseMaxScale'};
         end
         
         
@@ -72,10 +74,9 @@ classdef FlySongDetector < FeatureDetector
             obj.updateProgress('Calculating noise from the signal...', 1/7);
             backgroundNoise = Recording('');
             backgroundNoise.isAudio = true;
-            %warning('off', '');
+            warning('off', 'stats:gmdistribution:FailedToConverge');
             backgroundNoise.data = segnspp(audioData, songSSF, obj.noiseCutoffSD);
-            lastwarn
-            %warning('on', '');
+            warning('on', 'stats:gmdistribution:FailedToConverge');
             backgroundNoise.sampleRate = obj.recording.sampleRate;
             backgroundNoise.duration = length(backgroundNoise.data) / backgroundNoise.sampleRate;
             
@@ -119,10 +120,12 @@ classdef FlySongDetector < FeatureDetector
             end
 
             % Add all of the detected features.
-            for n = 1:size(winnowedSine.start, 1)
-                x_start = timeRange(1) + winnowedSine.start(n);
-                x_stop = timeRange(1) + winnowedSine.stop(n);
-                obj.addFeature(Feature('Sine Song', x_start, x_stop));
+            if winnowedSine.num_events > 0
+                for n = 1:size(winnowedSine.start, 1)
+                    x_start = timeRange(1) + winnowedSine.start(n);
+                    x_stop = timeRange(1) + winnowedSine.stop(n);
+                    obj.addFeature(Feature('Sine Song', x_start, x_stop));
+                end
             end
 
             for i = 1:length(pulses.x)
