@@ -53,30 +53,31 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%use contiguous_segments function to pull out real start and stop times and clips 
+%use contiguous_segments function to pull out real start and stop times 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[put_start,put_stop] = contiguous_sequence(putative_pulse_t,step_size*ssf.fs);
-[put_start,put_stop] = combine_briefly_interrupted_pulses(put_start,put_stop,step_size*ssf.fs,combine_time);
-
-num_clips = 0;
 start=[];
 stop =[];
-for y = 1:numel(put_start)
-    if put_start(y) ~= put_stop(y);
-        num_clips = num_clips+1;
-        
-        if put_start(y) < 2*step_size*ssf.fs;
-            start_t = 1;
-        else
-            start_t = put_start(y)-step_size*ssf.fs*range;
+num_clips = 0;
+if numel(putative_pulse_t) > 0
+    [put_start,put_stop] = contiguous_sequence(putative_pulse_t,step_size*ssf.fs);
+    [put_start,put_stop] = combine_briefly_interrupted_pulses(put_start,put_stop,step_size*ssf.fs,combine_time);
+
+    for y = 1:numel(put_start)
+        if put_start(y) ~= put_stop(y);
+            num_clips = num_clips+1;
+
+            if put_start(y) < 2*step_size*ssf.fs;
+                start_t = 1;
+            else
+                start_t = round(put_start(y)-step_size*ssf.fs*range);
+            end
+            stop_t=round(put_stop(y)+step_size*ssf.fs*range);
+            start(num_clips) = start_t./ssf.fs;
+            stop(num_clips) = stop_t./ssf.fs;
         end
-        stop_t=put_stop(y)+step_size*ssf.fs*range;
-        start(num_clips) = start_t./ssf.fs;
-        stop(num_clips) = stop_t./ssf.fs;
     end
 end
-
 pps.start = start;
 pps.stop = stop;
 

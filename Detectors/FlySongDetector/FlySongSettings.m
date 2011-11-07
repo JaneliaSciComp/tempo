@@ -58,12 +58,10 @@ function FlySongSettings_OpeningFcn(hObject, eventdata, handles, varargin)
     
     handles.detector = varargin{1};
     handles.output = hObject;
-    handles.recording = handles.detector.backgroundNoise;
     
     if nargin == 6 && strcmp(varargin{2}, 'Editable') && ~varargin{3}
         handles.editable = false;
         set(handles.cancelButton, 'Visible', 'off');
-        set(handles.chooseBackgroundNoiseButton, 'Enable', 'off');
     else
         handles.editable = true;
     end
@@ -77,11 +75,6 @@ function FlySongSettings_OpeningFcn(hObject, eventdata, handles, varargin)
         if ~handles.editable
             eval(['set(handles.' field{1} 'Edit, ''Enable'', ''off'')'])
         end
-    end
-    if isempty(handles.detector.backgroundNoise)
-        set(handles.backgroundNoisePath, 'String', '');
-    else
-        set(handles.backgroundNoisePath, 'String', handles.detector.backgroundNoise.filePath);
     end
     
     uiwait(handles.settingsFigure);
@@ -101,24 +94,6 @@ function varargout = FlySongSettings_OutputFcn(hObject, eventdata, handles)
 end
 
 
-% --- Executes on button press in chooseBackgroundNoiseButton.
-function chooseBackgroundNoiseButton_Callback(hObject, eventdata, handles)
-    [filename, pathname] = uigetfile('*.wav','Select the background sound file');
-    
-    if ~isequal(filename,0)
-        try
-            rec = Recording(fullfile(pathname, filename));
-            handles.recording = rec;
-            guidata(hObject, handles);
-            set(handles.backgroundNoisePath, 'String', rec.filePath);
-            setpref('FlySongDetector', 'BackgroundNoisePath', rec.filePath);
-        catch ME
-            error 'The chosen file does not appear to be a sound file.'
-        end
-    end
-end
-
-
 % --- Executes on button press in okButton.
 function okButton_Callback(hObject, eventdata, handles)
     if handles.editable
@@ -127,7 +102,6 @@ function okButton_Callback(hObject, eventdata, handles)
             value = eval(['get(handles.' field{1} 'Edit, ''String'')']);
             handles.detector.(field{1}) = str2num(value); %#ok<ST2NM>
         end
-        handles.detector.backgroundNoise = handles.recording;
 
         % Indicate that the user accepted the settings and trigger the close of
         % the dialog.

@@ -15,7 +15,7 @@
 %addpath chronux\spectral_analysis\helper\
 %addpath chronux\spectral_analysis\continuous\
 
-function SSF=sinesongfinder(d,fs,NW,K,dT,dS,pval)
+function SSF=sinesongfinder(d,fs,NW,K,dT,dS,pval,low_freq_cutoff,high_freq_cutoff)
 
 dT2=round(dT*fs);
 dS2=round(dS*fs);
@@ -51,7 +51,7 @@ for(i=1:size(Fval,2))
   %fix this namespace conflict, which will require rewrite of this line.
   events=[events; ...
         repmat(t(i)+dT/2,length(fmax(1).loc),1) f(fmax(1).loc)'];
-   if(plotit & length(fmax(1).loc)>0)  % show the individual time slices separately
+   if(plotit && length(fmax(1).loc)>0)  % show the individual time slices separately
      clf;
      subplot(3,1,1);
      plot(f,abs(A(:,i)),'k');
@@ -83,5 +83,7 @@ SSF.dS=dS;
 SSF.pval=pval;
 SSF.t=t;
 SSF.f=f;
-SSF.summedPower = sum(abs(A(:,1:size(A,2))));
+low_freq_index = find(f > low_freq_cutoff, 1, 'first');
+high_freq_index = find(f < high_freq_cutoff, 1, 'last');
+SSF.summedPower = sum(abs(A(low_freq_index:high_freq_index,1:size(A,2))));
 SSF.events=events;
