@@ -643,19 +643,11 @@ function detectFeaturesInSelection(hObject, ~, detector)
     
     detector.startProgress();
     try
-        detector.detectFeatures(handles.selectedTime);
+        n = detector.detectFeatures(handles.selectedTime);
         detector.endProgress();
         
-        if isempty(detector.features())
-            beep;
-            
-            for i = 1:length(handles.detectors)
-                if handles.detectors{i} == detector
-                    handles.detectors(i) = [];
-                end
-            end
-
-            guidata(handles.figure1, handles);
+        if n == 0
+            waitfor(msgbox('No additional features were detected.', detector.typeName(), 'warn', 'modal'));
         end
         
         syncGUIWithTime(handles);
@@ -849,16 +841,13 @@ function detectFeaturesCallback(~, ~, handles)
                     'SelectionMode', 'single', ...
                     'ListSize', [200 120], ...
                     'ListString', handles.detectorTypeNames);
-
+        
         if ok
             className = handles.detectorClassNames{index};
-            detector = eval([className '(handles.audio)']);
-
+            constructor = str2func(className);
+            detector = constructor(handles.audio);
+            
             if detector.editSettings()
-                handles.detectors{numel(handles.detectors) + 1, 1} = detector;  %TODO: just use handles.audio.detectors() instead?
-                handles.audio.addDetector(detector);
-                guidata(handles.figure1, handles);
-                
                 % Create the contextual menu for this detector.
                 detector.contextualMenu = uicontextmenu('Callback', {@enableDetectorMenuItems, detector});
                 uimenu(detector.contextualMenu, 'Tag', 'detectorNameMenuItem', 'Label', detector.name, 'Enable', 'off');
@@ -866,17 +855,27 @@ function detectFeaturesCallback(~, ~, handles)
                 uimenu(detector.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem', 'Label', 'Detect Features in Selection', 'Callback', {@detectFeaturesInSelection, detector});
                 uimenu(detector.contextualMenu, 'Tag', 'saveDetectedFeaturesMenuItem', 'Label', 'Save Detected Features...', 'Callback', {@saveDetectedFeatures, detector});
                 uimenu(detector.contextualMenu, 'Tag', 'removeDetectorMenuItem', 'Label', 'Remove Detector...', 'Callback', {@removeDetector, detector}, 'Separator', 'on');
-
+                
                 detector.startProgress();
                 try
                     if handles.selectedTime(2) > handles.selectedTime(1)
-                        detector.detectFeatures(handles.selectedTime);
+                        n = detector.detectFeatures(handles.selectedTime);
                     else
-                        detector.detectFeatures([0.0 handles.maxMediaTime]);
+                        n = detector.detectFeatures([0.0 handles.maxMediaTime]);
                     end
                     detector.endProgress();
+                    
+                    if n == 0
+                        waitfor(msgbox('No features were detected.', handles.detectorTypeNames{index}, 'warn', 'modal'));
+                    else
+                        handles.detectors{numel(handles.detectors) + 1, 1} = detector;  %TODO: just use handles.audio.detectors() instead?
+                        handles.audio.addDetector(detector);
+                        guidata(handles.figure1, handles);
+                    end
+                    
                     syncGUIWithTime(handles);
                 catch ME
+                    waitfor(msgbox('An error occurred while detecting features.  (See the command window for details.)', handles.detectorTypeNames{index}, 'error', 'modal'));
                     detector.endProgress();
                     rethrow(ME);
                 end

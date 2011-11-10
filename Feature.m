@@ -8,7 +8,7 @@ classdef Feature < dynamicprops
     
     methods
         
-        function obj = Feature(featureType, startSample, endSample, varargin)
+        function obj = Feature(featureType, sampleRange, varargin)
             obj = obj@dynamicprops();
             
             if mod(numel(varargin), 2) == 1
@@ -16,10 +16,11 @@ classdef Feature < dynamicprops
             end
             
             obj.type = featureType;
-            if nargin > 2
-                obj.sampleRange = [startSample endSample];
+            
+            if isscalar(sampleRange)
+                obj.sampleRange = [sampleRange sampleRange];
             else
-                obj.sampleRange = [startSample startSample];
+                obj.sampleRange = sampleRange;
             end
             
             %% Add any optional attributes.

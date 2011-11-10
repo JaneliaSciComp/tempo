@@ -58,7 +58,9 @@ classdef FlySongDetector < FeatureDetector
         end
         
         
-        function detectFeatures(obj, timeRange)
+        function n = detectFeatures(obj, timeRange)
+            n = 0;
+            
             dataRange = round(timeRange * obj.recording.sampleRate);
             if dataRange(1) < 1
                 dataRange(1) = 1;
@@ -91,7 +93,8 @@ classdef FlySongDetector < FeatureDetector
             cutoff_quantile = 0.8;
             [putativePulse] = putativepulse2(songSSF, putativeSine, backgroundSSF, cutoff_quantile, obj.putativePulseFudge, obj.pulseMaxGapSize);
             
-            if numel(putativePulse.start) > 0
+            if numel(putativePulse.start) > 0 && ...
+               (numel(putativePulse.start) <= 1000 || strcmp(questdlg(['More than 1000 putative pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Fly Song Analysis', 'No', 'Yes', 'Yes'), 'Yes'))
                 obj.updateProgress('Detecting pulses...', 5/7)
                 % TBD: expose these as user-definable settings?
                 a = 100:50:900;                             %wavelet scales: frequencies examined. 
@@ -102,49 +105,53 @@ classdef FlySongDetector < FeatureDetector
                 e = 8;                                      % pwr: Power to raise signal by
                 f = round(obj.recording.sampleRate/500)+1;  % pWid:  Approx Pulse Width in points (odd, rounded)
                 g = round(obj.recording.sampleRate/80);     % buff: Points to take around each pulse for finding pulse peaks
+                h = obj.ipiMin;                             % lowIPI: estimate of a very low IPI (even, rounded)
                 i = 1.1;                                    % pulse peak height has to be at least k times the side windows
                 j = 5;                                      % thresh: Proportion of smoothed threshold over which pulses are counted. (wide mean, then set threshold as a fifth of that mean) - key for eliminating sine song.....
+                k = obj.ipiMax;                             % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse)
+                l = obj.pulseMaxScale;                      % if best matched scale is greater than this frequency, then don't include pulse as true pulse
+                m = obj.pulseMinDist;                       % if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
                 
-                [~, pulses, ~, ~, ~, ~, ~] = PulseSegmentation(audioData, backgroundNoise.data, putativePulse, a, b, c, d, e, f, g, obj.ipiMin, i, j, obj.ipiMax, obj.pulseMaxScale, obj.pulseMinDist, obj.recording.sampleRate);
+                [~, pulses, ~, ~, ~, ~, ~] = PulseSegmentation(audioData, backgroundNoise.data, putativePulse, a, b, c, d, e, f, g, h, i, j, k, l, m, obj.recording.sampleRate);
             else
                 pulses = {};
             end
-
+            
             obj.updateProgress('Removing overlapping sine song...', 6/7)
             % TBD: expose this as a user-definable setting?
             max_pulse_pause = 0.200; %max_pulse_pause in seconds, used to winnow apparent sine between pulses        
-            if putativeSine.num_events == 0 || numel(pulses.w0) == 0
+            if putativeSine.num_events == 0 || numel(pulses.w0) == 0 || ...
+                (numel(pulses.w0) > 1000 && strcmp(questdlg(['More than 1000 pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Fly Song Analysis', 'No', 'Yes', 'Yes'), 'No'))
                 winnowedSine = putativeSine;
             else
                 winnowedSine = winnow_sine(putativeSine, pulses, songSSF, max_pulse_pause, obj.sineFreqMin, obj.sineFreqMax);
             end
-
-            % Add all of the detected features.
+            
+            obj.updateProgress('Adding features...', 7/7)
             if winnowedSine.num_events > 0
-                for n = 1:size(winnowedSine.start, 1)
-                    x_start = timeRange(1) + winnowedSine.start(n);
-                    x_stop = timeRange(1) + winnowedSine.stop(n);
-                    obj.addFeature(Feature('Sine Song', x_start, x_stop));
+                for i = 1:size(winnowedSine.start, 1)
+                    x_start = timeRange(1) + winnowedSine.start(i);
+                    x_stop = timeRange(1) + winnowedSine.stop(i);
+                    obj.addFeature(Feature('Sine Song', [x_start x_stop]));
                 end
+                n = n + size(winnowedSine.start, 1);
             end
-
+            
             for i = 1:length(pulses.x)
                 x = timeRange(1) + pulses.wc(i) / obj.recording.sampleRate;
-                obj.addFeature(Feature('Pulse', x, x, 'maxVoltage', pulses.mxv(i)));
-            end
-
-            for i = 1:length(pulses.x);
                 a = timeRange(1) + pulses.w0(i) / obj.recording.sampleRate;
                 b = timeRange(1) + pulses.w1(i) / obj.recording.sampleRate;
-                obj.addFeature(Feature('Pulse Window', a, b));
+                obj.addFeature(Feature('Pulse', x, 'maxVoltage', pulses.mxv(i), 'pulseWindow', [a b]));
             end
-
-            for n = 1:length(putativePulse.start);
-                x_start = timeRange(1) + putativePulse.start(n);
-                x_stop = timeRange(1) + putativePulse.stop(n);
-                obj.addFeature(Feature('Putative Pulse Region', x_start, x_stop));
+            n = n + length(pulses.x);
+            
+            for i = 1:length(putativePulse.start);
+                x_start = timeRange(1) + putativePulse.start(i);
+                x_stop = timeRange(1) + putativePulse.stop(i);
+                obj.addFeature(Feature('Putative Pulse Region', [x_start x_stop]));
             end
-
+            n = n + length(putativePulse.start);
+            
             % TBD: Is there any value in holding on to the winnowedSine, putativePulse or pulses structs?
             %      They could be set as properties of the detector...
             

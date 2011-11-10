@@ -29,7 +29,7 @@ classdef SineSongDetector < FeatureDetector
         end
         
         
-        function detectFeatures(obj, timeRange)
+        function n = detectFeatures(obj, timeRange)
             dataRange = round(timeRange * obj.recording.sampleRate);
             if dataRange(1) < 1
                 dataRange(1) = 1;
@@ -40,12 +40,17 @@ classdef SineSongDetector < FeatureDetector
             audioData = obj.recording.data(dataRange(1):dataRange(2));
             
             y = sine_song_detector(audioData, obj.recording.sampleRate);
-            scale = length(audioData) / length(y);
-            sineRuns = detect_sine_runs(y, 3);
-            sineRuns = (sineRuns * scale + dataRange(1)) / obj.recording.sampleRate;
-            
-            for i = 1:size(sineRuns, 1)
-                obj.addFeature(Feature('Sine Song', sineRuns(i, 1), sineRuns(i, 2)));
+            if any(y)
+                scale = length(audioData) / length(y);
+                sineRuns = detect_sine_runs(y, 3);
+                sineRuns = (sineRuns * scale + dataRange(1)) / obj.recording.sampleRate;
+
+                for i = 1:size(sineRuns, 1)
+                    obj.addFeature(Feature('Sine Song', [sineRuns(i, 1) sineRuns(i, 2)]));
+                end
+                n = size(sineRuns, 1);
+            else
+                n = 0;
             end
             
             obj.timeRangeDetected(timeRange);
