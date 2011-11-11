@@ -2,7 +2,6 @@ classdef FeatureDetector < handle
     
     properties
         name;
-        featureTypes;
         waitBarHandle;
         contextualMenu;
         detectedTimeRanges;    % An nx2 matrix of non-overlapping time ranges (start, end) in ascending order.
@@ -11,6 +10,8 @@ classdef FeatureDetector < handle
     
     properties (Access = private)
         featureList;
+        featureListSize;
+        featureCount;
     end
     
     
@@ -26,15 +27,6 @@ classdef FeatureDetector < handle
             % Return a name for this type of detector.
             
             n = 'Feature';
-            
-% TODO: it would be cool to do this automatically from the class name but only the base class seems to be accessible at this point.
-%             n = class(???);
-%             if numel(n) > 7 && strcmp(n(end-7:end), 'Detector')
-%                 n = n(1:end-8);
-%             end
-%             n = regexprep(n, '([^A-Z])([A-Z])', '$1 $2');
-%             n = strrep(n, '_', ' ');
-            
         end
         
         function initialize
@@ -57,7 +49,9 @@ classdef FeatureDetector < handle
         
         function setRecording(obj, recording)
             obj.recording = recording;
-            obj.featureList = Feature.empty();
+            obj.featureList = cell(1, 1000);
+            obj.featureListSize = 1000;
+            obj.featureCount = 0;
             obj.detectedTimeRanges = [];
         end
         
@@ -144,10 +138,21 @@ classdef FeatureDetector < handle
         end
         
         
-        function f = features(obj)
-            f = obj.featureList;
+        function f = features(obj, featureType)
+            f = [obj.featureList{1:obj.featureCount}];
+            
+            if nargin > 1
+                inds = strcmp({f.type}, featureType);
+                f = f(inds);
+            end
         end
         
+        
+        function ft = featureTypes(obj)
+            % The list of types could be cached but this code is pretty fast.
+            f = [obj.featureList{1:obj.featureCount}];
+            ft = unique({f.type});
+        end
     end
     
     
@@ -159,10 +164,16 @@ classdef FeatureDetector < handle
         
         
         function updateProgress(obj, message, fractionComplete)
+            global DEBUG
+            
             if nargin < 3
                 fractionComplete = 0;
             end
             waitbar(fractionComplete, obj.waitBarHandle, message);
+            
+            if DEBUG
+                disp(message);
+            end
         end
         
         
@@ -186,9 +197,13 @@ classdef FeatureDetector < handle
         
         function addFeature(obj, feature)
             % Add the feature to the list.
-            obj.featureList(end + 1) = feature;
-            
-            obj.featureTypes = unique({obj.featureList.type});
+            obj.featureCount = obj.featureCount + 1;
+            if obj.featureCount > obj.featureListSize
+                % Pre-allocate space for another 1000 features.
+                obj.featureList = horzcat(obj.featureList, cell(1, 1000));
+                obj.featureListSize = obj.featureListSize + 1000;
+            end
+            obj.featureList{obj.featureCount} = feature;
         end
         
     end

@@ -1,4 +1,4 @@
-function [pulseInfo, pulseInfo2, pcndInfo,cmhSong,cmhNoise,cmo, cPnts] = PulseSegmentationv3(xsong, xempty, pps, a, b, c, d, e, f, g, h, i, j, k, l,m,Fs)
+function [pulseInfo, pulseInfo2, pcndInfo,cmhSong,cmhNoise,cmo, cPnts] = PulseSegmentation(xsong, xempty, pps, a, b, c, d, e, f, g, h, i, j, k, l,m,Fs)
 
 %========PARAMETERS=================
 segParams.fc = a; % frequencies examined. These will be converted to CWT scales later on.
@@ -69,9 +69,6 @@ cmh = cmo;      % Storage for the maximum mexican hat
 cmh_noise = zeros(1,numel(xn));     % Storage for the maximum mexican hat
                                                               % wavelet coefficient for each bin in noise signal.
 
-cmo_sc = cmo;             % Storage for the scale at which the
-                                        % highest coefficient occured for each bin.
-
 cmh_dog = cmo;            % Storage for the order of the
                           % D.o.G. wavelet for which the highest
                           % coefficient occured.
@@ -82,20 +79,16 @@ cmh_sc = cmo;             % Storage for the scale at which the
 for i= 1:numel(wvlt)
     Cs = cwt(xs,sc(i,:),wvlt{i}); %wavelet transformation on signal for that scale and that wavelet
     Cn = cwt(xn,sc(i,:),wvlt{i}); %wavelet transformation on noise for that scale and that wavelet
-    Ps = Cs.*conj(Cs);
-    Pn = Cn.*conj(Cn);
     
     % Find the maximum coefficient for each bin.
     [cs,ci] = max(abs(Cs));    
-    [cn,cin] = max(abs(Cn));    
+    [cn,~] = max(abs(Cn));    
     if (isequal(wvlt{i},'morl'))
         cmo = cs;
-        cmo_sc = ci;  %best cmo scale
     else %if a DoG wavelet
         cmh1 = cs;
         cmh2 = cn;
         best_sc = ci;
-        best_sc_noise = cin;
         cmh1gtcmh = cmh1>cmh; % indices where current coefficient
                               % was greater than the running max.
                               
@@ -112,6 +105,7 @@ for i= 1:numel(wvlt)
         % Update the max DoG order for each bin (just for the signal).
         cmh_dog = (i-1).*cmh1gtcmh+cmh_dog.*~cmh1gtcmh; 
         
+        clear cmh1 cmh2 best_sc cmh1gtcmh cmh2gtcmh_noise
     end
 end
 
@@ -202,10 +196,6 @@ end
 
 % EXTRACTING CANDIDATE PULSES
 
-pulses = {};
-pulse_start_times = [];
-pulse_lengths = [];
-
 n = 1;
 for i=1:number; %for each putative pulse segment
     if double(putpul.i0(i)) == double(putpul.i1(i));
@@ -215,7 +205,7 @@ for i=1:number; %for each putative pulse segment
     start = putpul.i0(i); %putative pulse segmenet start time
     stop = putpul.i1(i); %putative pulse segmenet stop time
     aa = find(cPnts < stop & cPnts > start); %find those pulse peaks in this segment
-    ii = cPnts(aa);
+    ii = cPnts(aa); %#ok<FNDSB>
     s = length(ii); %the number of pulses in this segment
     
     pulse_peaks(n:n+s-1) = ii; %put the pulse peak times in pulse_peaks

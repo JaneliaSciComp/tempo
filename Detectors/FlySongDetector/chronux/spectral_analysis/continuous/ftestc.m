@@ -49,7 +49,7 @@ function [Fval,A,f,sig,sd] = ftestc(data,params,p,plt)
 %       sd          (standard deviation of the amplitude C)
 if nargin < 1; error('Need data'); end;
 if nargin < 2 || isempty(params); params=[]; end;
-[tapers,pad,Fs,fpass,err,trialave,params]=getparams(params);
+[tapers,pad,Fs,fpass,err,trialave,params]=getparams(params); %#ok<ASGLU>
 clear err trialave
 data=change_row_to_column(data);
 [N,C]=size(data);
@@ -88,6 +88,8 @@ den=squeeze(sum(abs(Jp-Jhat).^2,2)+sum(abs(J(findx,Keven,:)).^2,2));% denominato
 Fval=num./den; % F-statisitic
 if nargout > 3
    sig=finv(1-p,2,2*K-2); % F-distribution based 1-p% point
+end
+if nargout > 4
    var=den./(K*squeeze(H0sq)); % variance of amplitude
    sd=sqrt(var);% standard deviation of amplitude
 end;

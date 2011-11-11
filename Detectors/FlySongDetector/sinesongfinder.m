@@ -26,7 +26,7 @@ plotit=0;  % plot it, or don't plot it, there is no try
 d=d-repmat(mean(d),size(d,1),1);
 % fs=1/max(diff(t));
 
-[tapers,eigs]=dpsschk([NW K],dT2,fs);
+[tapers,~]=dpsschk([NW K],dT2,fs);
 
 params=[];
 params.tapers=tapers;
@@ -35,23 +35,27 @@ params.pad=0;
 params.fpass=[0 fs/2];
 i=1;
 kk=ceil((length(d)-dT2+1)/dS2);
-[f,findx]=getfgrid(params.Fs,max(2^(nextpow2(dT2)+params.pad),dT2),params.fpass);
+[f,~]=getfgrid(params.Fs,max(2^(nextpow2(dT2)+params.pad),dT2),params.fpass);
 Fval=zeros(length(f),kk);  A=zeros(length(f),kk);
-for(k=1:kk)
-  [Fval(:,k),A(:,k),f,sig,sd] = ftestc(d(i:(i+dT2-1)),params,pval/dT2,'n');
-  i=i+dS2;
+for k=1:kk
+    if k < kk
+        [Fval(:,k),A(:,k)] = ftestc(d(i:(i+dT2-1)),params,pval/dT2,'n');
+    else
+        [Fval(:,k),A(:,k),f,sig] = ftestc(d(i:(i+dT2-1)),params,pval/dT2,'n');
+    end
+    i=i+dS2;
 end
 t=(0:(size(Fval,2)-1))*dS2/fs;
 events=[];
-for(i=1:size(Fval,2))
+for i=1:size(Fval,2)
   fmax=crx_findpeaks(Fval(:,i),sig); %this function name is a hack. chronux 'findpeaks' conflicts with Matlab 'findpeaks'.
   %I have renamed the chronux function as crx_findpeaks and changed this line too.
   %This means this code is incompatible with the public version of chronux.
   %Users must use our version. Future versions of chronux are expected to
   %fix this namespace conflict, which will require rewrite of this line.
   events=[events; ...
-        repmat(t(i)+dT/2,length(fmax(1).loc),1) f(fmax(1).loc)'];
-   if(plotit && length(fmax(1).loc)>0)  % show the individual time slices separately
+        repmat(t(i)+dT/2,length(fmax(1).loc),1) f(fmax(1).loc)']; %#ok<AGROW>
+   if(plotit && ~isempty(fmax(1).loc))  % show the individual time slices separately
      clf;
      subplot(3,1,1);
      plot(f,abs(A(:,i)),'k');
@@ -60,7 +64,7 @@ for(i=1:size(Fval,2))
      subplot(3,1,2);  hold on;
      plot(f,Fval(:,i),'k');
      plot([min(f) max(f)],[sig sig],'k:');
-     for(j=1:length(fmax(1).loc))
+     for j=1:length(fmax(1).loc)
        plot(f(fmax(1).loc(j)),interp1(f,Fval(:,i),f(fmax(1).loc(j))),'ko');
      end
      %axis([0 1000 0 1]);
