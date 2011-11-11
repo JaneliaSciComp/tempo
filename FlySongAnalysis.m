@@ -98,6 +98,9 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     handles.detectorTypeNames = handles.detectorTypeNames(1:detectorCount);
     
     addpath(fullfile(parentDir, 'export_fig'));
+    if ismac
+        setenv('DYLD_LIBRARY_PATH', ['/opt/local/lib:' getenv('DYLD_LIBRARY_PATH')]);
+    end
     
     %% Set defaults
     handles.currentTime = 0.0;              % The time currently being "rendered" from the recordings indicated by a red line in the oscillogram.
@@ -466,6 +469,8 @@ function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSamp
             set(handles.oscillogramTimeLine, 'Visible', 'on');
             if handles.selectedTime(1) ~= handles.selectedTime(2)
                 set(handles.oscillogramSelection, 'Visible', 'on');
+            else
+                set(handles.oscillogramSelection, 'Visible', 'off');
             end
         else
             set([handles.oscillogramTimeLine, handles.oscillogramSelection], 'Visible', 'off');
