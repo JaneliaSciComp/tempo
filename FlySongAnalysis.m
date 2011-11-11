@@ -22,7 +22,7 @@ function varargout = FlySongAnalysis(varargin)
 
     % Edit the above text to modify the response to help FlySongAnalysis
 
-    % Last Modified by GUIDE v2.5 28-Apr-2011 15:20:54
+    % Last Modified by GUIDE v2.5 11-Nov-2011 16:48:49
     
     if verLessThan('matlab', '7.9')
         error 'FlySongAnalysis requires MATLAB 7.9 (2009b) or later.'
@@ -97,15 +97,18 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     handles.detectorClassNames = handles.detectorClassNames(1:detectorCount);
     handles.detectorTypeNames = handles.detectorTypeNames(1:detectorCount);
     
+    addpath(fullfile(parentDir, 'export_fig'));
     
     %% Set defaults
-    handles.currentTime = 0.0;          % The time currently being "rendered" from the recordings indicated by a red line in the oscillogram.
-    handles.displayedTime = 0.0;        % The time on which the displays are centered.
-    handles.selectedTime = [0.0 0.0];   % The highlighted range indicated by a light red box in the oscillogram.
-    handles.selectingTimeRange = false; % true when dragging in the oscillogram.
+    handles.currentTime = 0.0;              % The time currently being "rendered" from the recordings indicated by a red line in the oscillogram.
+    handles.displayedTime = 0.0;            % The time on which the displays are centered.
+    handles.selectedTime = [0.0 0.0];       % The highlighted range indicated by a light red box in the oscillogram.
+    handles.selectingTimeRange = false;     % true when dragging in the oscillogram.
+    handles.showCurrentSelection = true;
     handles.maxMediaTime = 0.0;
     handles.zoom = 1.0;
     handles.detectors = {};
+    handles.showFeatures = true;
     handles.showSpectrogram = false;
     
     guidata(hObject, handles);
@@ -208,6 +211,20 @@ end
 
 function zoomOutCallback(~, ~, handles)
     setZoom(handles.zoom / 2, handles);
+end
+
+
+function showFeaturesCallback(~, ~, handles)
+    state = get(handles.showFeaturesTool, 'State');
+    handles.showFeatures = strcmp(state, 'on');
+    if handles.showFeatures
+        set([handles.features, handles.featuresSlider], 'Visible', 'on');
+    else
+        set([handles.features, handles.featuresSlider], 'Visible', 'off');
+    end
+    audioGroup_ResizeFcn(0, 0, handles);
+    guidata(handles.figure1, handles);
+    syncGUIWithTime(handles);
 end
 
 
@@ -410,9 +427,7 @@ function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSamp
             if handles.selectedTime(1) ~= handles.selectedTime(2)
                 selectionStart = floor(min(handles.selectedTime) * handles.audio.sampleRate);
                 selectionEnd = floor(max(handles.selectedTime) * handles.audio.sampleRate);
-                set(handles.oscillogramSelection, 'Position', [selectionStart - minSample + 1 -maxAmp selectionEnd - selectionStart maxAmp * 2], 'Visible', 'on');
-            else
-                set(handles.oscillogramSelection, 'Visible', 'off');
+                set(handles.oscillogramSelection, 'Position', [selectionStart - minSample + 1 -maxAmp selectionEnd - selectionStart maxAmp * 2]);
             end
         else
             % Do a one-time creation of the oscillogram pieces.
@@ -445,6 +460,15 @@ function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSamp
         if isfield(handles, 'playTimer2')
             handles.tocs = [handles.tocs toc];
             disp(mean(handles.tocs));
+        end
+        
+        if handles.showCurrentSelection
+            set(handles.oscillogramTimeLine, 'Visible', 'on');
+            if handles.selectedTime(1) ~= handles.selectedTime(2)
+                set(handles.oscillogramSelection, 'Visible', 'on');
+            end
+        else
+            set([handles.oscillogramTimeLine, handles.oscillogramSelection], 'Visible', 'off');
         end
         
         % Update the time ticks and scale label.
@@ -486,7 +510,7 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
     handles = guidata(handles.figure1);
     
     cla
-    if isfield(handles, 'audio')
+    if handles.showFeatures && isfield(handles, 'audio')
         labels = {};
         vertPos = 0;
         timeRangeRects = {};
@@ -554,15 +578,17 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
         set(handles.features, 'YTick', 1:numel(labels));
         set(handles.features, 'YTickLabel', labels);
         
-        % Add the current time indicator.
-        line([handles.currentTime handles.currentTime], [0 vertPos + 0.5], 'Color', [1 0 0]);
-        
-        % Add the current selection indicator.
-        if handles.selectedTime(1) ~= handles.selectedTime(2)
-            selectionStart = min(handles.selectedTime);
-            selectionEnd = max(handles.selectedTime);
-            h = rectangle('Position', [selectionStart 0.5 selectionEnd - selectionStart vertPos], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9]);
-            uistack(h, 'bottom');
+        if handles.showCurrentSelection
+            % Add the current time indicator.
+            line([handles.currentTime handles.currentTime], [0 vertPos + 0.5], 'Color', [1 0 0]);
+
+            % Add the current selection indicator.
+            if handles.selectedTime(1) ~= handles.selectedTime(2)
+                selectionStart = min(handles.selectedTime);
+                selectionEnd = max(handles.selectedTime);
+                h = rectangle('Position', [selectionStart 0.5 selectionEnd - selectionStart vertPos], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9]);
+                uistack(h, 'bottom');
+            end
         end
         
         % Make sure all of the time range rectangles are drawmn behind everything else.
@@ -578,7 +604,7 @@ end
 function newHandles = updateSpectrogram(handles, ~, audioWindow, ~)
     set(handles.figure1, 'CurrentAxes', handles.spectrogram);
     cla;
-    if handles.showSpectrogram
+    if handles.showSpectrogram && isfield(handles, 'audio')
         set(gca, 'Units', 'pixels');
         pos = get(gca, 'Position');
         pixelWidth = pos(3);
@@ -986,7 +1012,10 @@ function audioGroup_ResizeFcn(~, ~, handles)
     
     ss = 16;    % width/height of narrow dimension of scroll bar
     
-    if isfield(handles, 'showSpectrogram') && handles.showSpectrogram
+    showSpectrogram = isfield(handles, 'showSpectrogram') && handles.showSpectrogram;
+    showFeatures = isfield(handles, 'showFeatures') && handles.showFeatures;
+    
+    if showSpectrogram && showFeatures
         h3 = uint16((h - ss) / 3) - 1;
         hr = h - ss - (h3 + 1) * 2 + 1;
         
@@ -995,12 +1024,12 @@ function audioGroup_ResizeFcn(~, ~, handles)
         set(handles.gainSlider, 'Position',         [w-ss+1 ss+h3*2+2   ss      hr-ss]);
         
         set(handles.features, 'Position',           [1      ss+h3+1     w-ss    h3]);
-        set(handles.featureSlider, 'Position',      [w-ss+1 ss+h3       ss      h3+2]);
+        set(handles.featuresSlider, 'Position',     [w-ss+1 ss+h3       ss      h3+2]);
         
         set(handles.spectrogram, 'Position',        [1      ss          w-ss    h3]);
         
         set(handles.timeSlider, 'Position',         [1      0           w-ss+1  ss]);
-    else
+    elseif showFeatures
         h2 = uint16((h - ss) / 2) - 1;
         hr = h - ss - (h2 + 1) + 1;
         
@@ -1009,7 +1038,27 @@ function audioGroup_ResizeFcn(~, ~, handles)
         set(handles.gainSlider, 'Position',         [w-ss+1 ss+h2+1     ss      hr-ss]);
         
         set(handles.features, 'Position',           [1      ss          w-ss    h2]);
-        set(handles.featureSlider, 'Position',      [w-ss+1 ss          ss      h2+1]);
+        set(handles.featuresSlider, 'Position',     [w-ss+1 ss          ss      h2+1]);
+        
+        set(handles.timeSlider, 'Position',         [1      0           w-ss+1  ss]);
+    elseif showSpectrogram
+        h2 = uint16((h - ss) / 2) - 1;
+        hr = h - ss - (h2 + 1) + 1;
+        
+        set(handles.oscillogram, 'Position',        [1      ss+h2+1     w-ss    hr]);
+        set(handles.autoGainCheckBox, 'Position',   [w-ss-1 h-16+1      ss+1    ss]);
+        set(handles.gainSlider, 'Position',         [w-ss+1 ss+h2+1     ss      hr-ss]);
+        
+        set(handles.spectrogram, 'Position',        [1      ss          w-ss    h2]);
+        
+        set(handles.timeSlider, 'Position',         [1      0           w-ss+1  ss]);
+    else % just show the oscillogram
+        h1 = uint16((h - ss) / 1) - 1;
+        hr = h - ss - (h1 + 1) + 1;
+        
+        set(handles.oscillogram, 'Position',        [1      ss          w-ss    h-ss]);
+        set(handles.autoGainCheckBox, 'Position',   [w-ss-1 h-16+1      ss+1    ss]);
+        set(handles.gainSlider, 'Position',         [w-ss+1 ss          ss      h-ss-15]);
         
         set(handles.timeSlider, 'Position',         [1      0           w-ss+1  ss]);
     end
@@ -1017,11 +1066,38 @@ end
 
 
 % --- Executes on slider movement.
-function featureSlider_Callback(~, ~, ~)
-% hObject    handle to featureSlider (see GCBO)
+function featuresSlider_Callback(~, ~, ~)
+% hObject    handle to featuresSlider (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+end
+
+
+function saveScreenShotCallback(~, ~, handles)
+    [fileName, pathName] = uiputfile({'*.pdf','Portable Document Format (*.pdf)'; ...
+                                      '*.png','PNG format (*.png)'; ...
+                                      '*.jpg','JPEG format (*.jpg)'}, ...
+                                     'Select an audio or video file to analyze');
+    
+    % Determine the list of axes to export.
+    axes = [handles.oscillogram];
+    if handles.showFeatures
+        axes(end+1) = handles.features;
+    end
+    if handles.showSpectrogram
+        axes(end+1) = handles.spectrogram;
+    end
+    
+    % Hide the selection for the exported figure.
+    handles.showCurrentSelection = false;
+    syncGUIWithTime(handles);
+    
+    export_fig(fullfile(pathName, fileName), '-painters', axes);
+    
+    % Show the curren selection again.
+    handles.showCurrentSelection = true;
+    syncGUIWithTime(handles);
 end
