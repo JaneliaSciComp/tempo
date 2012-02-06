@@ -5,22 +5,6 @@ function varargout = FlySongAnalysis(varargin)
     %
     %      H = FLYSONGANALYSIS returns the handle to a new ANALYZER or the handle to
     %      the existing singleton*.
-    %
-    %      FLYSONGANALYSIS('CALLBACK',hObject,eventData,handles,...) calls the local
-    %      function named CALLBACK in ANALYZER.M with the given input arguments.
-    %
-    %      FLYSONGANALYSIS('Property','Value',...) creates a new ANALYZER or raises the
-    %      existing singleton*.  Starting from the left, property value pairs are
-    %      applied to the GUI before FlySongAnalysis_OpeningFcn gets called.  An
-    %      unrecognized property name or invalid value makes property application
-    %      stop.  All inputs are passed to FlySongAnalysis_OpeningFcn via varargin.
-    %
-    %      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
-    %      instance to run (singleton)".
-    %
-    % See also: GUIDE, GUIDATA, GUIHANDLES
-
-    % Edit the above text to modify the response to help FlySongAnalysis
 
     % Last Modified by GUIDE v2.5 11-Nov-2011 16:48:49
     
@@ -74,28 +58,8 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
         analysisPath = mfilename('fullpath');
         parentDir = fileparts(analysisPath);
     end
-    detectorsDir = fullfile(parentDir, 'Detectors');
-    detectorDirs = dir(detectorsDir);
-    handles.detectorClassNames = cell(length(detectorDirs), 1);
-    handles.detectorTypeNames = cell(length(detectorDirs), 1);
-    detectorCount = 0;
-    for i = 1:length(detectorDirs)
-        if detectorDirs(i).isdir && detectorDirs(i).name(1) ~= '.'
-            className = detectorDirs(i).name;
-            try
-                addpath(fullfile(detectorsDir, filesep, className));
-                eval([className '.initialize()'])
-                detectorCount = detectorCount + 1;
-                handles.detectorClassNames{detectorCount} = className;
-                handles.detectorTypeNames{detectorCount} = eval([className '.typeName()']);
-            catch ME
-                waitfor(warndlg(['Could not load detector ' detectorDirs(i).name ': ' ME.message]));
-                rmpath(fullfile(detectorsDir, filesep, detectorDirs(i).name));
-            end
-        end
-    end
-    handles.detectorClassNames = handles.detectorClassNames(1:detectorCount);
-    handles.detectorTypeNames = handles.detectorTypeNames(1:detectorCount);
+    [handles.detectorClassNames, handles.detectorTypeNames] = findPlugIns(fullfile(parentDir, 'Detectors'));
+    [handles.importerClassNames, handles.importerTypeNames] = findPlugIns(fullfile(parentDir, 'Importers'));
     
     addpath(fullfile(parentDir, 'export_fig'));
     if ismac
@@ -110,7 +74,7 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     handles.showCurrentSelection = true;
     handles.maxMediaTime = 0.0;
     handles.zoom = 1.0;
-    handles.detectors = {};
+    handles.reporters = {};
     handles.showFeatures = true;
     handles.showSpectrogram = false;
     
@@ -129,6 +93,31 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     set(handles.figure1, 'WindowButtonDownFcn', @windowButtonDownFcn);
     set(handles.figure1, 'WindowButtonMotionFcn', @windowButtonMotionFcn);
     set(handles.figure1, 'WindowButtonUpFcn', @windowButtonUpFcn);
+end
+
+
+function [classNames, typeNames] = findPlugIns(pluginsDir)
+    pluginDirs = dir(pluginsDir);
+    classNames = cell(length(pluginDirs), 1);
+    typeNames = cell(length(pluginDirs), 1);
+    pluginCount = 0;
+    for i = 1:length(pluginDirs)
+        if pluginDirs(i).isdir && pluginDirs(i).name(1) ~= '.'
+            className = pluginDirs(i).name;
+            try
+                addpath(fullfile(pluginsDir, filesep, className));
+                eval([className '.initialize()'])
+                pluginCount = pluginCount + 1;
+                classNames{pluginCount} = className;
+                typeNames{pluginCount} = eval([className '.typeName()']);
+            catch ME
+                waitfor(warndlg(['Could not load ' pluginDirs(i).name ': ' ME.message]));
+                rmpath(fullfile(pluginsDir, filesep, pluginDirs(i).name));
+            end
+        end
+    end
+    classNames = classNames(1:pluginCount);
+    typeNames = typeNames(1:pluginCount);
 end
 
 
@@ -519,11 +508,11 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
         labels = {};
         vertPos = 0;
         timeRangeRects = {};
-        if ~isempty(handles.detectors)
-            for i = 1:numel(handles.detectors)
-                detector = handles.detectors{i};
+        if ~isempty(handles.reporters)
+            for i = 1:numel(handles.reporters)
+                reporter = handles.reporters{i};
                 
-                featureTypes = detector.featureTypes;
+                featureTypes = reporter.featureTypes;
                 
                 % First gray out areas that haven't been detected.
                 lastTime = 0.0;
@@ -532,21 +521,23 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                 else
                     height = length(featureTypes);
                 end
-                for j = 1:size(detector.detectedTimeRanges, 1)
-                    detectedTimeRange = detector.detectedTimeRanges(j, :);
-                    
-                    if detectedTimeRange(1) > lastTime
-                        % Add a gray background before the current range.
-                        timeRangeRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 detectedTimeRange(1) - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'UIContextMenu', detector.contextualMenu); %#ok<AGROW>
+                if isa(reporter, 'FeatureDetector')
+                    for j = 1:size(reporter.detectedTimeRanges, 1)
+                        detectedTimeRange = reporter.detectedTimeRanges(j, :);
+
+                        if detectedTimeRange(1) > lastTime
+                            % Add a gray background before the current range.
+                            timeRangeRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 detectedTimeRange(1) - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'UIContextMenu', reporter.contextualMenu); %#ok<AGROW>
+                        end
+
+                        % Add a white background for this range.
+                        timeRangeRects{end + 1} = rectangle('Position', [detectedTimeRange(1) vertPos + 0.5 detectedTimeRange(2) - detectedTimeRange(1) height + 0.5], 'FaceColor', 'white', 'EdgeColor', 'none', 'UIContextMenu', reporter.contextualMenu); %#ok<AGROW>
+
+                        lastTime = detectedTimeRange(2);
                     end
-                    
-                    % Add a white background for this range.
-                    timeRangeRects{end + 1} = rectangle('Position', [detectedTimeRange(1) vertPos + 0.5 detectedTimeRange(2) - detectedTimeRange(1) height + 0.5], 'FaceColor', 'white', 'EdgeColor', 'none', 'UIContextMenu', detector.contextualMenu); %#ok<AGROW>
-                    
-                    lastTime = detectedTimeRange(2);
-                end
-                if lastTime < handles.maxMediaTime
-                    timeRangeRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 handles.maxMediaTime - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'UIContextMenu', detector.contextualMenu); %#ok<AGROW>
+                    if lastTime < handles.maxMediaTime
+                        timeRangeRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 handles.maxMediaTime - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'UIContextMenu', reporter.contextualMenu); %#ok<AGROW>
+                    end
                 end
                 
                 % Draw the feature type names.
@@ -555,8 +546,8 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                     text(timeRange(1), vertPos + y + 0.25, featureType, 'VerticalAlignment', 'bottom');
                 end
                 
-                % Draw the features that have been detected.
-                features = detector.features();
+                % Draw the features that have been reported.
+                features = reporter.features();
                 if ~isempty(features)
                     labels = horzcat(labels, featureTypes); %#ok<AGROW>
                     for feature = features
@@ -572,7 +563,7 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                 end
                 vertPos = vertPos + length(featureTypes) + 0.5;
                 
-                % Add a horizontal line to separate the detectors from each other.
+                % Add a horizontal line to separate the reporters from each other.
                 line([timeRange(1) timeRange(2)], [vertPos + 0.5 vertPos + 0.5], 'Color', 'k');
             end
         else
@@ -694,9 +685,9 @@ function removeDetector(hObject, ~, detector)
     if strcmp(answer, 'Remove')
         handles = guidata(hObject);
 
-        for i = 1:length(handles.detectors)
-            if handles.detectors{i} == detector
-                handles.detectors(i) = [];
+        for i = 1:length(handles.reporters)
+            if handles.reporters{i} == detector
+                handles.reporters(i) = [];
             end
         end
 
@@ -749,6 +740,61 @@ function openRecordingCallback(~, ~, handles)
         for i = 1:length(fileNames)
             fileName = fileNames{i};
             fullPath = fullfile(pathName, fileName);
+            
+            % First check if the file can be imported by one of the feature importers.
+            try
+                possibleImporters = [];
+                for j = 1:length(handles.importerClassNames)
+                    canImport = eval([handles.importerClassNames{j} '.canImportFromPath(''' strrep(fullPath, '''', '''''') ''')']);
+                    if canImport
+                        possibleImporters(end+1) = j; %#ok<AGROW>
+                    end
+                end
+                
+                if ~isempty(possibleImporters)
+                    if ~isfield(handles, 'audio')
+                        warndlg('You must open an audio file before you can import features.', 'Fly Song Analysis', 'modal');
+                        return
+                    end
+                    index = [];
+                    if length(possibleImporters) == 1
+                        index = possibleImporters(1);
+                    else
+                        choice = listdlg('PromptString', 'Choose which importer to use:', ...
+                                         'SelectionMode', 'Single', ...
+                                         'ListString', handles.importerTypeNames(possibleImporters));
+                        if ~isempty(choice)
+                            index = choice(1);
+                        end
+                    end
+                    if ~isempty(index)
+                        constructor = str2func(handles.importerClassNames{index});
+                        importer = constructor(handles.audio, fullPath);
+                        importer.startProgress();
+                        try
+                            n = importer.importFeatures();
+                            importer.endProgress();
+
+                            if n == 0
+                                waitfor(msgbox('No features were imported.', handles.importerTypeNames{index}, 'warn', 'modal'));
+                            else
+                                handles.reporters{numel(handles.reporters) + 1, 1} = importer;
+                                guidata(handles.figure1, handles);
+                            end
+
+                            syncGUIWithTime(handles);
+                        catch ME
+                            waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', handles.importerTypeNames{index}, 'error', 'modal'));
+                            importer.endProgress();
+                            rethrow(ME);
+                        end
+                    end
+                end
+            catch ME
+                rethrow(ME);
+            end
+            
+            % Next check if it's an audio or video file.
             try
                 rec = Recording(fullPath);
                 if isempty(rec)
@@ -772,8 +818,8 @@ function openRecordingCallback(~, ~, handles)
             handles = guidata(handles.figure1);
             
             % Inform all detectors that the audio recording changed.
-            for i = 1:length(handles.detectors)
-                handles.detectors{i}.setRecording(handles.audio);
+            for i = 1:length(handles.reporters)
+                handles.reporters{i}.setRecording(handles.audio);
             end
             
             % Reset the display.
@@ -899,7 +945,7 @@ function detectFeaturesCallback(~, ~, handles)
                     if n == 0
                         waitfor(msgbox('No features were detected.', handles.detectorTypeNames{index}, 'warn', 'modal'));
                     else
-                        handles.detectors{numel(handles.detectors) + 1, 1} = detector;  %TODO: just use handles.audio.detectors() instead?
+                        handles.reporters{numel(handles.reporters) + 1, 1} = detector;  %TODO: just use handles.audio.detectors() instead?
                         handles.audio.addDetector(detector);
                         guidata(handles.figure1, handles);
                     end
