@@ -18,11 +18,11 @@ classdef FlySongDetector < FeatureDetector
         
         % Pulse song properties
         putativePulseFudge = 1.3;   % expand putative pulse by this number of steps on either side
-        pulseMaxGapSize = 15;       % combine putative pulse if within this step size. i.e. this # * step_size in ms
+        pulseMaxGapSize = 5;       % combine putative pulse if within this step size. i.e. this # * step_size in ms
         ipiMin = 200;               % lowIPI: estimate of a very low IPI (even, rounded)  (Fs/50)
-        ipiMax = 5000;              % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse) (Fs/2)
+        ipiMax = 2000;              % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse) (Fs/5)
         pulseMaxScale = 700;        % if best matched scale is greater than this frequency, then don't include pulse as true pulse
-        pulseMinDist = 250;         % Fs/40, if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
+        pulseMinDist = 200;         % Fs/40, if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
         
         backgroundNoise;
         backgroundSSF;
@@ -88,70 +88,79 @@ classdef FlySongDetector < FeatureDetector
             end
             audioData = obj.recording.data(dataRange(1):dataRange(2));
             
-            obj.updateProgress('Running multitaper analysis on signal...', 0/7)
+            obj.updateProgress('Running multitaper analysis on signal...', 0/9)
             [songSSF] = sinesongfinder(audioData, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue, obj.lowFreqCutoff, obj.highFreqCutoff);
             
             if isempty(obj.backgroundNoise)
-                obj.updateProgress('Calculating noise from the signal...', 1/7);
-                % Determine noise from the first 60 seconds of audio, independent of the time range.
-                % TODO: cache the noise and noise SSF?
-                oneMinuteOfSamples = obj.recording.data(1:60*obj.recording.sampleRate);
-                [obj.backgroundSSF] = sinesongfinder(oneMinuteOfSamples, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue, obj.lowFreqCutoff, obj.highFreqCutoff);
+                obj.updateProgress('Calculating noise from the signal...', 1/9);
                 obj.backgroundNoise = Recording('');
                 obj.backgroundNoise.isAudio = true;
                 warning('off', 'stats:gmdistribution:FailedToConverge');
-                obj.backgroundNoise.data = segnspp(oneMinuteOfSamples, obj.backgroundSSF, obj.noiseCutoffSD);
+                obj.backgroundNoise.data = segnspp(audioData, songSSF, obj.noiseCutoffSD);
                 warning('on', 'stats:gmdistribution:FailedToConverge');
                 obj.backgroundNoise.sampleRate = obj.recording.sampleRate;
                 obj.backgroundNoise.duration = length(obj.backgroundNoise.data) / obj.backgroundNoise.sampleRate;
- 
-                obj.updateProgress('Running multitaper analysis on background noise...', 2/7)
+                
+                obj.updateProgress('Running multitaper analysis on background noise...', 2/9)
                 [obj.backgroundSSF] = sinesongfinder(obj.backgroundNoise.data, obj.backgroundNoise.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue, obj.lowFreqCutoff, obj.highFreqCutoff);
             end
             
-            obj.updateProgress('Finding putative sine and power...', 3/7)
+            obj.updateProgress('Finding putative sine and power...', 3/9)
             [putativeSine] = lengthfinder4(songSSF, obj.sineFreqMin, obj.sineFreqMax, obj.sineGapMaxPercent, obj.sineEventsMin);
             
-            obj.updateProgress('Finding segments of putative pulse...', 4/7)
+            obj.updateProgress('Finding segments of putative pulse...', 4/9)
             % TBD: expose this as a user-definable setting?
             cutoff_quantile = 0.8;
             [putativePulse] = putativepulse2(songSSF, putativeSine, obj.backgroundSSF, cutoff_quantile, obj.putativePulseFudge, obj.pulseMaxGapSize);
+            
+            clear songSSF putativeSine
             
             if numel(putativePulse.start) > 0 && ...
                (numel(putativePulse.start) <= 1000 || strcmp(questdlg(['More than 1000 putative pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Fly Song Analysis', 'No', 'Yes', 'Yes'), 'Yes'))
                 obj.updateProgress('Detecting pulses...', 5/7)
                 % TBD: expose these as user-definable settings?
-                a = 100:50:900;                             %wavelet scales: frequencies examined. 
-                b = 2:8;                                    %Derivative of Gaussian wavelets examined
-                c = round(obj.recording.sampleRate/2500);   %factor for computing window around pulse peak (this determines how much of the signal before and after the peak is included in the pulse, and sets the parameters w0 and w1.)
-                d = 4;
+                a = 100:25:750;                             % wavelet scales: frequencies examined. 
+                b = 2:3;                                    % Derivative of Gaussian wavelets examined
+                c = round(obj.recording.sampleRate/250)+1;  % pWid:  Approx Pulse Width in points (odd, rounded)
+                d = round(obj.recording.sampleRate/80);     % buff: Points to take around each pulse for finding pulse peaks
+                e = obj.ipiMin;                             % lowIPI: estimate of a very low IPI (even, rounded)
+                f = 1.1;                                    % pulse peak height has to be at least k times the side windows
+                g = 5;                                      % thresh: Proportion of smoothed threshold over which pulses are counted. (wide mean, then set threshold as a fifth of that mean) - key for eliminating sine song.....
                 
-                e = 8;                                      % pwr: Power to raise signal by
-                f = round(obj.recording.sampleRate/500)+1;  % pWid:  Approx Pulse Width in points (odd, rounded)
-                g = round(obj.recording.sampleRate/80);     % buff: Points to take around each pulse for finding pulse peaks
-                h = obj.ipiMin;                             % lowIPI: estimate of a very low IPI (even, rounded)
-                i = 1.1;                                    % pulse peak height has to be at least k times the side windows
-                j = 5;                                      % thresh: Proportion of smoothed threshold over which pulses are counted. (wide mean, then set threshold as a fifth of that mean) - key for eliminating sine song.....
-                k = obj.ipiMax;                             % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse)
-                l = obj.pulseMaxScale;                      % if best matched scale is greater than this frequency, then don't include pulse as true pulse
-                m = obj.pulseMinDist;                       % if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
+                %parameters for winnowing pulses: 
+                %first winnow: (returns pulseInfo)
+                h = 6;                                      %factor times the mean of xempty - only pulses larger than this amplitude are counted as true pulses
                 
-                [~, pulses, ~, ~, ~, ~, ~] = PulseSegmentation(audioData, obj.backgroundNoise.data, putativePulse, a, b, c, d, e, f, g, h, i, j, k, l, m, obj.recording.sampleRate);
+                %second winnow: (returns pulseInfo2)
+                i = obj.ipiMax;                             % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse)
+                j = obj.pulseMaxScale;                      % if best matched scale is greater than this frequency, then don't include pulse as true pulse
+                k = obj.pulseMinDist;                       % if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
+                
+                [~, pulses, ~, ~, ~, ~, ~] = PulseSegmentation(audioData, obj.backgroundNoise.data, putativePulse, a, b, c, d, e, f, g, h, i, j, k, obj.recording.sampleRate);
             else
                 pulses = {};
             end
             
-            obj.updateProgress('Removing overlapping sine song...', 6/7)
+            clear putativePulse
+            
+            obj.updateProgress('Running multitaper analysis on pulse-masked signal...', 6/9)
+            maskedAudioData = pulse_mask(audioData, pulses);
+            maskedSSF = sinesongfinder(maskedAudioData, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue, obj.lowFreqCutoff, obj.highFreqCutoff);
+            
+            obj.updateProgress('Finding putative sine and power...', 7/9)
+            maskedSine = lengthfinder4(maskedSSF, obj.sineFreqMin, obj.sineFreqMax, obj.sineGapMaxPercent, obj.sineEventsMin);
+            
+            obj.updateProgress('Removing overlapping sine song...', 9/9)
             % TBD: expose this as a user-definable setting?
             max_pulse_pause = 0.200; %max_pulse_pause in seconds, used to winnow apparent sine between pulses        
-            if putativeSine.num_events == 0 || numel(pulses.w0) == 0 || ...
+            if maskedSine.num_events == 0 || numel(pulses.w0) == 0 || ...
                 (numel(pulses.w0) > 1000 && strcmp(questdlg(['More than 1000 pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Fly Song Analysis', 'No', 'Yes', 'Yes'), 'No'))
-                winnowedSine = putativeSine;
+                winnowedSine = maskedSine;
             else
-                winnowedSine = winnow_sine(putativeSine, pulses, songSSF, max_pulse_pause, obj.sineFreqMin, obj.sineFreqMax);
+                winnowedSine = winnow_sine(maskedSine, pulses, maskedSSF, max_pulse_pause, obj.sineFreqMin, obj.sineFreqMax);
             end
             
-            obj.updateProgress('Adding features...', 7/7)
+            obj.updateProgress('Adding features...', 9/9)
             if winnowedSine.num_events > 0
                 for i = 1:size(winnowedSine.start, 1)
                     x_start = timeRange(1) + winnowedSine.start(i);
@@ -165,18 +174,9 @@ classdef FlySongDetector < FeatureDetector
                 x = timeRange(1) + pulses.wc(i) / obj.recording.sampleRate;
                 a = timeRange(1) + pulses.w0(i) / obj.recording.sampleRate;
                 b = timeRange(1) + pulses.w1(i) / obj.recording.sampleRate;
-                obj.addFeature(Feature('Pulse', x, 'maxVoltage', pulses.mxv(i), 'pulseWindow', [a b]));
+                obj.addFeature(Feature('Pulse', x, 'pulseWindow', [a b]));
             end
             n = n + length(pulses.x);
-            
-% No longer showing putative pulse ranges.
-% TODO: add support for showing/hiding feature types and hide these by default?
-%             for i = 1:length(putativePulse.start);
-%                 x_start = timeRange(1) + putativePulse.start(i);
-%                 x_stop = timeRange(1) + putativePulse.stop(i);
-%                 obj.addFeature(Feature('Putative Pulse Region', [x_start x_stop]));
-%             end
-%             n = n + length(putativePulse.start);
             
             % TBD: Is there any value in holding on to the winnowedSine, putativePulse or pulses structs?
             %      They could be set as properties of the detector...

@@ -19,7 +19,6 @@ function SSF=sinesongfinder(d,fs,NW,K,dT,dS,pval,low_freq_cutoff,high_freq_cutof
 
 dT2=round(dT*fs);
 dS2=round(dS*fs);
-plotit=0;  % plot it, or don't plot it, there is no try
 
 % [d t]=daqread(filename);  % do it this way when pipelined
 % d=d(:,chan);
@@ -33,17 +32,17 @@ params.tapers=tapers;
 params.Fs=fs;
 params.pad=0;
 params.fpass=[0 fs/2];
-i=1;
+
 kk=ceil((length(d)-dT2+1)/dS2);
+
+pos = 1:dS2:dS2*kk;
 [f,~]=getfgrid(params.Fs,max(2^(nextpow2(dT2)+params.pad),dT2),params.fpass);
-Fval=zeros(length(f),kk);  A=zeros(length(f),kk);
+dim1 = length(f);
+Fval=zeros(dim1,kk);A=zeros(dim1,kk); 
+[~,~,f,sig,~] = ftestc(d(1:(1+dT2-1)),params,pval/dT2,'n');
+
 for k=1:kk
-    if k < kk
-        [Fval(:,k),A(:,k)] = ftestc(d(i:(i+dT2-1)),params,pval/dT2,'n');
-    else
-        [Fval(:,k),A(:,k),f,sig] = ftestc(d(i:(i+dT2-1)),params,pval/dT2,'n');
-    end
-    i=i+dS2;
+    [Fval(:,k),A(:,k),~,~,~] = ftestc(d(pos(k):(pos(k)+dT2-1)),params,pval/dT2,'n');
 end
 t=(0:(size(Fval,2)-1))*dS2/fs;
 events=[];
@@ -55,28 +54,6 @@ for i=1:size(Fval,2)
   %fix this namespace conflict, which will require rewrite of this line.
   events=[events; ...
         repmat(t(i)+dT/2,length(fmax(1).loc),1) f(fmax(1).loc)']; %#ok<AGROW>
-   if(plotit && ~isempty(fmax(1).loc))  % show the individual time slices separately
-     clf;
-     subplot(3,1,1);
-     plot(f,abs(A(:,i)),'k');
-     ylabel('amplitude');
-     title(['# tapers = ' num2str(K) ', win len = ' num2str(dT) ', win step = ' num2str(dS)]);
-     subplot(3,1,2);  hold on;
-     plot(f,Fval(:,i),'k');
-     plot([min(f) max(f)],[sig sig],'k:');
-     for j=1:length(fmax(1).loc)
-       plot(f(fmax(1).loc(j)),interp1(f,Fval(:,i),f(fmax(1).loc(j))),'ko');
-     end
-     %axis([0 1000 0 1]);
-     ylabel('F-stat');
-     subplot(3,1,3);
-     idx=round(t(i)*fs):round((t(i)+dT)*fs);
-     plot(idx,d(idx),'k');
-     axis tight
-     xlabel('frequency (Hz)');
-     ylabel('time series');
-     keyboard;  % 'return' to continue
-   end
 end
 
 SSF.fs=fs;

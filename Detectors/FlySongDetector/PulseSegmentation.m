@@ -1,34 +1,31 @@
-function [pulseInfo, pulseInfo2, pcndInfo,cmhSong,cmhNoise,cmo, cPnts] = PulseSegmentation(xsong, xempty, pps, a, b, c, d, e, f, g, h, i, j, k, l,m,Fs)
+function [pulseInfo, pulseInfo2, pcndInfo,cmhSong,cmhNoise,cmo, cPnts] = PulseSegmentation(xsong, xempty, pps, a, b, c, d, e, f, g, h, i, j, k,Fs)
 
 %========PARAMETERS=================
 segParams.fc = a; % frequencies examined. These will be converted to CWT scales later on.
 
 segParams.DoGwvlt = b;  % Derivative of Gaussian wavelets examined
 
-segParams.pulsewindow = c; %factor for computing window around pulse peak (this determines how much of the signal before and after the peak is included in the pulse.)
+segParams.pWid = c; %pWid: Approx Pulse Width in points (odd, rounded)
+
+segParams.pulsewindow = round(c); %factor for computing window around pulse peak (this determines how much of the signal before and after the peak is included in the pulse)
+
+segParams.buff = d; % buff: Points to take around each pulse
+
+segParams.lowIPI = e; %lowIPI: estimate of a very low IPI (even, rounded)
+
+segParams.hgt = f; %pulse peak height parameter
+
+segParams.thresh = g; %thresh: Proportion of smoothed threshold over which pulses are counted.
 
 xn = xempty;
-noise = d*mean(abs(xn));                         
+noise = h*mean(abs(xn));                         
 segParams.wnwMinAbsVoltage = noise; 
 
-segParams.pwr = e; % pwr: Power to raise signal by
+segParams.IPI = i; %in samples, if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse (not within IPI range of another pulse) is likely not a true pulse)
 
-segParams.pWid = f; %pWid: Approx Pulse Width in points (odd, rounded)
+segParams.frequency = j; %if pulseInfo.fcmx is greater than this frequency, then don't include pulse
 
-segParams.buff = g; % buff: Points to take around each pulse
-
-segParams.lowIPI = h; %lowIPI: estimate of a very low IPI (even, rounded)
-
-segParams.hgt = i; %pulse peak height parameter
-
-segParams.thresh = j; %thresh: Proportion of smoothed threshold over which pulses are counted.
-
-
-segParams.IPI = k; %in samples, if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse (not within IPI range of another pulse) is likely not a true pulse)
-
-segParams.frequency = l; %if pulseInfo.fcmx is greater than this frequency, then don't include pulse
-
-segParams.close = m; %if pulse peaks are this close together, only keep the larger pulse
+segParams.close = k; %if pulse peaks are this close together, only keep the larger pulse
 
 sp = segParams;
 
@@ -114,27 +111,21 @@ cmhSong = cmh;
 cmhNoise = cmh_noise;
 
 %% 
-%Calculate running maxima for wavelet fits then raise to specified power
-% then smooth and raise to inverse power (reduce back to normal level).
-% Perform all operations on noise to make later comparisons meaningful
+%Calculate running maxima for wavelet fits and then smooth
+%Perform all operations on noise to make later comparisons meaningful
 
 pWid = sp.pWid;
-pwr = sp.pwr;
 
 [sig4Test] = runningExtreme(cmhSong,pWid,'max');
 [nDat] = runningExtreme(cmhNoise,pWid,'max');
-sig4Test = sig4Test.^pwr;
-nDat = nDat.^pwr;
 sig4Test = smooth(sig4Test,(Fs/1000)+pWid);
-sig4Test = sig4Test.^(1/pwr);
 nDat = smooth(nDat,(Fs/1000)+pWid);
-nDat = nDat.^(1/pwr);
 nDat = abs(nDat); %don't want negatives
 
 %% 
 %Take signal, subtract noise, calculate the mean value of region lowIPI/2
 % either side of pulse and take the maximum of this value (to be used as
-% threshold). Finally make threshold inf. at start and end to avoid edge
+% threshold). Finally make threshold infinite at start and end to avoid edge
 % effects.
 
 lowIPI = sp.lowIPI;
@@ -172,6 +163,7 @@ for i = 1:length(srtIdx)
     cPnts(i) = cPnts(i) + srtIdx(i) -1; %#ok<AGROW>
 end
 
+%for debugging:
 %figure; plot(xs, 'k'); hold on; plot(cPnts,0.4,'.r'); plot(smthThresh,'b'); plot(sig4Test,'m');
 %% Use output of putativepulse2 (pps) to identify regions of song that may contain pulses (and do not contain sines)
 
@@ -214,7 +206,6 @@ end
      
 zz = zeros(1,length(pulse_peaks));
 pcndInfo = struct('wc',double(pulse_peaks),...
-           'ok',zz,...
            'dog',zz,'scmx',zz,'fcmx',zz,'w0',zz,'w1',zz);
 
 if pcndInfo.wc==0;
@@ -224,7 +215,8 @@ if pcndInfo.wc==0;
     return
 end
 %%
-%Collecting pulses in pulseInfo (removing those below the noise threshold) before winnowing:
+%FIRST WINNOW
+%Collecting pulses in pulseInfo (removing those below the noise threshold):
 
 indPulse = 0*xs;
 np = numel(pcndInfo.wc); %the number of pulses total
@@ -244,8 +236,8 @@ pulseInfo.w0 = zz; % start of window centered at wc
 pulseInfo.w1 = zz; % end of window centered at wc
 
 pulseInfo.x = cell(1,np); % the signals themselves
-pulseInfo.mxv = zz; %max voltage
-pulseInfo.aven = zz; %power
+%pulseInfo.mxv = zz; %max voltage
+%pulseInfo.aven = zz; %power
 
 for i = 1:np
    
@@ -259,13 +251,17 @@ for i = 1:np
    pcndInfo.fcmx(i) = fc_at_max;
    pcndInfo.scmx(i) = sc_at_max;
    
-   pulsewin = sp.pulsewindow;
+   pulsewin = 2*sp.pulsewindow;
    
-   pcndInfo.w0(i) = round(peak-pulsewin*sc_at_max); 
+   %pcndInfo.w0(i) = round(peak-pulsewin*sc_at_max); %use this if you want
+   %to scale the window around each pulse based on frequency
+   pcndInfo.w0(i) = round(peak-pulsewin); 
    if pcndInfo.w0(i) < 0;
        pcndInfo.w0(i) = 1;
    end
-   pcndInfo.w1(i) = round(peak+pulsewin*sc_at_max); 
+   %pcndInfo.w1(i) = round(peak+pulsewin*sc_at_max); %use this if you want
+   %to scale the window around each pulse based on frequency
+   pcndInfo.w1(i) = round(peak+pulsewin); 
    if pcndInfo.w1(i) > length(xs);
        pcndInfo.w1(i) = length(xs);
    end
@@ -281,7 +277,7 @@ for i = 1:np
    end
    
    indPulse(max(pcndInfo.w0(i),1):min(pcndInfo.w1(i),numel(xs)))=1;
-   pcndInfo.ok(i) = 1;
+   %pcndInfo.ok(i) = 1;
    nOk = nOk+1;
    
    pulseInfo.dog(nOk) = pcndInfo.dog(i);
@@ -292,8 +288,8 @@ for i = 1:np
    pulseInfo.w1(nOk) = pcndInfo.w1(i);   
   
    pulseInfo.x{nOk} = xs(w0:w1);
-   pulseInfo.aven(nOk) = mean(xs(w0:w1).^2);
-   pulseInfo.mxv(nOk) = max(abs(xs(w0:w1)));   
+   %pulseInfo.aven(nOk) = mean(xs(w0:w1).^2);
+   %pulseInfo.mxv(nOk) = max(abs(xs(w0:w1)));   
 end
 
 if (nOk)
@@ -303,9 +299,9 @@ if (nOk)
   pulseInfo.wc = pulseInfo.wc(1:nOk);
   pulseInfo.w0 = pulseInfo.w0(1:nOk);
   pulseInfo.w1 = pulseInfo.w1(1:nOk);
-  pulseInfo.aven = pulseInfo.aven(1:nOk);
+  %pulseInfo.aven = pulseInfo.aven(1:nOk);
   pulseInfo.x = pulseInfo.x(1:nOk);
-  pulseInfo.mxv = pulseInfo.mxv(1:nOk);
+  %pulseInfo.mxv = pulseInfo.mxv(1:nOk);
 end
 
 if pulseInfo.w0==0;
@@ -315,7 +311,9 @@ if pulseInfo.w0==0;
     return
 end
    
-%% WINNOWING PULSES
+%%
+%SECOND WINNOW
+%Collecting pulses in pulseInfo2:
 
 %now that you have collected pulses in pulseInfo, winnow further:
 indPulse = 0*xs;
@@ -330,8 +328,8 @@ pulseInfo2.wc = zz; % location of peak correlation
 pulseInfo2.w0 = zz; % start of window centered at wc
 pulseInfo2.w1 = zz; % end of window centered at wc
 pulseInfo2.x = cell(1,np); % the signals themselves
-pulseInfo2.mxv = zz;
-pulseInfo2.aven = zz;
+%pulseInfo2.mxv = zz;
+%pulseInfo2.aven = zz;
 
 
 for i = 1:np;
@@ -395,7 +393,7 @@ end
     end
           
    indPulse(max(pulseInfo.w0(i),1):min(pulseInfo.w1(i),numel(xs)))=1;
-   pulseInfo2.ok(i) = 1;
+   %pulseInfo2.ok(i) = 1;
    nOk = nOk+1;
    
    pulseInfo2.dog(nOk) = pulseInfo.dog(i);
@@ -405,8 +403,8 @@ end
    pulseInfo2.w0(nOk) = pulseInfo.w0(i);
    pulseInfo2.w1(nOk) = pulseInfo.w1(i);   
    pulseInfo2.x{nOk} = pulseInfo.x{i};
-   pulseInfo2.aven(nOk) = pulseInfo.aven(i);
-   pulseInfo2.mxv(nOk) = pulseInfo.mxv(i);
+   %pulseInfo2.aven(nOk) = pulseInfo.aven(i);
+   %pulseInfo2.mxv(nOk) = pulseInfo.mxv(i);
 end
 
 if (nOk)
@@ -416,9 +414,9 @@ if (nOk)
   pulseInfo2.wc = pulseInfo2.wc(1:nOk);
   pulseInfo2.w0 = pulseInfo2.w0(1:nOk);
   pulseInfo2.w1 = pulseInfo2.w1(1:nOk);
-  pulseInfo2.aven = pulseInfo2.aven(1:nOk);
+  %pulseInfo2.aven = pulseInfo2.aven(1:nOk);
   pulseInfo2.x = pulseInfo2.x(1:nOk);
-  pulseInfo2.mxv = pulseInfo2.mxv(1:nOk);
+  %pulseInfo2.mxv = pulseInfo2.mxv(1:nOk);
 end
 
 if pulseInfo2.w0==0;

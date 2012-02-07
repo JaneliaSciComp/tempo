@@ -28,22 +28,24 @@ noise_cutoff = presumptive_noise_mean + (presumptive_noise_SD * cutoff_sd);
 %get indices of ssf.A ? noise_cutoff
  
 A_noise_indices = find(ssf.summedPower<noise_cutoff);
- 
-noise = [];
-length_total_sample = size(ssf.t,2);
-for segment = A_noise_indices
-    if length(noise) < (300 * ssf.fs)
-    %skip segment 1 and last because range overlaps extremes of sample. Could add code to handle these times.
-        if segment ~= 1 || segment ~= length_total_sample
-            start_sample=round((segment * ssf.dS - ssf.dS/2) * ssf.fs)+1;
-            stop_sample=round((segment * ssf.dS + ssf.dS/2) * ssf.fs);
-            sample_noise = d(start_sample:stop_sample);
-            noise = cat(1,noise,sample_noise);
-        end
-    
-    end
+%skip segment 1 and last because range overlaps extremes of sample. Could add code to handle these times.
+A_noise_indices = A_noise_indices(2:end-1);
+%take only first 300 samples max for noise
+if length(A_noise_indices) >300
+    A_noise_indices = A_noise_indices(1:300);
 end
- 
+noise =zeros(300*ssf.fs,1);
+for i = 1:length(A_noise_indices)
+    segment = A_noise_indices(i);
+    start_sample=round((segment * ssf.dS - ssf.dS/2) * ssf.fs)+1;
+    stop_sample=round((segment * ssf.dS + ssf.dS/2) * ssf.fs);
+    sample_noise = d(start_sample:stop_sample);
+    start_in_noise = (i-1) * length(sample_noise) + 1;
+    stop_in_noise = i *length(sample_noise);
+    noise(start_in_noise:stop_in_noise) = sample_noise;
+end
+noise_end = find(noise >0,1,'last');
+noise = noise(1:noise_end);
  
 xempty = noise;
 
