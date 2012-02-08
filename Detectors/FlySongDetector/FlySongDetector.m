@@ -18,11 +18,12 @@ classdef FlySongDetector < FeatureDetector
         
         % Pulse song properties
         putativePulseFudge = 1.3;   % expand putative pulse by this number of steps on either side
-        pulseMaxGapSize = 5;       % combine putative pulse if within this step size. i.e. this # * step_size in ms
+        pulseMaxGapSize = 5;        % combine putative pulse if within this step size. i.e. this # * step_size in ms
         ipiMin = 200;               % lowIPI: estimate of a very low IPI (even, rounded)  (Fs/50)
         ipiMax = 2000;              % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse) (Fs/5)
         pulseMaxScale = 700;        % if best matched scale is greater than this frequency, then don't include pulse as true pulse
         pulseMinDist = 200;         % Fs/40, if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
+        pulseMinHeight = 30;
         
         backgroundNoise;
         backgroundSSF;
@@ -60,7 +61,7 @@ classdef FlySongDetector < FeatureDetector
         function s = settingNames(~)
             s = {'taperTBP', 'taperNum', 'windowLength', 'windowStepSize', 'pValue', ...
                  'sineFreqMin', 'sineFreqMax', 'sineGapMaxPercent', 'sineEventsMin', ...
-                 'putativePulseFudge', 'pulseMaxGapSize', 'ipiMin', 'ipiMax', 'pulseMaxScale'};
+                 'putativePulseFudge', 'pulseMaxGapSize', 'ipiMin', 'ipiMax', 'pulseMaxScale', 'pulseMinHeight'};
         end
         
         
@@ -133,7 +134,7 @@ classdef FlySongDetector < FeatureDetector
                 
                 %parameters for winnowing pulses: 
                 %first winnow: (returns pulseInfo)
-                h = 6;                                      %factor times the mean of xempty - only pulses larger than this amplitude are counted as true pulses
+                h = obj.pulseMinHeight;                     %factor times the mean of xempty - only pulses larger than this amplitude are counted as true pulses
                 
                 %second winnow: (returns pulseInfo2)
                 i = obj.ipiMax;                             % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse)
