@@ -37,6 +37,15 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     % Choose default command line output for FlySongAnalysis
     handles.output = hObject;
     
+    %% Add a right-aligned text field in the toolbar to show the current time and selection.
+    toolbarSize = length(get(handles.toolbar, 'Children'));
+    jToolbar = get(get(handles.toolbar, 'JavaContainer'), 'ComponentPeer');
+    jToolbar.add(javax.swing.Box.createHorizontalGlue());
+    handles.timeLabel = javax.swing.JLabel('');
+    jToolbar.add(handles.timeLabel, toolbarSize + 7);
+    jToolbar.repaint;
+    jToolbar.revalidate;
+   
     %% Insert a splitter at the top level
     set(handles.videoGroup, 'Units', 'normalized');
     set(handles.audioGroup, 'Units', 'normalized');
@@ -352,9 +361,33 @@ function syncGUIWithTime(handles)
     
     set(handles.timeSlider, 'Value', handles.currentTime);
     
+    % Display the current time and selection in the toolbar text field.
+    if handles.selectedTime(1) == handles.selectedTime(2)
+        timeString = secondstr(handles.currentTime);
+        timeToolTip = '';
+    else
+        timeString = [secondstr(handles.currentTime) ' [' secondstr(handles.selectedTime(1)) '-' secondstr(handles.selectedTime(2)) ']'];
+        timeToolTip = [num2str(handles.selectedTime(2) - handles.selectedTime(1)) ' seconds'];
+    end
+    handles.timeLabel.setText(timeString);
+    handles.timeLabel.setToolTipText(timeToolTip);
+    
     guidata(handles.figure1, handles);
     
     drawnow
+end
+
+
+function s = secondstr(seconds)
+    if seconds < 60
+        s = sprintf(':%02.2f', seconds);
+    elseif seconds < 60 * 60
+        s = sprintf('%d:%02.2f', floor(seconds / 60), mod(seconds, 60));
+    elseif seconds < 60 * 60 * 24
+        s = sprintf('%d:%02d:%02d', floor(seconds / 60 / 60), mod(floor(seconds / 60), 60), mod(floor(seconds), 60));
+    else
+        s = '';
+    end
 end
 
 
