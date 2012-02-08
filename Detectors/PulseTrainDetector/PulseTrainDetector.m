@@ -46,6 +46,7 @@ classdef PulseTrainDetector < FeatureDetector
             pulses = obj.baseReporter.features(obj.pulseFeatureType);
             pulseTimes = arrayfun(@(x) x.sampleRange(1), pulses);
             
+            obj.updateProgress('Looking for pulse trains...');
             startPulse = 1;
             for i = 2:length(pulseTimes)
                 if pulseTimes(i) - pulseTimes(i-1) > obj.maxIPI || i == length(pulseTimes)
