@@ -36,7 +36,7 @@ classdef VCodeImporter < FeatureImporter
         
         function obj = VCodeImporter(recording, featuresFilePath)
             obj = obj@FeatureImporter(recording, featuresFilePath);
-            obj.name = 'Fly Song Importer';
+            obj.name = 'VCode Importer';
         end
         
         

@@ -7,7 +7,7 @@ classdef NoldusImporter < FeatureImporter
     methods(Static)
         
         function n = typeName()
-            n = 'VCode';
+            n = 'Noldus';
         end
         
         function c = canImportFromPath(featuresFilePath)
@@ -40,7 +40,7 @@ classdef NoldusImporter < FeatureImporter
         
         function obj = NoldusImporter(recording, featuresFilePath)
             obj = obj@FeatureImporter(recording, featuresFilePath);
-            obj.name = 'Fly Song Importer';
+            obj.name = 'Noldus Importer';
         end
         
         
