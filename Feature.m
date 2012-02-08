@@ -3,6 +3,7 @@ classdef Feature < dynamicprops
     properties
         type
         sampleRange
+        contextualMenu
     end
     
     

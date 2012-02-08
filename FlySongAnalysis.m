@@ -378,19 +378,6 @@ function syncGUIWithTime(handles)
 end
 
 
-function s = secondstr(seconds)
-    if seconds < 60
-        s = sprintf(':%02.2f', seconds);
-    elseif seconds < 60 * 60
-        s = sprintf('%d:%02.2f', floor(seconds / 60), mod(seconds, 60));
-    elseif seconds < 60 * 60 * 24
-        s = sprintf('%d:%02d:%02d', floor(seconds / 60 / 60), mod(floor(seconds / 60), 60), mod(floor(seconds), 60));
-    else
-        s = '';
-    end
-end
-
-
 function newHandles = updateVideo(handles)
     if isfield(handles, 'video')
         % Display the current frame of video.
@@ -547,7 +534,7 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                 
                 featureTypes = reporter.featureTypes;
                 
-                % First gray out areas that haven't been detected.
+                % Indicate the time spans in which feature detection has occurred for each reporter.
                 lastTime = 0.0;
                 if isempty(featureTypes)
                     height = 0.5;
@@ -571,6 +558,9 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                     if lastTime < handles.maxMediaTime
                         timeRangeRects{end + 1} = rectangle('Position', [lastTime vertPos + 0.5 handles.maxMediaTime - lastTime height + 0.5], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'UIContextMenu', reporter.contextualMenu); %#ok<AGROW>
                     end
+                elseif isa(reporter, 'FeatureImporter')
+                    % Importers cover all time spans.
+                    timeRangeRects{end + 1} = rectangle('Position', [timeRange(1) vertPos + 0.5 timeRange(2) height + 0.5], 'FaceColor', 'white', 'EdgeColor', 'none', 'UIContextMenu', reporter.contextualMenu); %#ok<AGROW>
                 end
                 
                 % Draw the feature type names.
@@ -586,10 +576,21 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                     for feature = features
                         if feature.sampleRange(1) <= timeRange(2) && feature.sampleRange(2) >= timeRange(1)
                             y = vertPos + find(strcmp(featureTypes, feature.type));
+                            if isempty(feature.contextualMenu)
+                                if feature.sampleRange(1) == feature.sampleRange(2)
+                                    label = [feature.type ' @ ' secondstr(feature.sampleRange(1))];
+                                else
+                                    label = [feature.type ' @ ' secondstr(feature.sampleRange(1)) ' - ' secondstr(feature.sampleRange(2))];
+                                end
+                                feature.contextualMenu = uicontextmenu();
+                                uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
+                                uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', {@showFeatureProperties, feature}, 'Separator', 'on');
+                                uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', {@removeFeature, feature}, 'Separator', 'off');
+                            end
                             if feature.sampleRange(1) == feature.sampleRange(2)
-                                text(feature.sampleRange(1), y, 'x', 'HorizontalAlignment', 'center');
+                                text(feature.sampleRange(1), y, 'x', 'HorizontalAlignment', 'center', 'UIContextMenu', feature.contextualMenu);
                             else
-                                rectangle('Position', [feature.sampleRange(1), y - 0.25, feature.sampleRange(2) - feature.sampleRange(1), 0.5], 'FaceColor', 'b');
+                                rectangle('Position', [feature.sampleRange(1), y - 0.25, feature.sampleRange(2) - feature.sampleRange(1), 0.5], 'FaceColor', 'b', 'UIContextMenu', feature.contextualMenu);
                             end
                         end
                     end
@@ -627,6 +628,28 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
     end
     
     newHandles = handles;
+end
+      
+
+function showFeatureProperties(~, ~, feature)
+    msg = ['Properties:' char(10) char(10)];
+    props = sort(properties(feature));
+    ignoreProps = {'type', 'sampleRange', 'contextualMenu'};
+    for i = 1:length(props)
+        if ~ismember(props{i}, ignoreProps)
+            value = feature.(props{i});
+            if isnumeric(value)
+                value = num2str(value);
+            end
+            msg = [msg props{i} ' = ' value char(10)]; %#ok<AGROW>
+        end
+    end
+    msgbox(msg, 'Feature Properties');
+end
+      
+
+function removeFeature(feature) %#ok<INUSD>
+    warning('FlySong:NotImplemented', 'Feature removal has not yet been implemented.');
 end
 
 
@@ -675,11 +698,23 @@ end
 
 %% Features contextual menus callbacks
 
-function enableDetectorMenuItems(hObject, ~, detector)
+
+function addContextualMenu(reporter)
+    % Create the contextual menu for this detector.
+    reporter.contextualMenu = uicontextmenu('Callback', {@enableReporterMenuItems, reporter});
+    uimenu(reporter.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', reporter.name, 'Enable', 'off');
+    uimenu(reporter.contextualMenu, 'Tag', 'showReporterSettingsMenuItem', 'Label', 'Show Reporter Settings', 'Callback', {@showReporterSettings, reporter}, 'Separator', 'on');
+    uimenu(reporter.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem', 'Label', 'Detect Features in Selection', 'Callback', {@detectFeaturesInSelection, reporter});
+    uimenu(reporter.contextualMenu, 'Tag', 'saveDetectedFeaturesMenuItem', 'Label', 'Save Detected Features...', 'Callback', {@saveDetectedFeatures, reporter});
+    uimenu(reporter.contextualMenu, 'Tag', 'removeReporterMenuItem', 'Label', 'Remove Reporter...', 'Callback', {@removeReporter, reporter}, 'Separator', 'on');
+end
+
+
+function enableReporterMenuItems(hObject, ~, reporter)
     handles = guidata(hObject);
     
     % Enable or disable 'Detect Features in Selection' item in contextual menu based on whether there is a selection.
-    menuItem = findobj(detector.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem');
+    menuItem = findobj(reporter.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem');
     if handles.selectedTime(2) == handles.selectedTime(1)
         set(menuItem, 'Enable', 'off');
     else
@@ -688,8 +723,8 @@ function enableDetectorMenuItems(hObject, ~, detector)
 end
 
 
-function showDetectorSettings(~, ~, detector)
-    detector.showSettings();
+function showReporterSettings(~, ~, reporter)
+    reporter.showSettings();
 end
 
 
@@ -713,14 +748,15 @@ function detectFeaturesInSelection(hObject, ~, detector)
 end
 
 
-function removeDetector(hObject, ~, detector)
-    answer = questdlg('Are you sure you wish to remove this detector?', 'Removing Detector', 'Cancel', 'Remove', 'Cancel');
+function removeReporter(hObject, ~, reporter)
+    answer = questdlg('Are you sure you wish to remove this reporter?', 'Removing Reporter', 'Cancel', 'Remove', 'Cancel');
     if strcmp(answer, 'Remove')
         handles = guidata(hObject);
 
         for i = 1:length(handles.reporters)
-            if handles.reporters{i} == detector
+            if handles.reporters{i} == reporter
                 handles.reporters(i) = [];
+                break;
             end
         end
 
@@ -807,7 +843,7 @@ function openRecordingCallback(~, ~, handles)
                         try
                             n = importer.importFeatures();
                             importer.endProgress();
-
+                            
                             if n == 0
                                 waitfor(msgbox('No features were imported.', handles.importerTypeNames{index}, 'warn', 'modal'));
                             else
@@ -815,13 +851,15 @@ function openRecordingCallback(~, ~, handles)
                                 handles.audio.addReporter(importer);
                                 guidata(handles.figure1, handles);
                             end
-
+                            
                             syncGUIWithTime(handles);
                         catch ME
                             waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', handles.importerTypeNames{index}, 'error', 'modal'));
                             importer.endProgress();
                             rethrow(ME);
                         end
+                        
+                        addContextualMenu(importer);
                     end
                 end
             catch ME
@@ -959,13 +997,7 @@ function detectFeaturesCallback(~, ~, handles)
             detector = constructor(handles.audio);
             
             if detector.editSettings()
-                % Create the contextual menu for this detector.
-                detector.contextualMenu = uicontextmenu('Callback', {@enableDetectorMenuItems, detector});
-                uimenu(detector.contextualMenu, 'Tag', 'detectorNameMenuItem', 'Label', detector.name, 'Enable', 'off');
-                uimenu(detector.contextualMenu, 'Tag', 'showDetectorSettingsMenuItem', 'Label', 'Show Detector Settings', 'Callback', {@showDetectorSettings, detector}, 'Separator', 'on');
-                uimenu(detector.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem', 'Label', 'Detect Features in Selection', 'Callback', {@detectFeaturesInSelection, detector});
-                uimenu(detector.contextualMenu, 'Tag', 'saveDetectedFeaturesMenuItem', 'Label', 'Save Detected Features...', 'Callback', {@saveDetectedFeatures, detector});
-                uimenu(detector.contextualMenu, 'Tag', 'removeDetectorMenuItem', 'Label', 'Remove Detector...', 'Callback', {@removeDetector, detector}, 'Separator', 'on');
+                addContextualMenu(detector);
                 
                 detector.startProgress();
                 try
@@ -1139,7 +1171,7 @@ function audioGroup_ResizeFcn(~, ~, handles)
         set(handles.timeSlider, 'Position',         [1      0           w-ss+1  ss]);
     else % just show the oscillogram
         h1 = uint16((h - ss) / 1) - 1;
-        hr = h - ss - (h1 + 1) + 1;
+        hr = h - ss - (h1 + 1) + 1; %#ok<NASGU>
         
         set(handles.oscillogram, 'Position',        [1      ss          w-ss    h-ss]);
         set(handles.autoGainCheckBox, 'Position',   [w-ss-1 h-16+1      ss+1    ss]);
