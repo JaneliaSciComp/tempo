@@ -28,6 +28,12 @@ classdef FeatureReporter < handle
             n = 'Feature';
         end
         
+        function ft = possibleFeatureTypes()
+            % Return a list of the types of features this reporter can report.
+            
+            ft = {};
+        end
+        
         function initialize
             % Perform any set up for all instances of this detector type.
         end
@@ -69,6 +75,7 @@ classdef FeatureReporter < handle
         
         
         function ft = featureTypes(obj)
+            % Return the list of feature types that are being reported.  (a subset of the list returned by possibleFeatureTypes)
             % The list of types could be cached but this code is pretty fast.
             f = [obj.featureList{1:obj.featureCount}];
             ft = unique({f.type});

@@ -13,7 +13,7 @@ classdef Recording < handle
     
     
     properties (Access = private)
-        detectorList = {};
+        reporterList = {};
     end
     
     
@@ -56,21 +56,21 @@ classdef Recording < handle
         end
         
         
-        function addDetector(obj, detector)
-            obj.detectorList{end + 1} = detector;
+        function addReporter(obj, reporter)
+            obj.reporterList{end + 1} = reporter;
         end
         
         
-        function removeDetector(obj, detector)
-            index = find(obj.detectorList == detector);
-            obj.detectorList{index} = []; %#ok<FNDSB>
+        function removeReporter(obj, reporter)
+            index = find(obj.reporterList == reporter);
+            obj.reporterList{index} = []; %#ok<FNDSB>
         end
         
         
-        function d = detectors(obj)
+        function d = reporters(obj)
             % This function allows one detector to use the results of another, e.g. detecting pulse trains from a list of pulses.
             
-            d = obj.detectorList;
+            d = obj.reporterList;
         end
         
     end

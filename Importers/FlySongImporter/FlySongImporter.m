@@ -10,6 +10,10 @@ classdef FlySongImporter < FeatureImporter
             n = 'Fly Song';
         end
         
+        function ft = possibleFeatureTypes()
+            ft = {'Sine Song', 'Pulse'};
+        end
+        
         function initialize()
             classFile = mfilename('fullpath');
             parentDir = fileparts(classFile);

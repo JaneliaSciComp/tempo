@@ -811,7 +811,8 @@ function openRecordingCallback(~, ~, handles)
                             if n == 0
                                 waitfor(msgbox('No features were imported.', handles.importerTypeNames{index}, 'warn', 'modal'));
                             else
-                                handles.reporters{numel(handles.reporters) + 1, 1} = importer;
+                                handles.reporters{numel(handles.reporters) + 1, 1} = importer;  %TODO: just use handles.audio.reporters() instead?
+                                handles.audio.addReporter(importer);
                                 guidata(handles.figure1, handles);
                             end
 
@@ -978,8 +979,8 @@ function detectFeaturesCallback(~, ~, handles)
                     if n == 0
                         waitfor(msgbox('No features were detected.', handles.detectorTypeNames{index}, 'warn', 'modal'));
                     else
-                        handles.reporters{numel(handles.reporters) + 1, 1} = detector;  %TODO: just use handles.audio.detectors() instead?
-                        handles.audio.addDetector(detector);
+                        handles.reporters{numel(handles.reporters) + 1, 1} = detector;  %TODO: just use handles.audio.reporters() instead?
+                        handles.audio.addReporter(detector);
                         guidata(handles.figure1, handles);
                     end
                     
