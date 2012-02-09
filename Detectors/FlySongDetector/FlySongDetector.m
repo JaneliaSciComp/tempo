@@ -118,7 +118,7 @@ classdef FlySongDetector < FeatureDetector
             cutoff_quantile = 0.8;
             [putativePulse] = putativepulse2(songSSF, putativeSine, obj.backgroundSSF, cutoff_quantile, obj.putativePulseFudge, obj.pulseMaxGapSize);
             
-            clear songSSF putativeSine
+            clear putativeSine
             
             if numel(putativePulse.start) > 0 && ...
                (numel(putativePulse.start) <= 1000 || strcmp(questdlg(['More than 1000 putative pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Fly Song Analysis', 'No', 'Yes', 'Yes'), 'Yes'))
@@ -148,9 +148,14 @@ classdef FlySongDetector < FeatureDetector
             
             clear putativePulse
             
-            obj.updateProgress('Running multitaper analysis on pulse-masked signal...', 6/9)
-            maskedAudioData = pulse_mask(audioData, pulses);
-            maskedSSF = sinesongfinder(maskedAudioData, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue, obj.lowFreqCutoff, obj.highFreqCutoff);
+            if isfield(pulses, 'x')
+                obj.updateProgress('Running multitaper analysis on pulse-masked signal...', 6/9)
+                maskedAudioData = pulse_mask(audioData, pulses);
+                maskedSSF = sinesongfinder(maskedAudioData, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue, obj.lowFreqCutoff, obj.highFreqCutoff);
+                clear maskedAudioData
+            else
+                maskedSSF = songSSF;
+            end
             
             obj.updateProgress('Finding putative sine and power...', 7/9)
             maskedSine = lengthfinder4(maskedSSF, obj.sineFreqMin, obj.sineFreqMax, obj.sineGapMaxPercent, obj.sineEventsMin);
@@ -178,17 +183,19 @@ classdef FlySongDetector < FeatureDetector
                 n = n + size(winnowedSine.start, 1);
             end
             
-            for i = 1:length(pulses.x)
-                x = timeRange(1) + pulses.wc(i) / obj.recording.sampleRate;
-                a = timeRange(1) + pulses.w0(i) / obj.recording.sampleRate;
-                b = timeRange(1) + pulses.w1(i) / obj.recording.sampleRate;
-                obj.addFeature(Feature('Pulse', x, ...
-                                       'pulseWindow', [a b], ...
-                                       'dogOrder', pulses.dog(i), ...
-                                       'frequencyAtMax', pulses.fcmx(i), ...
-                                       'scaleAtMax', pulses.scmx(i)));
+            if isfield(pulses, 'x')
+                for i = 1:length(pulses.x)
+                    x = timeRange(1) + pulses.wc(i) / obj.recording.sampleRate;
+                    a = timeRange(1) + pulses.w0(i) / obj.recording.sampleRate;
+                    b = timeRange(1) + pulses.w1(i) / obj.recording.sampleRate;
+                    obj.addFeature(Feature('Pulse', x, ...
+                                           'pulseWindow', [a b], ...
+                                           'dogOrder', pulses.dog(i), ...
+                                           'frequencyAtMax', pulses.fcmx(i), ...
+                                           'scaleAtMax', pulses.scmx(i)));
+                end
+                n = n + length(pulses.x);
             end
-            n = n + length(pulses.x);
             
             % TBD: Is there any value in holding on to the winnowedSine, putativePulse or pulses structs?
             %      They could be set as properties of the detector...
