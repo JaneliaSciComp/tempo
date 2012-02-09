@@ -58,6 +58,12 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     set(handles.videoGroup, 'Parent', handles.leftSplit, 'Position', [0 0 1 1]);
     set(handles.audioGroup, 'Parent', handles.rightSplit, 'Position', [0 0 1 1]);
     
+    try
+        handles.mainSplitter.JavaComponent.getComponent(0).doClick();
+    catch ME
+        warning('FlySong:HideVideoPaneFailed', 'Could not hide the video pane. (%s)', ME.message);
+    end
+    
     %% Populate the list of detectors from the 'Detectors' folder.
     if isdeployed && exist(fullfile(ctfroot, 'Detectors'), 'dir')
         % Look for the detectors in the CTF archive.
@@ -644,12 +650,15 @@ function showFeatureProperties(~, ~, feature)
             msg = [msg props{i} ' = ' value char(10)]; %#ok<AGROW>
         end
     end
-    msgbox(msg, 'Feature Properties');
+    msgbox(msg, 'Feature Properties', 'modal');
 end
       
 
-function removeFeature(feature) %#ok<INUSD>
-    warning('FlySong:NotImplemented', 'Feature removal has not yet been implemented.');
+function removeFeature(~, ~, feature) %#ok<INUSD>
+    answer = questdlg('Are you sure you wish to remove this feature?', 'Removing Feature', 'Cancel', 'Remove', 'Cancel');
+    if strcmp(answer, 'Remove')
+        warning('FlySong:NotImplemented', 'Feature removal has not yet been implemented.');
+    end
 end
 
 
@@ -880,6 +889,15 @@ function openRecordingCallback(~, ~, handles)
                     audioChanged = true;
                 elseif rec.isVideo
                     setVideoRecording(rec);
+                    
+                    % Make sure the video pane is showing.
+                    try
+                        if ~handles.mainSplitter.JavaComponent.getComponent(0).isVisible
+                            handles.mainSplitter.JavaComponent.getComponent(1).doClick();
+                        end
+                    catch ME
+                        warning('FlySong:ShowVideoPaneFailed', 'Could not show the video pane. (%s)', ME.message);
+                    end
                 end
             catch ME
                 warndlg(['Error opening media file:\n\n' getReport(ME)]);
@@ -1199,22 +1217,24 @@ function saveScreenShotCallback(~, ~, handles)
                                       '*.jpg','JPEG format (*.jpg)'}, ...
                                      'Select an audio or video file to analyze');
     
-    % Determine the list of axes to export.
-    axes = [handles.oscillogram];
-    if handles.showFeatures
-        axes(end+1) = handles.features;
+    if ~isnumeric(fileName)
+        % Determine the list of axes to export.
+        axes = [handles.oscillogram];
+        if handles.showFeatures
+            axes(end+1) = handles.features;
+        end
+        if handles.showSpectrogram
+            axes(end+1) = handles.spectrogram;
+        end
+        
+        % Hide the selection for the exported figure.
+        handles.showCurrentSelection = false;
+        syncGUIWithTime(handles);
+        
+        export_fig(fullfile(pathName, fileName), '-painters', axes);
+        
+        % Show the curren selection again.
+        handles.showCurrentSelection = true;
+        syncGUIWithTime(handles);
     end
-    if handles.showSpectrogram
-        axes(end+1) = handles.spectrogram;
-    end
-    
-    % Hide the selection for the exported figure.
-    handles.showCurrentSelection = false;
-    syncGUIWithTime(handles);
-    
-    export_fig(fullfile(pathName, fileName), '-painters', axes);
-    
-    % Show the curren selection again.
-    handles.showCurrentSelection = true;
-    syncGUIWithTime(handles);
 end
