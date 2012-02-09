@@ -170,7 +170,10 @@ classdef FlySongDetector < FeatureDetector
                 for i = 1:size(winnowedSine.start, 1)
                     x_start = timeRange(1) + winnowedSine.start(i);
                     x_stop = timeRange(1) + winnowedSine.stop(i);
-                    obj.addFeature(Feature('Sine Song', [x_start x_stop]));
+                    obj.addFeature(Feature('Sine Song', [x_start x_stop], ...
+                                           'duration', winnowedSine.length(i), ...
+                                           'meanFundFreq', winnowedSine.MeanFundFreq(i), ...
+                                           'medianFundFreq', winnowedSine.MedianFundFreq(i)));
                 end
                 n = n + size(winnowedSine.start, 1);
             end
@@ -179,7 +182,11 @@ classdef FlySongDetector < FeatureDetector
                 x = timeRange(1) + pulses.wc(i) / obj.recording.sampleRate;
                 a = timeRange(1) + pulses.w0(i) / obj.recording.sampleRate;
                 b = timeRange(1) + pulses.w1(i) / obj.recording.sampleRate;
-                obj.addFeature(Feature('Pulse', x, 'pulseWindow', [a b]));
+                obj.addFeature(Feature('Pulse', x, ...
+                                       'pulseWindow', [a b], ...
+                                       'dogOrder', pulses.dog(i), ...
+                                       'frequencyAtMax', pulses.fcmx(i), ...
+                                       'scaleAtMax', pulses.scmx(i)));
             end
             n = n + length(pulses.x);
             
