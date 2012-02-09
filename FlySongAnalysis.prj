@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <deployment-project>
-  <configuration target="target.standalone" target-name="Standalone Application" name="FlySongAnalysis" location="/Users/midgleyf/Development/Fly Song Analysis/Versioned" file="/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysis.prj" build-checksum="593574829">
+  <configuration target="target.standalone" target-name="Standalone Application" name="FlySongAnalysis" location="/Users/midgleyf/Development/Fly Song Analysis/Versioned" file="/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysis.prj" build-checksum="3659919565">
     <param.project.name>/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysis.prj</param.project.name>
     <param.target.type>Standalone Application</param.target.type>
     <param.appname>FlySongAnalysis</param.appname>
@@ -63,11 +63,14 @@
       <file>${PROJECT_ROOT}/Detectors</file>
       <file>${PROJECT_ROOT}/Feature.m</file>
       <file>${PROJECT_ROOT}/FeatureDetector.m</file>
+      <file>${PROJECT_ROOT}/FeatureImporter.m</file>
+      <file>${PROJECT_ROOT}/FeatureReporter.m</file>
       <file>${PROJECT_ROOT}/FlySongAnalysis.fig</file>
       <file>${PROJECT_ROOT}/Importers</file>
       <file>${PROJECT_ROOT}/Recording.m</file>
       <file>${PROJECT_ROOT}/export_fig</file>
       <file>${PROJECT_ROOT}/getRootPanel.m</file>
+      <file>${PROJECT_ROOT}/secondstr.m</file>
       <file>${PROJECT_ROOT}/uigetfile2.m</file>
       <file>${PROJECT_ROOT}/uisplitpane.m</file>
     </fileset.resources>
