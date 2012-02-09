@@ -122,7 +122,7 @@ classdef FlySongDetector < FeatureDetector
             
             if numel(putativePulse.start) > 0 && ...
                (numel(putativePulse.start) <= 1000 || strcmp(questdlg(['More than 1000 putative pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Fly Song Analysis', 'No', 'Yes', 'Yes'), 'Yes'))
-                obj.updateProgress('Detecting pulses...', 5/7)
+                obj.updateProgress('Detecting pulses...', 5/9)
                 % TBD: expose these as user-definable settings?
                 a = 100:25:750;                             % wavelet scales: frequencies examined. 
                 b = 2:3;                                    % Derivative of Gaussian wavelets examined
@@ -160,7 +160,7 @@ classdef FlySongDetector < FeatureDetector
             obj.updateProgress('Finding putative sine and power...', 7/9)
             maskedSine = lengthfinder4(maskedSSF, obj.sineFreqMin, obj.sineFreqMax, obj.sineGapMaxPercent, obj.sineEventsMin);
             
-            obj.updateProgress('Removing overlapping sine song...', 9/9)
+            obj.updateProgress('Removing overlapping sine song...', 8/9)
             % TBD: expose this as a user-definable setting?
             max_pulse_pause = 0.200; %max_pulse_pause in seconds, used to winnow apparent sine between pulses        
             if maskedSine.num_events == 0 || numel(pulses.w0) == 0 || ...
