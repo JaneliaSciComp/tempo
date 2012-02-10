@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <deployment-project>
-  <configuration target="target.standalone" target-name="Standalone Application" name="FlySongAnalysis" location="/Users/midgleyf/Development/Fly Song Analysis/Versioned" file="/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysis.prj" build-checksum="3659919565">
-    <param.project.name>/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysis.prj</param.project.name>
+  <configuration target="target.standalone" target-name="Standalone Application" name="FlySongAnalysisMac" location="/Users/midgleyf/Development/Fly Song Analysis/Versioned" file="/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysisMac.prj" build-checksum="2001099048">
+    <param.project.name>/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysisMac.prj</param.project.name>
     <param.target.type>Standalone Application</param.target.type>
     <param.appname>FlySongAnalysis</param.appname>
     <param.intermediate>${PROJECT_ROOT}/build/src</param.intermediate>
@@ -38,7 +38,6 @@
     <unset>
       <param.project.name />
       <param.target.type />
-      <param.appname />
       <param.warnings />
       <param.version />
       <param.user.only.registration />
