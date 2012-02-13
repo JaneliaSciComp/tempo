@@ -67,7 +67,15 @@ classdef FeatureDetector < FeatureReporter
             
             % Pass this detector to the GUI.
             settingsFunc = obj.settingsFunc();
-            edited = settingsFunc(obj);
+            try
+                edited = settingsFunc(obj);
+            catch ME
+                if strcmp(ME.identifier, 'MATLAB:UndefinedFunction')
+                    edited = true;
+                else
+                    rethrow(ME);
+                end
+            end
         end
         
         
@@ -77,7 +85,13 @@ classdef FeatureDetector < FeatureReporter
             
             % Pass this detector to the GUI.
             settingsFunc = obj.settingsFunc();
-            settingsFunc(obj, 'Editable', false);
+            try
+                settingsFunc(obj, 'Editable', false);
+            catch ME
+                if ~strcmp(ME.identifier, 'MATLAB:UndefinedFunction')
+                    rethrow(ME);
+                end
+            end
         end
         
         
