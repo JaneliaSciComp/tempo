@@ -235,7 +235,7 @@ pulseInfo.wc = zz; % location of the pulse peak
 pulseInfo.w0 = zz; % start of window centered at wc
 pulseInfo.w1 = zz; % end of window centered at wc
 
-pulseInfo.x = cell(1,np); % the signals themselves
+%pulseInfo.x = cell(1,np); % the signals themselves
 %pulseInfo.mxv = zz; %max voltage
 %pulseInfo.aven = zz; %power
 
@@ -287,7 +287,7 @@ for i = 1:np
    pulseInfo.w0(nOk) = pcndInfo.w0(i);
    pulseInfo.w1(nOk) = pcndInfo.w1(i);   
   
-   pulseInfo.x{nOk} = xs(w0:w1);
+   %pulseInfo.x{nOk} = xs(w0:w1);
    %pulseInfo.aven(nOk) = mean(xs(w0:w1).^2);
    %pulseInfo.mxv(nOk) = max(abs(xs(w0:w1)));   
 end
@@ -300,7 +300,7 @@ if (nOk)
   pulseInfo.w0 = pulseInfo.w0(1:nOk);
   pulseInfo.w1 = pulseInfo.w1(1:nOk);
   %pulseInfo.aven = pulseInfo.aven(1:nOk);
-  pulseInfo.x = pulseInfo.x(1:nOk);
+  %pulseInfo.x = pulseInfo.x(1:nOk);
   %pulseInfo.mxv = pulseInfo.mxv(1:nOk);
 end
 
@@ -327,7 +327,7 @@ pulseInfo2.fcmx = zz;
 pulseInfo2.wc = zz; % location of peak correlation
 pulseInfo2.w0 = zz; % start of window centered at wc
 pulseInfo2.w1 = zz; % end of window centered at wc
-pulseInfo2.x = cell(1,np); % the signals themselves
+%pulseInfo2.x = cell(1,np); % the signals themselves
 %pulseInfo2.mxv = zz;
 %pulseInfo2.aven = zz;
 
@@ -402,7 +402,7 @@ end
    pulseInfo2.wc(nOk) = pulseInfo.wc(i);
    pulseInfo2.w0(nOk) = pulseInfo.w0(i);
    pulseInfo2.w1(nOk) = pulseInfo.w1(i);   
-   pulseInfo2.x{nOk} = pulseInfo.x{i};
+   %pulseInfo2.x{nOk} = pulseInfo.x{i};
    %pulseInfo2.aven(nOk) = pulseInfo.aven(i);
    %pulseInfo2.mxv(nOk) = pulseInfo.mxv(i);
 end
@@ -415,7 +415,7 @@ if (nOk)
   pulseInfo2.w0 = pulseInfo2.w0(1:nOk);
   pulseInfo2.w1 = pulseInfo2.w1(1:nOk);
   %pulseInfo2.aven = pulseInfo2.aven(1:nOk);
-  pulseInfo2.x = pulseInfo2.x(1:nOk);
+  %pulseInfo2.x = pulseInfo2.x(1:nOk);
   %pulseInfo2.mxv = pulseInfo2.mxv(1:nOk);
 end
 
