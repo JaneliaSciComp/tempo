@@ -19,10 +19,10 @@ classdef FlySongDetector < FeatureDetector
         % Pulse song properties
         putativePulseFudge = 1.3;   % expand putative pulse by this number of steps on either side
         pulseMaxGapSize = 5;        % combine putative pulse if within this step size. i.e. this # * step_size in ms
-        ipiMin = 200;               % lowIPI: estimate of a very low IPI (even, rounded)  (Fs/50)
+        ipiMin = 100;               % lowIPI: estimate of a very low IPI (even, rounded)  (Fs/100)
         ipiMax = 2000;              % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse) (Fs/5)
         pulseMaxScale = 700;        % if best matched scale is greater than this frequency, then don't include pulse as true pulse
-        pulseMinDist = 200;         % Fs/40, if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
+        pulseMinDist = 200;         % Fs/50, if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
         pulseMinHeight = 30;
         
         backgroundNoise;
@@ -183,22 +183,20 @@ classdef FlySongDetector < FeatureDetector
                 n = n + size(winnowedSine.start, 1);
             end
             
-            if isfield(pulses, 'x')
-                for i = 1:length(pulses.x)
-                    x = timeRange(1) + pulses.wc(i) / obj.recording.sampleRate;
-                    a = timeRange(1) + pulses.w0(i) / obj.recording.sampleRate;
-                    b = timeRange(1) + pulses.w1(i) / obj.recording.sampleRate;
+            if isfield(pulses, 'wc')
+                pulseCount = length(pulses.wc);
+                for i = 1:pulseCount
+                    x = timeRange(1) + double(pulses.wc(i)) / obj.recording.sampleRate;
+                    a = timeRange(1) + double(pulses.w0(i)) / obj.recording.sampleRate;
+                    b = timeRange(1) + double(pulses.w1(i)) / obj.recording.sampleRate;
                     obj.addFeature(Feature('Pulse', x, ...
                                            'pulseWindow', [a b], ...
                                            'dogOrder', pulses.dog(i), ...
                                            'frequencyAtMax', pulses.fcmx(i), ...
                                            'scaleAtMax', pulses.scmx(i)));
                 end
-                n = n + length(pulses.x);
+                n = n + pulseCount;
             end
-            
-            % TBD: Is there any value in holding on to the winnowedSine, putativePulse or pulses structs?
-            %      They could be set as properties of the detector...
             
             obj.timeRangeDetected(timeRange);
         end
