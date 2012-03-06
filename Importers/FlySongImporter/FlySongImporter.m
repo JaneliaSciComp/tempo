@@ -55,22 +55,27 @@ classdef FlySongImporter < FeatureImporter
                 for i = 1:size(s.winnowed_sine.start, 1)
                     x_start = s.winnowed_sine.start(i);
                     x_stop = s.winnowed_sine.stop(i);
-                    obj.addFeature(Feature('Sine Song', [x_start x_stop]));
+                    obj.addFeature(Feature('Sine Song', [x_start x_stop], ...
+                                           'duration', s.winnowed_sine.length(i), ...
+                                           'meanFundFreq', s.winnowed_sine.MeanFundFreq(i), ...
+                                           'medianFundFreq', s.winnowed_sine.MedianFundFreq(i)));
                 end
                 n = n + size(s.winnowed_sine.start, 1);
             end
             
             obj.updateProgress('Adding pulse events...', 2/3)
-            for i = 1:length(s.pulseInfo2.x)
-                x = s.pulseInfo2.wc(i) / obj.recording.sampleRate;
-                a = s.pulseInfo2.w0(i) / obj.recording.sampleRate;
-                b = s.pulseInfo2.w1(i) / obj.recording.sampleRate;
-                obj.addFeature(Feature('Pulse', x));    %, 'maxVoltage', s.pulseInfo2.mxv(i), 'pulseWindow', [a b]));
+            pulseCount = length(s.pulseInfo2.wc);
+            for i = 1:pulseCount
+                x = double(s.pulseInfo2.wc(i)) / obj.recording.sampleRate;
+                a = double(s.pulseInfo2.w0(i)) / obj.recording.sampleRate;
+                b = double(s.pulseInfo2.w1(i)) / obj.recording.sampleRate;
+                obj.addFeature(Feature('Pulse', x, ...
+                                       'pulseWindow', [a b], ...
+                                       'dogOrder', s.pulseInfo2.dog(i), ...
+                                       'frequencyAtMax', s.pulseInfo2.fcmx(i), ...
+                                       'scaleAtMax', s.pulseInfo2.scmx(i)));
             end
-            n = n + length(s.pulseInfo2.x);
-            
-            % TBD: Is there any value in holding on to the winnowedSine, putativePulse or pulses structs?
-            %      They could be set as properties of the detector...
+            n = n + pulseCount;
         end
         
     end
