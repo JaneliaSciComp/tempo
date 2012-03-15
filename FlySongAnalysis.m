@@ -258,7 +258,7 @@ function playMediaCallback(hObject, ~, handles) %#ok<*DEFNU>
     
     if handles.selectedTime(1) ~= handles.selectedTime(2)
         % Only play with the selected range.
-        if handles.currentTime >= handles.selectedTime(1) && handles.currentTime < handles.selectedTime(2)
+        if handles.currentTime >= handles.selectedTime(1) && handles.currentTime < handles.selectedTime(2) - 0.1
             playRange = [handles.currentTime handles.selectedTime(2)];
         else
             playRange = [handles.selectedTime(1) handles.selectedTime(2)];
@@ -355,15 +355,17 @@ function syncGUIWithTime(handles)
             maxSample = length(handles.audio.data);
         end
         audioWindow = handles.audio.data(minSample:maxSample);
+        sampleRate = handles.audio.sampleRate;
     else
         minSample = 0;
         audioWindow = [];
+        sampleRate = 0;
     end
     
     handles = updateVideo(handles);
-    handles = updateOscillogram(handles, timeRange, audioWindow, minSample);
-    handles = updateFeatures(handles, timeRange, audioWindow, minSample);
-    handles = updateSpectrogram(handles, timeRange, audioWindow, minSample);
+    handles = updateOscillogram(handles, timeRange, audioWindow, minSample, sampleRate);
+    handles = updateFeatures(handles, timeRange, audioWindow, minSample, sampleRate);
+    handles = updateSpectrogram(handles, timeRange, audioWindow, minSample, sampleRate);
     
     set(handles.timeSlider, 'Value', handles.currentTime);
     
@@ -380,7 +382,7 @@ function syncGUIWithTime(handles)
     
     guidata(handles.figure1, handles);
     
-    drawnow
+    %drawnow
 end
 
 
@@ -412,9 +414,9 @@ function newHandles = updateVideo(handles)
 end
 
 
-function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSample)
+function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSample, sampleRate)
     if isfield(handles, 'audio')
-        currentSample = floor(handles.currentTime * handles.audio.sampleRate);
+        currentSample = floor(handles.currentTime * sampleRate);
     
         timeRangeSize = timeRange(2) - timeRange(1);
         
@@ -443,8 +445,8 @@ function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSamp
             end
             set(handles.oscillogramTimeLine, 'XData', [currentSample - minSample + 1 currentSample - minSample + 1]);
             if handles.selectedTime(1) ~= handles.selectedTime(2)
-                selectionStart = floor(min(handles.selectedTime) * handles.audio.sampleRate);
-                selectionEnd = floor(max(handles.selectedTime) * handles.audio.sampleRate);
+                selectionStart = floor(min(handles.selectedTime) * sampleRate);
+                selectionEnd = floor(max(handles.selectedTime) * sampleRate);
                 set(handles.oscillogramSelection, 'Position', [selectionStart - minSample + 1 -maxAmp selectionEnd - selectionStart maxAmp * 2]);
             end
         else
@@ -496,7 +498,7 @@ function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSamp
         if timeRangeSize < 1
             timeScale = timeScale - 1;
         end
-        tickSpacing = 10 ^ timeScale * handles.audio.sampleRate;
+        tickSpacing = 10 ^ timeScale * sampleRate;
         set(handles.oscillogram, 'XTick', tickSpacing-mod(minSample, tickSpacing):tickSpacing:windowSampleCount);
         if timeScale == 0
             string = '1 sec';
@@ -517,7 +519,7 @@ function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSamp
 end
 
 
-function newHandles = updateFeatures(handles, timeRange, ~, ~)
+function newHandles = updateFeatures(handles, timeRange, ~, ~, ~)
     % Window button callbacks can occur during the axes call.
     % The callbacks can update the handles so store the current copy.
     guidata(handles.figure1, handles)
@@ -591,7 +593,7 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~)
                                 feature.contextualMenu = uicontextmenu();
                                 uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
                                 uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', {@showFeatureProperties, feature}, 'Separator', 'on');
-                                uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', {@removeFeature, feature}, 'Separator', 'off');
+                                uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', {@removeFeature, feature, reporter}, 'Separator', 'off');
                             end
                             if feature.sampleRange(1) == feature.sampleRange(2)
                                 text(feature.sampleRange(1), y, 'x', 'HorizontalAlignment', 'center', 'UIContextMenu', feature.contextualMenu);
@@ -654,15 +656,18 @@ function showFeatureProperties(~, ~, feature)
 end
       
 
-function removeFeature(~, ~, feature) %#ok<INUSD>
+function removeFeature(hObject, ~, feature, reporter) 
     answer = questdlg('Are you sure you wish to remove this feature?', 'Removing Feature', 'Cancel', 'Remove', 'Cancel');
     if strcmp(answer, 'Remove')
-        warning('FlySong:NotImplemented', 'Feature removal has not yet been implemented.');
+        reporter.removeFeature(feature);
+        handles = guidata(hObject);
+        timeRange = displayedTimeRange(handles);
+        updateFeatures(handles, timeRange);
     end
 end
 
 
-function newHandles = updateSpectrogram(handles, ~, audioWindow, ~)
+function newHandles = updateSpectrogram(handles, ~, audioWindow, ~, sampleRate)
     set(handles.figure1, 'CurrentAxes', handles.spectrogram);
     cla;
     if handles.showSpectrogram && isfield(handles, 'audio')
@@ -683,7 +688,7 @@ function newHandles = updateSpectrogram(handles, ~, audioWindow, ~)
         end
         noverlap = ceil(window*.25);
         
-        [~, ~, ~, P] = spectrogram(audioWindow, window, noverlap, freqMin:freqStep:freqMax, handles.audio.sampleRate);
+        [~, ~, ~, P] = spectrogram(audioWindow, window, noverlap, freqMin:freqStep:freqMax, sampleRate);
         h = image(size(P, 2), size(P, 1), 10 * log10(P));
         set(h,'CDataMapping','scaled'); % (5)
         colormap('jet');
@@ -819,6 +824,14 @@ function openRecordingCallback(~, ~, handles)
             fileName = fileNames{i};
             fullPath = fullfile(pathName, fileName);
             
+            NFD = javaMethod('valueOf', 'java.text.Normalizer$Form','NFD');
+            UTF8=java.nio.charset.Charset.forName('UTF-8');
+            s = java.lang.String(fullPath);
+            sc = java.text.Normalizer.normalize(s,NFD);
+            bs = single(sc.getBytes(UTF8)');
+            bs(bs < 0) = 256 + (bs(bs < 0));
+            fullPath = char(bs);
+            
             % First check if the file can be imported by one of the feature importers.
             try
                 possibleImporters = [];
@@ -900,7 +913,8 @@ function openRecordingCallback(~, ~, handles)
                     end
                 end
             catch ME
-                warndlg(['Error opening media file:\n\n' getReport(ME)]);
+                warndlg(['Error opening media file:\n\n' ME.message]);
+                rethrow(ME);
             end
         end
         

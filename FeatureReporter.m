@@ -80,6 +80,18 @@ classdef FeatureReporter < handle
             f = [obj.featureList{1:obj.featureCount}];
             ft = unique({f.type});
         end
+        
+        
+        function removeFeature(obj, feature)
+            for i = 1:obj.featureListSize
+                if obj.featureList{i} == feature
+                    obj.featureList(i) = [];
+                    obj.featureListSize = obj.featureListSize - 1;
+                    break;
+                end
+                
+            end
+        end
     end
     
     
