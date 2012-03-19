@@ -40,7 +40,6 @@ classdef PulseTrainDetector < FeatureDetector
         
         
         function n = detectFeatures(obj, timeRange)
-            
             n = 0;
             
             pulses = obj.baseReporter.features(obj.pulseFeatureType);
@@ -50,7 +49,7 @@ classdef PulseTrainDetector < FeatureDetector
             startPulse = 1;
             for i = 2:length(pulseTimes)
                 if pulseTimes(i) - pulseTimes(i-1) > obj.maxIPI || i == length(pulseTimes)
-                    if i - startPulse + 1 >= obj.minPulses
+                    if i - startPulse >= obj.minPulses
                         ipis = pulseTimes(startPulse + 1:i - 1) - pulseTimes(startPulse:i - 2);
                         ipiMean = mean(ipis);
                         ipiStd = std(ipis);
