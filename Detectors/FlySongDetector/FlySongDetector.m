@@ -23,7 +23,7 @@ classdef FlySongDetector < FeatureDetector
         ipiMax = 2000;              % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse) (Fs/5)
         pulseMaxScale = 700;        % if best matched scale is greater than this frequency, then don't include pulse as true pulse
         pulseMinDist = 200;         % Fs/50, if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
-        pulseMinHeight = 30;
+        pulseMinHeight = 10;
         
         backgroundNoise;
         backgroundSSF;
@@ -141,7 +141,34 @@ classdef FlySongDetector < FeatureDetector
                 j = obj.pulseMaxScale;                      % if best matched scale is greater than this frequency, then don't include pulse as true pulse
                 k = obj.pulseMinDist;                       % if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
                 
-                [~, pulses, ~, ~, ~, ~, ~] = PulseSegmentation(audioData, obj.backgroundNoise.data, putativePulse, a, b, c, d, e, f, g, h, i, j, k, obj.recording.sampleRate);
+                if true
+                    [~, pulses, ~, ~, ~, ~, ~] = PulseSegmentation(audioData, obj.backgroundNoise.data, putativePulse, a, b, c, d, e, f, g, h, i, j, k, obj.recording.sampleRate);
+                else
+                    % Split and loop
+                    pulses = {};
+                    windowSamples = 4000;   %640000;
+                    windowOverlap = windowSamples / 16;
+                    windows = ceil((length(audioData) - windowOverlap) / windowSamples);
+                    for window = 1:windows
+                        startSample = max(1, (window - 1) * windowSamples - windowOverlap);
+                        endSample = min(window * windowSamples + windowOverlap, length(audioData));
+                        windowPulses = putativePulse;
+                        for pulse = 1:length(windowPulses)
+                            windowPulses(pulse).start = windowPulses(pulse).start - startSample;
+                            windowPulses(pulse).stop = windowPulses(pulse).stop - startSample;
+                        end
+                        posInd = windowPulses.start >= 0;
+                        windowPulses.start = windowPulses.start(posInd);
+                        windowPulses.stop = windowPulses.stop(posInd);
+                        [~, windowPulses, ~, ~, ~, ~, ~] = PulseSegmentation(audioData(startSample:endSample), obj.backgroundNoise.data, windowPulses, a, b, c, d, e, f, g, h, i, j, k, obj.recording.sampleRate);
+
+                        % Merge new pulses with existing.
+                        if isempty(pulses)
+                            pulses = windowPulses;
+                        else
+                        end
+                    end
+                end
             else
                 pulses = {};
             end
