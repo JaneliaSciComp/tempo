@@ -41,10 +41,12 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     toolbarSize = length(get(handles.toolbar, 'Children'));
     jToolbar = get(get(handles.toolbar, 'JavaContainer'), 'ComponentPeer');
     jToolbar.add(javax.swing.Box.createHorizontalGlue());
-    handles.timeLabel = javax.swing.JLabel('');
-    jToolbar.add(handles.timeLabel, toolbarSize + 7);
+    label = javax.swing.JLabel('');
+    jToolbar.add(label, toolbarSize + 7);
     jToolbar.repaint;
     jToolbar.revalidate;
+    handles.timeLabel = handle(label);
+    handles.timeLabelFormat = 1;    % default to displaying time in minutes and seconds
    
     %% Insert a splitter at the top level
     set(handles.videoGroup, 'Units', 'normalized');
@@ -105,6 +107,9 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     
     showSpectrogramCallback(0, 0, handles);
     
+    if ispref('FlySongAnalysis', 'MainWindowPosition')
+        set(handles.figure1, 'Position', getpref('FlySongAnalysis', 'MainWindowPosition'));
+    end
     set(handles.figure1, 'WindowButtonDownFcn', @windowButtonDownFcn);
     set(handles.figure1, 'WindowButtonMotionFcn', @windowButtonMotionFcn);
     set(handles.figure1, 'WindowButtonUpFcn', @windowButtonUpFcn);
@@ -338,6 +343,13 @@ function range = displayedTimeRange(handles)
 end
 
 
+function timeFormatChangedCallback(~, ~, handles)
+    handles.timeLabelFormat = mod(handles.timeLabelFormat + 1, 2);
+    guidata(handles.figure1, handles);
+    syncGUIWithTime(handles);
+end
+
+
 function syncGUIWithTime(handles)
     % This is the main GUI update function.
 
@@ -354,6 +366,7 @@ function syncGUIWithTime(handles)
         if maxSample > length(handles.audio.data)
             maxSample = length(handles.audio.data);
         end
+        
         audioWindow = handles.audio.data(minSample:maxSample);
         sampleRate = handles.audio.sampleRate;
     else
@@ -371,18 +384,16 @@ function syncGUIWithTime(handles)
     
     % Display the current time and selection in the toolbar text field.
     if handles.selectedTime(1) == handles.selectedTime(2)
-        timeString = secondstr(handles.currentTime);
+        timeString = secondstr(handles.currentTime, handles.timeLabelFormat);
         timeToolTip = '';
     else
-        timeString = [secondstr(handles.currentTime) ' [' secondstr(handles.selectedTime(1)) '-' secondstr(handles.selectedTime(2)) ']'];
+        timeString = [secondstr(handles.currentTime, handles.timeLabelFormat) ' [' secondstr(handles.selectedTime(1), handles.timeLabelFormat) '-' secondstr(handles.selectedTime(2), handles.timeLabelFormat) ']'];
         timeToolTip = [num2str(handles.selectedTime(2) - handles.selectedTime(1)) ' seconds'];
     end
     handles.timeLabel.setText(timeString);
     handles.timeLabel.setToolTipText(timeToolTip);
     
     guidata(handles.figure1, handles);
-    
-    %drawnow
 end
 
 
@@ -781,24 +792,82 @@ function removeReporter(hObject, ~, reporter)
 end
 
 
-function saveDetectedFeatures(~, ~, detector)
+function saveFeaturesCallback(~, ~, handles)
+    % Save the features from all of the detectors.
+    saveDetectedFeatures([], [], handles.reporters);
+end
+
+
+function saveDetectedFeatures(~, ~, detectors)
     [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'} ,'Save features as');
     
+    if ~iscell(detectors)
+        detectors = {detectors};
+    end
+    
     if ischar(fileName)
-        features = detector.features();
+        features = {};
+        for i = 1:length(detectors)
+            features = horzcat(features, detectors{i}.features()); %#ok<AGROW>
+        end
+        
         if filterIndex == 1
             % Save as a MATLAB file
             featureTypes = {features.type}; %#ok<NASGU>
             startTimes = arrayfun(@(a) a.sampleRange(1), features); %#ok<NASGU>
             stopTimes = arrayfun(@(a) a.sampleRange(2), features); %#ok<NASGU>
+                
             save(fullfile(pathName, fileName), 'features', 'featureTypes', 'startTimes', 'stopTimes');
         else
             % Save as an Excel tsv file
             fid = fopen(fullfile(pathName, fileName), 'w');
             
+            propNames = {};
+            ignoreProps = {'type', 'sampleRange', 'contextualMenu'};
+            
+            % Find all of the feature properties so we know how many columns there will be.
+            for f = 1:length(features)
+                feature = features(f);
+                props = properties(feature);
+                for p = 1:length(props)
+                    if ~ismember(props{p}, ignoreProps)
+                        propName = [feature.type ':' props{p}];
+                        if ~ismember(propName, propNames)
+                            propNames{end + 1} = propName; %#ok<AGROW>
+                        end
+                    end
+                end
+            end
+            propNames = sort(propNames);
+            
+            % Save a header row.
+            fprintf(fid, 'Type\tStart Time\tEnd Time');
+            for p = 1:length(propNames)
+                fprintf(fid, '\t%s', propNames{p});
+            end
+            fprintf(fid, '\n');
+            
             for i = 1:length(features)
                 feature = features(i);
-                fprintf(fid, '%s\t%f\t%f\n', feature.type, feature.sampleRange(1), feature.sampleRange(2));
+                fprintf(fid, '%s\t%f\t%f', feature.type, feature.sampleRange(1), feature.sampleRange(2));
+                
+                propValues = cell(1, length(propNames));
+                props = sort(properties(feature));
+                for j = 1:length(props)
+                    if ~ismember(props{j}, ignoreProps)
+                        propName = [feature.type ':' props{j}];
+                        index = strcmp(propNames, propName);
+                        value = feature.(props{j});
+                        if isnumeric(value)
+                            value = num2str(value);
+                        end
+                        propValues{index} = value;
+                    end
+                end
+                for p = 1:length(propNames)
+                    fprintf(fid, '\t%s', propValues{p});
+                end
+                fprintf(fid, '\n');
             end
 
             fclose(fid);
@@ -1010,6 +1079,10 @@ function figure1_CloseRequestFcn(hObject, ~, handles)
     if isfield(handles, 'playTimer')
         stop(handles.playTimer);
     end
+    
+    % Remember the window position.
+    setpref('FlySongAnalysis', 'MainWindowPosition', get(hObject, 'Position'));
+    
     delete(hObject);
 end
 
@@ -1087,10 +1160,10 @@ function windowButtonDownFcn(hObject, ~)
         clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
         clickedTime = clickedSample / handles.audio.sampleRate;
         if strcmp(get(gcf, 'SelectionType'), 'extend')
-            if clickedTime >= handles.selectedTime(1)
-                handles.selectedTime = [handles.selectedTime(1) clickedTime];
+            if handles.currentTime == handles.selectedTime(1) || handles.currentTime ~= handles.selectedTime(2)
+                handles.selectedTime = sort([handles.selectedTime(1) clickedTime]);
             else
-                handles.selectedTime = [clickedTime handles.selectedTime(2)];
+                handles.selectedTime = sort([clickedTime handles.selectedTime(2)]);
             end
         else
             handles.currentTime = clickedTime;
@@ -1110,7 +1183,12 @@ function windowButtonMotionFcn(hObject, ~)
         timeRange = displayedTimeRange(handles);
         clickedPoint = get(handles.oscillogram, 'CurrentPoint');
         clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
-        handles.selectedTime = [handles.selectedTime(1) clickedSample / handles.audio.sampleRate];
+        clickedTime = clickedSample / handles.audio.sampleRate;
+        if handles.currentTime == handles.selectedTime(1) || handles.currentTime ~= handles.selectedTime(2)
+            handles.selectedTime = sort([handles.selectedTime(1) clickedTime]);
+        else
+            handles.selectedTime = sort([clickedTime handles.selectedTime(2)]);
+        end
         guidata(hObject, handles);
         syncGUIWithTime(handles);
     elseif handles.showSpectrogram && isfield(handles, 'spectrogramTooltip')
@@ -1143,7 +1221,12 @@ function windowButtonUpFcn(hObject, ~)
         timeRange = displayedTimeRange(handles);
         clickedPoint = get(handles.oscillogram, 'CurrentPoint');
         clickedSample = timeRange(1) * handles.audio.sampleRate - 1 + clickedPoint(1, 1);
-        handles.selectedTime = sort([handles.selectedTime(1) clickedSample / handles.audio.sampleRate]);
+        clickedTime = clickedSample / handles.audio.sampleRate;
+        if handles.currentTime == handles.selectedTime(1) || handles.currentTime ~= handles.selectedTime(2)
+            handles.selectedTime = sort([handles.selectedTime(1) clickedTime]);
+        else
+            handles.selectedTime = sort([cilckedTime handles.selectedTime(1)]);
+        end
         handles.selectingTimeRange = false;
         guidata(hObject, handles);
         syncGUIWithTime(handles);
