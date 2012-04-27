@@ -324,6 +324,7 @@ nOk = 0;
 zz = zeros(1,np);
 pulseInfo2.dog = zz; % the DoG order at max
 pulseInfo2.fcmx = zz;
+pulseInfo2.scmx = zz;
 pulseInfo2.wc = zz; % location of peak correlation
 pulseInfo2.w0 = zz; % start of window centered at wc
 pulseInfo2.w1 = zz; % end of window centered at wc
