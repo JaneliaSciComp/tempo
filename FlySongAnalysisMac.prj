@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <deployment-project>
-  <configuration target="target.standalone" target-name="Standalone Application" name="FlySongAnalysisMac" location="/Users/midgleyf/Development/Fly Song Analysis/Versioned" file="/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysisMac.prj" build-checksum="2001099048">
+  <configuration target="target.standalone" target-name="Standalone Application" name="FlySongAnalysisMac" location="/Users/midgleyf/Development/Fly Song Analysis/Versioned" file="/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysisMac.prj" build-checksum="1224121158">
     <param.project.name>/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysisMac.prj</param.project.name>
     <param.target.type>Standalone Application</param.target.type>
     <param.appname>FlySongAnalysis</param.appname>
@@ -66,12 +66,7 @@
       <file>${PROJECT_ROOT}/FeatureReporter.m</file>
       <file>${PROJECT_ROOT}/FlySongAnalysis.fig</file>
       <file>${PROJECT_ROOT}/Importers</file>
-      <file>${PROJECT_ROOT}/Recording.m</file>
       <file>${PROJECT_ROOT}/export_fig</file>
-      <file>${PROJECT_ROOT}/getRootPanel.m</file>
-      <file>${PROJECT_ROOT}/secondstr.m</file>
-      <file>${PROJECT_ROOT}/uigetfile2.m</file>
-      <file>${PROJECT_ROOT}/uisplitpane.m</file>
     </fileset.resources>
     <fileset.package />
     <build-deliverables>
