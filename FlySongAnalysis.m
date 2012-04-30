@@ -597,9 +597,9 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~, ~)
                             y = vertPos + find(strcmp(featureTypes, feature.type));
                             if isempty(feature.contextualMenu)
                                 if feature.sampleRange(1) == feature.sampleRange(2)
-                                    label = [feature.type ' @ ' secondstr(feature.sampleRange(1))];
+                                    label = [feature.type ' @ ' secondstr(feature.sampleRange(1), handles.timeLabelFormat)];
                                 else
-                                    label = [feature.type ' @ ' secondstr(feature.sampleRange(1)) ' - ' secondstr(feature.sampleRange(2))];
+                                    label = [feature.type ' @ ' secondstr(feature.sampleRange(1), handles.timeLabelFormat) ' - ' secondstr(feature.sampleRange(2), handles.timeLabelFormat)];
                                 end
                                 feature.contextualMenu = uicontextmenu();
                                 uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
