@@ -51,7 +51,7 @@ classdef FlySongImporter < FeatureImporter
             s = load(obj.featuresFilePath, 'winnowed_sine', 'pulseInfo2');
             
             obj.updateProgress('Adding sine song events...', 1/3)
-            if ~isempty(s.winnowed_sine.events)
+            if s.winnowed_sine.num_events > 0 && ~isempty(s.winnowed_sine.events)
                 for i = 1:size(s.winnowed_sine.start, 1)
                     x_start = s.winnowed_sine.start(i);
                     x_stop = s.winnowed_sine.stop(i);
