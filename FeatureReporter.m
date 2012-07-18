@@ -4,6 +4,7 @@ classdef FeatureReporter < handle
         name;
         waitBarHandle;
         contextualMenu;
+        featuresColor = [0 0 1];
     end
     
     

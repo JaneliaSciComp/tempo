@@ -607,9 +607,9 @@ function newHandles = updateFeatures(handles, timeRange, ~, ~, ~)
                                 uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', {@removeFeature, feature, reporter}, 'Separator', 'off');
                             end
                             if feature.sampleRange(1) == feature.sampleRange(2)
-                                text(feature.sampleRange(1), y, 'x', 'HorizontalAlignment', 'center', 'UIContextMenu', feature.contextualMenu);
+                                text(feature.sampleRange(1), y, 'x', 'HorizontalAlignment', 'center', 'UIContextMenu', feature.contextualMenu, 'Color', reporter.featuresColor);
                             else
-                                rectangle('Position', [feature.sampleRange(1), y - 0.25, feature.sampleRange(2) - feature.sampleRange(1), 0.5], 'FaceColor', 'b', 'UIContextMenu', feature.contextualMenu);
+                                rectangle('Position', [feature.sampleRange(1), y - 0.25, feature.sampleRange(2) - feature.sampleRange(1), 0.5], 'FaceColor', reporter.featuresColor, 'UIContextMenu', feature.contextualMenu);
                             end
                         end
                     end
@@ -731,6 +731,7 @@ function addContextualMenu(reporter)
     uimenu(reporter.contextualMenu, 'Tag', 'showReporterSettingsMenuItem', 'Label', 'Show Reporter Settings', 'Callback', {@showReporterSettings, reporter}, 'Separator', 'on');
     uimenu(reporter.contextualMenu, 'Tag', 'detectFeaturesInSelectionMenuItem', 'Label', 'Detect Features in Selection', 'Callback', {@detectFeaturesInSelection, reporter});
     uimenu(reporter.contextualMenu, 'Tag', 'saveDetectedFeaturesMenuItem', 'Label', 'Save Detected Features...', 'Callback', {@saveDetectedFeatures, reporter});
+    uimenu(reporter.contextualMenu, 'Tag', 'setFeaturesColorMenuItem', 'Label', 'Set Features Color...', 'Callback', {@setFeaturesColor, reporter});
     uimenu(reporter.contextualMenu, 'Tag', 'removeReporterMenuItem', 'Label', 'Remove Reporter...', 'Callback', {@removeReporter, reporter}, 'Separator', 'on');
 end
 
@@ -769,6 +770,17 @@ function detectFeaturesInSelection(hObject, ~, detector)
     catch ME
         detector.endProgress();
         rethrow(ME);
+    end
+end
+
+
+function setFeaturesColor(hObject, ~, reporter)
+    handles = guidata(hObject);
+    
+    newColor = uisetcolor(reporter.featuresColor);
+    if length(newColor) == 3
+        reporter.featuresColor = newColor;
+        syncGUIWithTime(handles);
     end
 end
 
@@ -820,7 +832,8 @@ function saveDetectedFeatures(~, ~, detectors, fileName)
             featureTypes = {features.type}; %#ok<NASGU>
             startTimes = arrayfun(@(a) a.sampleRange(1), features); %#ok<NASGU>
             stopTimes = arrayfun(@(a) a.sampleRange(2), features); %#ok<NASGU>
-                
+            
+            % TODO: also save audio recording path, reporter properties, ???
             save(fullfile(pathName, fileName), 'features', 'featureTypes', 'startTimes', 'stopTimes');
         else
             % Save as an Excel tsv file
