@@ -794,12 +794,16 @@ end
 
 function saveFeaturesCallback(~, ~, handles)
     % Save the features from all of the detectors.
-    saveDetectedFeatures([], [], handles.reporters);
+    saveDetectedFeatures([], [], handles.reporters, handles.audio.name);
 end
 
 
-function saveDetectedFeatures(~, ~, detectors)
-    [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'} ,'Save features as');
+function saveDetectedFeatures(~, ~, detectors, fileName)
+    if nargin < 4
+        fileName = 'Fly song';
+    end
+    
+    [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', [fileName ' features.mat']);
     
     if ~iscell(detectors)
         detectors = {detectors};
