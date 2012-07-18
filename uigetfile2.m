@@ -25,7 +25,14 @@ function [fileName, pathName] = uigetfile2(title)
         end
         
         if iscell(fileName) || ischar(fileName)
-            lastChosenPath = pathName;
+            % Handle special characters in the path.
+            NFD = javaMethod('valueOf', 'java.text.Normalizer$Form','NFD');
+            UTF8=java.nio.charset.Charset.forName('UTF-8');
+            s = java.lang.String(pathName);
+            sc = java.text.Normalizer.normalize(s,NFD);
+            bs = single(sc.getBytes(UTF8)');
+            bs(bs < 0) = 256 + (bs(bs < 0));
+            lastChosenPath = char(bs);
         end
     end
 end
