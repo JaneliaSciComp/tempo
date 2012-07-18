@@ -91,6 +91,9 @@ classdef FlySongDetector < FeatureDetector
             if dataRange(2) > length(obj.recording.data)
                 dataRange(2) = length(obj.recording.data);
             end
+            if dataRange(2) - dataRange(1) < 4096
+                error('FlySongDetector:SampleTooSmall', 'The selected range is too small for detection.');
+            end
             audioData = obj.recording.data(dataRange(1):dataRange(2));
             
             obj.updateProgress('Running multitaper analysis on signal...', 0/9)
