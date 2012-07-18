@@ -990,6 +990,8 @@ function openRecordingCallback(~, ~, handles)
         if audioChanged
             handles = guidata(handles.figure1);
             
+            set(handles.figure1, 'Name', ['Fly Song Analysis: ' handles.audio.name]);
+            
             % Inform all detectors that the audio recording changed.
             for i = 1:length(handles.reporters)
                 handles.reporters{i}.setRecording(handles.audio);
@@ -1123,7 +1125,8 @@ function detectFeaturesCallback(~, ~, handles)
                     
                     syncGUIWithTime(handles);
                 catch ME
-                    waitfor(msgbox('An error occurred while detecting features.  (See the command window for details.)', handles.detectorTypeNames{index}, 'error', 'modal'));
+                    waitfor(msgbox(['An error occurred while detecting features:' char(10) char(10) ME.message char(10) char(10) '(See the command window for details.)'], ...
+                                   handles.detectorTypeNames{index}, 'error', 'modal'));
                     detector.endProgress();
                     rethrow(ME);
                 end
