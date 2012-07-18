@@ -49,6 +49,7 @@ classdef Recording < handle
                     obj.sampleRate = info.ObjInfo.SampleRate;
                     obj.data = daqread(filePath, 'Channels', channel);
                     obj.duration = length(obj.data) / obj.sampleRate;
+                    obj.name = sprintf('%s (channel %d)', obj.name, channel);
                 else
                     obj = Recording.empty();
                 end
