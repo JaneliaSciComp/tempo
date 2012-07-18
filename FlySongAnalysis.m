@@ -60,6 +60,7 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     set(handles.videoGroup, 'Parent', handles.leftSplit, 'Position', [0 0 1 1]);
     set(handles.audioGroup, 'Parent', handles.rightSplit, 'Position', [0 0 1 1]);
     
+    % Hide the video pane by default.
     try
         handles.mainSplitter.JavaComponent.getComponent(0).doClick();
     catch ME
@@ -910,6 +911,7 @@ function openRecordingCallback(~, ~, handles)
             fileName = fileNames{i};
             fullPath = fullfile(pathName, fileName);
             
+            % Handle special characters in the file name.
             NFD = javaMethod('valueOf', 'java.text.Normalizer$Form','NFD');
             UTF8=java.nio.charset.Charset.forName('UTF-8');
             s = java.lang.String(fullPath);
@@ -921,18 +923,31 @@ function openRecordingCallback(~, ~, handles)
             % First check if the file can be imported by one of the feature importers.
             try
                 possibleImporters = [];
+                audioPaths = {};
+                channels = {};
                 for j = 1:length(handles.importerClassNames)
-                    canImport = eval([handles.importerClassNames{j} '.canImportFromPath(''' strrep(fullPath, '''', '''''') ''')']);
+                    [canImport, audioPath, channel] = eval([handles.importerClassNames{j} '.canImportFromPath(''' strrep(fullPath, '''', '''''') ''')']);
                     if canImport
                         possibleImporters(end+1) = j; %#ok<AGROW>
+                        audioPaths{end + 1} = audioPath; %#ok<AGROW>
+                        channels{end + 1} = channel; %#ok<AGROW>
+                    end
+                end
+                
+                % If there is no audio file open then only importers that indicate which audio file to open can be used.
+                if ~isempty(possibleImporters) && ~isfield(handles, 'audio')
+                    inds = ~isempty(audioPaths{:});
+                    possibleImporters = possibleImporters(inds);
+                    audioPaths = audioPaths(inds);
+                    channels = channels(inds);
+                    
+                    if isempty(possibleImporters)
+                        warndlg('You must open an audio file before you can import these features.', 'Fly Song Analysis', 'modal');
+                        return
                     end
                 end
                 
                 if ~isempty(possibleImporters)
-                    if ~isfield(handles, 'audio')
-                        warndlg('You must open an audio file before you can import features.', 'Fly Song Analysis', 'modal');
-                        return
-                    end
                     index = [];
                     if length(possibleImporters) == 1
                         index = possibleImporters(1);
@@ -945,6 +960,16 @@ function openRecordingCallback(~, ~, handles)
                         end
                     end
                     if ~isempty(index)
+                        if ~isfield(handles, 'audio') && ~isempty(audioPaths{index})
+                            % Load the audio file indicated by the importer.
+                            rec = Recording(audioPaths{index}, channels{index});
+                            if rec.isAudio
+                                setAudioRecording(rec);
+                                audioChanged = true;
+                                handles = guidata(handles.figure1);
+                            end
+                        end
+                        
                         constructor = str2func(handles.importerClassNames{index});
                         importer = constructor(handles.audio, fullPath);
                         importer.startProgress();
@@ -959,8 +984,6 @@ function openRecordingCallback(~, ~, handles)
                                 handles.audio.addReporter(importer);
                                 guidata(handles.figure1, handles);
                             end
-                            
-                            syncGUIWithTime(handles);
                         catch ME
                             waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', handles.importerTypeNames{index}, 'error', 'modal'));
                             importer.endProgress();
@@ -1026,8 +1049,9 @@ function openRecordingCallback(~, ~, handles)
             end
             handles.zoom = 1.0;
             guidata(handles.figure1, handles);
-            syncGUIWithTime(handles);
         end
+        
+        syncGUIWithTime(handles);
     end
 end
 

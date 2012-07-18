@@ -20,8 +20,10 @@ classdef FlySongImporter < FeatureImporter
             addpath(genpath(fullfile(parentDir, 'chronux')));
         end
         
-        function c = canImportFromPath(featuresFilePath)
+        function [c, audioPath, channel] = canImportFromPath(featuresFilePath)
             c = false;
+            audioPath = [];
+            channel = [];
             
             if exist(featuresFilePath, 'file')
                 [~, ~, ext] = fileparts(featuresFilePath);
@@ -29,6 +31,22 @@ classdef FlySongImporter < FeatureImporter
                     fieldInfo = whos('winnowed_sine', 'pulseInfo2', '-file', featuresFilePath);
                     if length(fieldInfo) == 2
                         c = true;
+                        fieldInfo = whos('song_path', 'daq_channel', '-file', featuresFilePath);
+                        if length(fieldInfo) == 2
+                            S = load(featuresFilePath, 'song_path', 'daq_channel');
+                            [parentDir, ~, ~] = fileparts(featuresFilePath);
+                            audioPath = fullfile(parentDir, S.song_path);
+                            if ~exist(audioPath, 'file')
+                                [parentDir, ~, ~] = fileparts(parentDir);
+                                audioPath = fullfile(parentDir, S.song_path);
+                                if ~exist(audioPath, 'file')
+                                    audioPath = [];
+                                end
+                            end
+                            if ~isempty(audioPath)
+                                channel = S.daq_channel;
+                            end
+                        end
                     end
                 end
             end

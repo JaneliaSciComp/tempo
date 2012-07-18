@@ -58,10 +58,12 @@ classdef FeatureReporter < handle
         
         
         function setRecording(obj, recording)
-            obj.recording = recording;
-            obj.featureList = cell(1, 1000);
-            obj.featureListSize = 1000;
-            obj.featureCount = 0;
+            if ~isequal(recording, obj.recording)
+                obj.recording = recording;
+                obj.featureList = cell(1, 1000);
+                obj.featureListSize = 1000;
+                obj.featureCount = 0;
+            end
         end
         
         

@@ -10,8 +10,10 @@ classdef NoldusImporter < FeatureImporter
             n = 'Noldus';
         end
         
-        function c = canImportFromPath(featuresFilePath)
+        function [c, audioPath, channel] = canImportFromPath(featuresFilePath)
             c = false;
+            audioPath = [];
+            channel = [];
             
             if exist(featuresFilePath, 'file')
                 [~, ~, ext] = fileparts(featuresFilePath);

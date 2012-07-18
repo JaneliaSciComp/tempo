@@ -25,7 +25,7 @@ classdef FeatureImporter < FeatureReporter
     
     
     methods(Static, Abstract)
-        c = canImportFromPath(featuresFilePath)
+        [c, audioPath, channel] = canImportFromPath(featuresFilePath)
     end
     
     

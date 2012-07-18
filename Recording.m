@@ -39,11 +39,16 @@ classdef Recording < handle
             elseif strcmp(ext, '.daq')
                 info = daqread(filePath, 'info');
                 
-                % Ask the user which channel to open.
-                [channel, ok] = listdlg('ListString', cellfun(@(x)num2str(x), {info.ObjInfo.Channel.Index}'), ...
-                                        'PromptString', {'Choose the channel to open:', '(1-8: optical, 9: acoustic)'}, ...
-                                        'SelectionMode', 'single', ...
-                                        'Name', 'Open DAQ File');
+                if nargin > 1 && ~isempty(varargin{1})
+                    channel = varargin{1};
+                    ok = true;
+                else
+                    % Ask the user which channel to open.
+                    [channel, ok] = listdlg('ListString', cellfun(@(x)num2str(x), {info.ObjInfo.Channel.Index}'), ...
+                                            'PromptString', {'Choose the channel to open:', '(1-8: optical, 9: acoustic)'}, ...
+                                            'SelectionMode', 'single', ...
+                                            'Name', 'Open DAQ File');
+                end
                 if ok
                     obj.isAudio = true;
                     obj.sampleRate = info.ObjInfo.SampleRate;
