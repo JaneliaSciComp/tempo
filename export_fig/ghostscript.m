@@ -85,9 +85,18 @@ if ispc
         return
     end
 else
-    bin = {'/bin/gs', '/usr/bin/gs', '/usr/local/bin/gs'};
+    bin = {'/usr/bin/gs', '/usr/local/bin/gs', '/opt/local/bin/gs'};
+    existing_env = getenv('DYLD_LIBRARY_PATH');
     for a = 1:numel(bin)
         path = bin{a};
+        [parent_dir, ~, ~] = fileparts(path);
+        [grandparent_dir, ~, ~] = fileparts(parent_dir);
+        lib_dir = fullfile(grandparent_dir, 'lib');
+        if ismac
+            if isempty(strfind(existing_env, lib_dir))
+                setenv('DYLD_LIBRARY_PATH', [lib_dir ':' existing_env]);
+            end
+        end
         if check_store_gs_path(path)
             return
         end
