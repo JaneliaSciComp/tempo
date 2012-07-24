@@ -103,6 +103,9 @@ classdef FeatureReporter < handle
         function startProgress(obj)
             action = obj.actionName();
             obj.waitBarHandle = waitbar(0, action, 'Name', obj.name);
+            axesH = findobj(obj.waitBarHandle, 'type', 'axes');
+            titleH = get(axesH, 'Title');
+            set(titleH, 'FontSize', 12)
         end
         
         
