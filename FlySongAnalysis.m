@@ -1353,10 +1353,13 @@ end
 
 
 function saveScreenShotCallback(~, ~, handles)
+    % TODO: determine if Ghostscript is installed and reduce choices if not.
+    [defaultPath, defaultName, ~] = fileparts(handles.audio.filePath);
     [fileName, pathName] = uiputfile({'*.pdf','Portable Document Format (*.pdf)'; ...
                                       '*.png','PNG format (*.png)'; ...
                                       '*.jpg','JPEG format (*.jpg)'}, ...
-                                     'Select an audio or video file to analyze');
+                                     'Select an audio or video file to analyze', ...
+                                     fullfile(defaultPath, [defaultName '.pdf']));
     
     if ~isnumeric(fileName)
         % Determine the list of axes to export.
