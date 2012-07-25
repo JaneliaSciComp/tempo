@@ -4,7 +4,7 @@ classdef PulseTrainDetector < FeatureDetector
         baseReporter
         pulseFeatureType
         maxIPI = 0.1
-        minPulses = 5
+        minPulses = 3
     end
     
     
