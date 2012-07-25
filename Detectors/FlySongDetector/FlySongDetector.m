@@ -123,8 +123,7 @@ classdef FlySongDetector < FeatureDetector
             
             clear putativeSine
             
-            if numel(putativePulse.start) > 0 && ...
-               (numel(putativePulse.start) <= 1000 || strcmp(questdlg(['More than 1000 putative pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Fly Song Analysis', 'No', 'Yes', 'Yes'), 'Yes'))
+            if numel(putativePulse.start) > 0
                 obj.updateProgress('Detecting pulses...', 5/9)
                 % TBD: expose these as user-definable settings?
                 a = 100:25:750;                             % wavelet scales: frequencies examined. 
