@@ -6,7 +6,7 @@ function varargout = FlySongAnalysis(varargin)
     %      H = FLYSONGANALYSIS returns the handle to a new ANALYZER or the handle to
     %      the existing singleton*.
 
-    % Last Modified by GUIDE v2.5 11-Nov-2011 16:48:49
+    % Last Modified by GUIDE v2.5 27-Jul-2012 12:22:14
     
     if verLessThan('matlab', '7.9')
         error 'FlySongAnalysis requires MATLAB 7.9 (2009b) or later.'
@@ -95,6 +95,7 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     handles.reporters = {};
     handles.showFeatures = true;
     handles.showSpectrogram = false;
+    handles.featureTimes = [];
     
     guidata(hObject, handles);
     
@@ -673,6 +674,7 @@ function removeFeature(hObject, ~, feature, reporter)
     if strcmp(answer, 'Remove')
         reporter.removeFeature(feature);
         handles = guidata(hObject);
+        handles = updateFeatureTimes(handles);
         timeRange = displayedTimeRange(handles);
         updateFeatures(handles, timeRange);
     end
@@ -767,6 +769,8 @@ function detectFeaturesInSelection(hObject, ~, detector)
             waitfor(msgbox('No additional features were detected.', detector.typeName(), 'warn', 'modal'));
         end
         
+        handles = updateFeatureTimes(handles);
+        
         syncGUIWithTime(handles);
     catch ME
         detector.endProgress();
@@ -797,6 +801,8 @@ function removeReporter(hObject, ~, reporter)
                 break;
             end
         end
+        
+        handles = updateFeatureTimes(handles);
 
         guidata(handles.figure1, handles);
 
@@ -982,6 +988,7 @@ function openRecordingCallback(~, ~, handles)
                             else
                                 handles.reporters{numel(handles.reporters) + 1, 1} = importer;  %TODO: just use handles.audio.reporters() instead?
                                 handles.audio.addReporter(importer);
+                                handles = updateFeatureTimes(handles);
                                 guidata(handles.figure1, handles);
                             end
                         catch ME
@@ -1130,6 +1137,19 @@ function figure1_CloseRequestFcn(hObject, ~, handles)
 end
 
 
+function updatedHandles = updateFeatureTimes(handles)
+    handles.featureTimes = [];
+    for i = 1:numel(handles.reporters)
+        features = handles.reporters{i}.features();
+        for feature = features
+            handles.featureTimes(end + 1) = (feature.sampleRange(1) + feature.sampleRange(2)) / 2;
+        end
+    end
+    handles.featureTimes = sort(handles.featureTimes);
+    updatedHandles = handles;
+end
+
+
 function detectFeaturesCallback(~, ~, handles)
     if ~isfield(handles, 'audio')
         warndlg('You must open an audio file before you can detect features.', 'Fly Song Analysis', 'modal');
@@ -1163,6 +1183,8 @@ function detectFeaturesCallback(~, ~, handles)
                         handles.audio.addReporter(detector);
                         guidata(handles.figure1, handles);
                     end
+                    
+                    handles = updateFeatureTimes(handles);
                     
                     syncGUIWithTime(handles);
                 catch ME
@@ -1380,5 +1402,81 @@ function saveScreenShotCallback(~, ~, handles)
         % Show the curren selection again.
         handles.showCurrentSelection = true;
         syncGUIWithTime(handles);
+    end
+end
+
+
+function figure1_WindowKeyPressFcn(~, keyEvent, handles)
+    % Handle keyboard navigation of the timeline.
+    % Arrow keys move the display left/right by one tenth of the displayed range.
+    % Page up/down moves left/right by a full window's worth.
+    % Command+arrow keys moves to the begging/end of the timeline.
+    % Option+arrow key moves to the previous/next feature.
+    % Shift plus any of the above extends the selection.
+    % Space bar toggles play/pause of media.
+    if isfield(handles, 'audio')
+        timeChange = 0;
+        timeRange = displayedTimeRange(handles);
+        pageSize = timeRange(2) - timeRange(1);
+        stepSize = pageSize / 10;
+        shiftDown = any(ismember(keyEvent.Modifier, 'shift'));
+        altDown = any(ismember(keyEvent.Modifier, 'alt'));
+        cmdDown = any(ismember(keyEvent.Modifier, 'command'));
+        if strcmp(keyEvent.Key, 'leftarrow')
+            if cmdDown
+                timeChange = -handles.currentTime;
+            elseif altDown
+                handles = updateFeatureTimes(handles);
+                earlierFeatureTimes = handles.featureTimes(handles.featureTimes < handles.currentTime);
+                if isempty(earlierFeatureTimes)
+                    beep;
+                else
+                    timeChange = earlierFeatureTimes(end) - handles.currentTime;
+                end
+            else
+                timeChange = -stepSize;
+            end
+        elseif strcmp(keyEvent.Key, 'rightarrow')
+            if cmdDown
+                timeChange = handles.maxMediaTime - handles.currentTime;
+            elseif altDown
+                handles = updateFeatureTimes(handles);
+                laterFeatureTimes = handles.featureTimes(handles.featureTimes > handles.currentTime);
+                if isempty(laterFeatureTimes)
+                    beep;
+                else
+                    timeChange = laterFeatureTimes(1) - handles.currentTime;
+                end
+            else
+                timeChange = stepSize;
+            end
+        elseif strcmp(keyEvent.Key, 'pageup')
+            timeChange = -pageSize;
+        elseif strcmp(keyEvent.Key, 'pagedown')
+            timeChange = pageSize;
+        elseif strcmp(keyEvent.Key, 'space')
+            if isplaying(handles.audioPlayer)
+                pauseMediaCallback(handles.figure1, [], handles);
+            else
+                playMediaCallback(handles.figure1, [], handles);
+            end
+        end
+        
+        if timeChange ~= 0
+            newTime = max([0 min([handles.maxMediaTime handles.currentTime + timeChange])]);
+            if shiftDown
+                if handles.currentTime == handles.selectedTime(1)
+                    handles.selectedTime = sort([handles.selectedTime(2) newTime]);
+                else
+                    handles.selectedTime = sort([newTime handles.selectedTime(1)]);
+                end
+            else
+                handles.selectedTime = [newTime newTime];
+            end
+            handles.currentTime = newTime;
+            handles.displayedTime = handles.currentTime;
+            guidata(handles.figure1, handles);
+            syncGUIWithTime(handles);
+        end
     end
 end
