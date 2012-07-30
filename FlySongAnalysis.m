@@ -1410,10 +1410,12 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
     % Handle keyboard navigation of the timeline.
     % Arrow keys move the display left/right by one tenth of the displayed range.
     % Page up/down moves left/right by a full window's worth.
-    % Command+arrow keys moves to the begging/end of the timeline.
-    % Option+arrow key moves to the previous/next feature.
+    % Command+arrow keys moves to the beginning/end of the timeline.
+    % Option+left/right arrow key moves to the previous/next feature.
     % Shift plus any of the above extends the selection.
     % Space bar toggles play/pause of media.
+    % Up/down arrow keys zoom out/in
+    % Command+up arrow zooms all the way out
     if isfield(handles, 'audio')
         timeChange = 0;
         timeRange = displayedTimeRange(handles);
@@ -1460,6 +1462,15 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
             else
                 playMediaCallback(handles.figure1, [], handles);
             end
+        elseif strcmp(keyEvent.Key, 'uparrow')
+            if cmdDown
+                setZoom(1, handles);
+            else
+                setZoom(handles.zoom / 2, handles);
+            end
+        elseif strcmp(keyEvent.Key, 'downarrow')
+            % TODO: is there a maximum zoom that could be set if command was down?
+            setZoom(handles.zoom * 2, handles);
         end
         
         if timeChange ~= 0
