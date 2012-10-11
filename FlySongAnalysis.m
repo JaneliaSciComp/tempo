@@ -1291,7 +1291,7 @@ function windowButtonUpFcn(hObject, ~)
         if handles.currentTime == handles.selectedTime(1) || handles.currentTime ~= handles.selectedTime(2)
             handles.selectedTime = sort([handles.selectedTime(1) clickedTime]);
         else
-            handles.selectedTime = sort([cilckedTime handles.selectedTime(1)]);
+            handles.selectedTime = sort([clickedTime handles.selectedTime(1)]);
         end
         handles.selectingTimeRange = false;
         guidata(hObject, handles);
