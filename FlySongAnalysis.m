@@ -1018,6 +1018,7 @@ function openRecordingCallback(~, ~, handles)
                     audioChanged = true;
                 elseif rec.isVideo
                     setVideoRecording(rec);
+                    handles = guidata(handles.figure1);
                     
                     % Make sure the video pane is showing.
                     try
