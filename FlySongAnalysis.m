@@ -690,9 +690,9 @@ function newHandles = updateSpectrogram(handles, ~, audioWindow, ~, sampleRate)
         pixelWidth = pos(3);
         pixelHeight = pos(4);
         % TODO: get freq range from prefs
-        freqMin = 0;
-        freqMax = 1000;
-        freqRange = freqMax - freqMin;
+        %freqMin = 0;
+        %freqMax = 1000;
+        freqRange = handles.spectrogramFreqMax - handles.spectrogramFreqMin;
         freqStep = ceil(freqRange / pixelHeight); % always at least 1
         
         % Base the window size on the number of pixels we want to render.
@@ -702,7 +702,8 @@ function newHandles = updateSpectrogram(handles, ~, audioWindow, ~, sampleRate)
         end
         noverlap = ceil(window*.25);
         
-        [~, ~, ~, P] = spectrogram(audioWindow, window, noverlap, freqMin:freqStep:freqMax, sampleRate);
+        [~, ~, ~, P] = spectrogram(audioWindow, window, noverlap, ...
+            handles.spectrogramFreqMin:freqStep:handles.spectrogramFreqMax, sampleRate);
         h = image(size(P, 2), size(P, 1), 10 * log10(P));
         set(h,'CDataMapping','scaled'); % (5)
         colormap('jet');
@@ -713,8 +714,10 @@ function newHandles = updateSpectrogram(handles, ~, audioWindow, ~, sampleRate)
         
         % "axis xy" or something is doing weird things with the limits of the axes.
         % The lower-left corner is not (0, 0) but the size of P.
-        text(size(P, 2) * 2, size(P, 1) * 2 - 1, [num2str(freqMax) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
-        text(size(P, 2) * 2, size(P, 1), [num2str(freqMin) ' Hz'], 'HorizontalAlignment', 'right', 'VerticalAlignment', 'baseline');
+        text(size(P, 2) * 2, size(P, 1) * 2 - 1, [num2str(handles.spectrogramFreqMax) ' Hz'], ...
+            'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
+        text(size(P, 2) * 2, size(P, 1), [num2str(handles.spectrogramFreqMin) ' Hz'], ...
+            'HorizontalAlignment', 'right', 'VerticalAlignment', 'baseline');
         
         % Add a text object to show the time and frequency of where the mouse is currently hovering.
         handles.spectrogramTooltip = text(size(P, 2), size(P, 1), '', 'BackgroundColor', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'bottom', 'Visible', 'off');
@@ -1056,6 +1059,8 @@ function openRecordingCallback(~, ~, handles)
                 handles.maxMediaTime = handles.audio.duration;
             end
             handles.zoom = max(1.0,handles.maxMediaTime/60);
+            handles.spectrogramFreqMin=0;
+            handles.spectrogramFreqMax=floor(rec.sampleRate/2);
             guidata(handles.figure1, handles);
         end
         
@@ -1425,6 +1430,7 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
         shiftDown = any(ismember(keyEvent.Modifier, 'shift'));
         altDown = any(ismember(keyEvent.Modifier, 'alt'));
         cmdDown = any(ismember(keyEvent.Modifier, 'command'));
+        ctrlDown = any(ismember(keyEvent.Modifier, 'control'));
         if strcmp(keyEvent.Key, 'leftarrow')
             if cmdDown
                 timeChange = -handles.currentTime;
@@ -1472,6 +1478,30 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
         elseif strcmp(keyEvent.Key, 'downarrow')
             % TODO: is there a maximum zoom that could be set if command was down?
             setZoom(handles.zoom * 2, handles);
+        elseif strcmp(keyEvent.Key, 'j')
+            tmp=(handles.spectrogramFreqMax-handles.spectrogramFreqMin)/2;
+            handles.spectrogramFreqMin=max(0,handles.spectrogramFreqMin-tmp);
+            handles.spectrogramFreqMax=...
+                min(floor(handles.audio.sampleRate/2),handles.spectrogramFreqMax+tmp);
+        elseif strcmp(keyEvent.Key, 'l')
+            tmp=(handles.spectrogramFreqMax-handles.spectrogramFreqMin)/4;
+            handles.spectrogramFreqMin=handles.spectrogramFreqMin+tmp;
+            handles.spectrogramFreqMax=handles.spectrogramFreqMax-tmp;
+        elseif strcmp(keyEvent.Key, 'i')
+            tmp=(handles.spectrogramFreqMax-handles.spectrogramFreqMin)/2;
+            handles.spectrogramFreqMin=...
+                min(floor(handles.audio.sampleRate/2)-1,handles.spectrogramFreqMin+tmp);
+            handles.spectrogramFreqMax=...
+                min(floor(handles.audio.sampleRate/2),handles.spectrogramFreqMax+tmp);
+        elseif strcmp(keyEvent.Key, ',')
+            tmp=(handles.spectrogramFreqMax-handles.spectrogramFreqMin)/2;
+            handles.spectrogramFreqMin=...
+                max(0,handles.spectrogramFreqMin-tmp);
+            handles.spectrogramFreqMax=...
+                max(1,handles.spectrogramFreqMax-tmp);
+        elseif strcmp(keyEvent.Key, 'k')
+            handles.spectrogramFreqMin=0;
+            handles.spectrogramFreqMax=floor(handles.audio.sampleRate/2);
         end
         
         if timeChange ~= 0
@@ -1488,7 +1518,7 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
             handles.currentTime = newTime;
             handles.displayedTime = handles.currentTime;
             guidata(handles.figure1, handles);
-            syncGUIWithTime(handles);
         end
+        syncGUIWithTime(handles);
     end
 end
