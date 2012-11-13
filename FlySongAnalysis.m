@@ -1055,7 +1055,7 @@ function openRecordingCallback(~, ~, handles)
             else
                 handles.maxMediaTime = handles.audio.duration;
             end
-            handles.zoom = 1.0;
+            handles.zoom = max(1.0,handles.maxMediaTime/60);
             guidata(handles.figure1, handles);
         end
         
