@@ -81,7 +81,7 @@ classdef Recording < handle
             elseif strncmp(ext, '.ch', 2)  % egnor's .ch? files
                 inputdlg('sample rate: ','',1,{'450450'});
                 obj.sampleRate=str2num(char(ans));
-                memmapfile(filePath,'Format','double');
+                memmapfile(filePath,'Format','single');
                 obj.data=ans.Data;
                 obj.duration = length(obj.data) / obj.sampleRate;
                 obj.isAudio = true;

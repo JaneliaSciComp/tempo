@@ -702,7 +702,7 @@ function newHandles = updateSpectrogram(handles, ~, audioWindow, ~, sampleRate)
         end
         noverlap = ceil(window*.25);
         
-        [~, ~, ~, P] = spectrogram(audioWindow, window, noverlap, ...
+        [~, ~, ~, P] = spectrogram(double(audioWindow), window, noverlap, ...
             handles.spectrogramFreqMin:freqStep:handles.spectrogramFreqMax, sampleRate);
         h = image(size(P, 2), size(P, 1), 10 * log10(P));
         set(h,'CDataMapping','scaled'); % (5)
@@ -1493,7 +1493,7 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
                 min(floor(handles.audio.sampleRate/2)-1,handles.spectrogramFreqMin+tmp);
             handles.spectrogramFreqMax=...
                 min(floor(handles.audio.sampleRate/2),handles.spectrogramFreqMax+tmp);
-        elseif strcmp(keyEvent.Key, ',')
+        elseif strcmp(keyEvent.Key, 'comma')
             tmp=(handles.spectrogramFreqMax-handles.spectrogramFreqMin)/2;
             handles.spectrogramFreqMin=...
                 max(0,handles.spectrogramFreqMin-tmp);
