@@ -58,7 +58,7 @@ classdef Recording < handle
                 else
                     obj = Recording.empty();
                 end
-            elseif strcmp(ext, '.bin')  % stern's new array_take
+            elseif strcmp(ext, '.bin')  % stern's .bin files
                 fid=fopen(filePath,'r');
                 version=fread(fid,1,'double');
                 if(version~=1)  error('not a valid .bin file');  end
@@ -78,6 +78,13 @@ classdef Recording < handle
                 else
                     obj = Recording.empty();
                 end
+            elseif strncmp(ext, '.ch', 2)  % egnor's .ch? files
+                inputdlg('sample rate: ','',1,{'450450'});
+                obj.sampleRate=str2num(char(ans));
+                memmapfile(filePath,'Format','double');
+                obj.data=ans.Data;
+                obj.duration = length(obj.data) / obj.sampleRate;
+                obj.isAudio = true;
             end
         end
         
