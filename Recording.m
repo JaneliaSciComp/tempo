@@ -58,6 +58,26 @@ classdef Recording < handle
                 else
                     obj = Recording.empty();
                 end
+            elseif strcmp(ext, '.bin')  % stern's new array_take
+                fid=fopen(filePath,'r');
+                version=fread(fid,1,'double');
+                if(version~=1)  error('not a valid .bin file');  end
+                obj.sampleRate=fread(fid,1,'double');
+                nchan=fread(fid,1,'double');
+                [channel, ok] = listdlg('ListString', cellstr(num2str([1:nchan]')), ...
+                                        'PromptString', {'Choose the channel to open:'}, ...
+                                        'SelectionMode', 'single', ...
+                                        'Name', 'Open BIN File');
+                if ok
+                    fread(fid,channel,'double');  % skip over first timestamp and first channels
+                    obj.data=fread(fid,inf,'double',8*nchan);
+                    obj.duration = length(obj.data) / obj.sampleRate;
+                    obj.name = sprintf('%s (channel %d)', obj.name, channel);
+                    obj.isAudio = true;
+                    fclose(fid);
+                else
+                    obj = Recording.empty();
+                end
             end
         end
         
