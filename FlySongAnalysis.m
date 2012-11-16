@@ -96,6 +96,16 @@ function FlySongAnalysis_OpeningFcn(hObject, ~, handles, varargin)
     handles.showFeatures = true;
     handles.showSpectrogram = false;
     handles.featureTimes = [];
+
+    handles.close_matlabpool=0;
+    if((exist('matlabpool')==2) && (matlabpool('size')==0))
+      try
+        matlabpool open
+        handles.close_matlabpool=1;
+      catch
+        disp('WARNING: could not open matlab pool.  proceeding with a single thread.');
+      end
+    end
     
     guidata(hObject, handles);
     
@@ -1138,6 +1148,10 @@ function figure1_CloseRequestFcn(hObject, ~, handles)
     
     % Remember the window position.
     setpref('FlySongAnalysis', 'MainWindowPosition', get(hObject, 'Position'));
+
+    if(handles.close_matlabpool)
+      matlabpool close
+    end
     
     delete(hObject);
 end

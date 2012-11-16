@@ -96,6 +96,7 @@ classdef MouseVocDetector < FeatureDetector
                 obj.addFeature(Feature('Vocalization', [x_start x_stop], ...
                                        'FreqRange', voclist(i,3:4)));
             end
+            n=size(voclist,1);
 
             obj.timeRangeDetected(timeRange);
 
