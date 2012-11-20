@@ -444,10 +444,16 @@ function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSamp
         timeRangeSize = timeRange(2) - timeRange(1);
         
         windowSampleCount = length(audioWindow);
+            
+        set(gca, 'Units', 'pixels');
+        pos = get(gca, 'Position');
+        pixelWidth = pos(3);
+        pixelHeight = pos(4);
+        step=max(1,floor(windowSampleCount/pixelWidth/100))
         
         % Update the waveform.
         if get(handles.autoGainCheckBox, 'Value') == 1.0
-            maxAmp = max(abs(audioWindow));
+            maxAmp = max(abs(audioWindow(1:step:windowSampleCount)));
         else
             maxAmp = handles.audioMax / get(handles.gainSlider, 'Value');
         end
@@ -459,12 +465,12 @@ function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSamp
             % Update the existing oscillogram pieces for faster rendering.
             if windowSampleCount ~= timeRangeSize
                 % the number of samples changed
-                set(handles.oscillogramPlot, 'XData', 1:windowSampleCount, 'YData', audioWindow);
+                set(handles.oscillogramPlot, 'XData', 1:step:windowSampleCount, 'YData', audioWindow(1:step:windowSampleCount));
                 handles.oscillogramSampleCount = windowSampleCount;
                 set(handles.oscillogram, 'XLim', [1 windowSampleCount]);
             elseif minSample ~= timeRange(1)
                 % the number of samples is the same but the time point is different
-                set(handles.oscillogramPlot, 'YData', audioWindow);
+                set(handles.oscillogramPlot, 'YData', audioWindow(1:step:windowSampleCount));
             end
             set(handles.oscillogramTimeLine, 'XData', [currentSample - minSample + 1 currentSample - minSample + 1]);
             if handles.selectedTime(1) ~= handles.selectedTime(2)
@@ -475,8 +481,8 @@ function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSamp
         else
             % Do a one-time creation of the oscillogram pieces.
             set(handles.figure1, 'CurrentAxes', handles.oscillogram);
-            
-            handles.oscillogramPlot = plot(audioWindow);
+
+            handles.oscillogramPlot = plot(1:step:windowSampleCount,audioWindow(1:step:windowSampleCount));
             handles.oscillogramSampleCount = windowSampleCount;
             set(handles.oscillogram, 'XTick', [], 'YTick', []);
             set(handles.oscillogram, 'XLimMode', 'manual');
