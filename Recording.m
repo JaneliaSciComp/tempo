@@ -81,14 +81,22 @@ classdef Recording < handle
             elseif strncmp(ext, '.ch', 2)  % egnor's .ch? files
                 inputdlg('sample rate: ','',1,{'450450'});
                 obj.sampleRate=str2num(char(ans));
-                memmapfile(filePath,'Format','single');
-                obj.data=ans.Data;
+                fid=fopen(filePath,'r');
+                fseek(fid,0,'eof');
+                len=ftell(fid)/4/obj.sampleRate/60;
+                fseek(fid,0,'bof');
+                if(len>15)
+                  inputdlg(['recording is ' num2str(len,3) ' min long.  starting at which minute should i read a 15-min block of data? '],'',1,{'1'});
+                  fseek(fid,60*(str2num(char(ans))-1)*obj.sampleRate*4,'bof');
+                end
+                obj.data=fread(fid,15*60*obj.sampleRate,'single');
+                fclose(fid);
                 obj.duration = length(obj.data) / obj.sampleRate;
                 obj.isAudio = true;
             end
         end
-        
-        
+
+
         function addReporter(obj, reporter)
             obj.reporterList{end + 1} = reporter;
         end

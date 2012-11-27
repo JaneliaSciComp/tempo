@@ -449,7 +449,7 @@ function newHandles = updateOscillogram(handles, timeRange, audioWindow, minSamp
         pos = get(gca, 'Position');
         pixelWidth = pos(3);
         pixelHeight = pos(4);
-        step=max(1,floor(windowSampleCount/pixelWidth/100))
+        step=max(1,floor(windowSampleCount/pixelWidth/100));
         
         % Update the waveform.
         if get(handles.autoGainCheckBox, 'Value') == 1.0
