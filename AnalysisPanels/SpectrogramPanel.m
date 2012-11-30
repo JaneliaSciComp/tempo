@@ -1,6 +1,8 @@
-classdef SpectrogramPanel < MediaPanel
+classdef SpectrogramPanel < TimelinePanel
 
 	properties
+        audio
+        
         windowSize
         freqMin
         freqMax
@@ -11,11 +13,15 @@ classdef SpectrogramPanel < MediaPanel
 	methods
 	
 		function obj = SpectrogramPanel(controller, recording)
-			obj = obj@MediaPanel(controller, recording);
+			obj = obj@TimelinePanel(controller);
+            
+            obj.audio = recording;
             
             obj.windowSize = 0.001;
             obj.freqMin = 0;
             obj.freqMax = floor(recording.sampleRate / 2);
+            
+            obj.axesBorder = [0 0 16 0];
         end
         
         
@@ -30,16 +36,16 @@ classdef SpectrogramPanel < MediaPanel
         
         
         function updateAxes(obj, timeRange)
-            if isempty(obj.recording)
+            if isempty(obj.audio)
                 return
             end
             
-            audioData = obj.recording.dataInTimeRange(timeRange);
+            audioData = obj.audio.dataInTimeRange(timeRange);
             
-            window = 2^nextpow2(obj.windowSize * obj.recording.sampleRate);
+            window = 2^nextpow2(obj.windowSize * obj.audio.sampleRate);
             
-            axesSize = get(obj.axes, 'Position');
-            [~, f, ~, P] = spectrogram(double(audioData), window, [], [], obj.recording.sampleRate);
+%             axesSize = get(obj.axes, 'Position');
+            [~, f, ~, P] = spectrogram(double(audioData), window, [], [], obj.audio.sampleRate);
             idx = (f > obj.freqMin) & (f < obj.freqMax);
             P = log10(abs(P(idx, :)));
 %             floor(size(P, 1) / axesSize(3));  if (ans>2) P=P(1:ans:end,:);  end

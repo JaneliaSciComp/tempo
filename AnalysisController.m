@@ -203,7 +203,7 @@ classdef AnalysisController < handle
             jToolbar = get(get(obj.toolbar, 'JavaContainer'), 'ComponentPeer');
             jToolbar.add(javax.swing.Box.createHorizontalGlue());
             label = javax.swing.JLabel('');
-            jToolbar.add(label, toolbarSize + 5);
+            jToolbar.add(label, toolbarSize + 8);
             jToolbar.repaint;
             jToolbar.revalidate;
             obj.timeLabel = handle(label);
@@ -214,15 +214,44 @@ classdef AnalysisController < handle
         function arrangePanels(obj)
             pos = get(obj.figure, 'Position');
             
-            if ~isempty(obj.videoPanels)
-                % TODO: Arrange the video panels
+            % Figure out which panels are currently visible.
+            visibleVideoPanels = {};
+            for i = 1:length(obj.videoPanels)
+                panel = obj.videoPanels{i};
+                if (panel.visible)
+                    visibleVideoPanels{end + 1} = panel; %#ok<AGROW>
+                end
             end
-            
             visibleOtherPanels = {};
             for i = 1:length(obj.otherPanels)
                 panel = obj.otherPanels{i};
                 if (panel.visible)
                     visibleOtherPanels{end + 1} = panel; %#ok<AGROW>
+                end
+            end
+            
+            if isempty(visibleVideoPanels)
+                videoPanelWidth = 0;
+            else
+                % Arrange the video panels
+                numPanels = length(visibleVideoPanels);
+                
+                % TODO: toolbar icon to allow column vs. row layout?
+                if true %visibleVideoPanels{1}.video.videoSize(1) < visibleVideoPanels{1}.video.videoSize(2)
+                    % Arrange the videos in a column.
+                    if isempty(visibleOtherPanels)
+                        panelHeight = floor((pos(4) - 16) / numPanels);
+                        videoPanelWidth = pos(3);
+                    else
+                        panelHeight = floor(pos(4) / numPanels);
+                        videoPanelWidth = floor(max(cellfun(@(panel) panelHeight / panel.video.videoSize(1) * panel.video.videoSize(2), visibleVideoPanels)));
+                    end
+                    
+                    for i = 1:numPanels
+                        set(visibleVideoPanels{i}.panel, 'Position', [1, pos(4) - i * panelHeight, videoPanelWidth, panelHeight]);
+                    end
+                else
+                    % Arrange the videos in a row.
                 end
             end
             
@@ -232,14 +261,19 @@ classdef AnalysisController < handle
                 numPanels = length(visibleOtherPanels);
                 panelHeight = floor(panelsHeight / numPanels);
                 for i = 1:numPanels - 1
-                    set(visibleOtherPanels{i}.panel, 'Position', [1, pos(4) - i * panelHeight, pos(3), panelHeight + 1]);
+                    set(visibleOtherPanels{i}.panel, 'Position', [videoPanelWidth + 1, pos(4) - i * panelHeight, pos(3) - videoPanelWidth, panelHeight + 1]);
                 end
                 lastPanelHeight = panelsHeight - panelHeight * (numPanels - 1);
-                set(visibleOtherPanels{end}.panel, 'Position', [1, 16, pos(3), lastPanelHeight]);
+                set(visibleOtherPanels{end}.panel, 'Position', [videoPanelWidth + 1, 16, pos(3) - videoPanelWidth, lastPanelHeight]);
             end
             
-            % TODO: time slider should be under other panels if there are any, otherwise under the video panels.
-            set(obj.timeSlider, 'Position', [1 0 pos(3) 16]);
+            if isempty(visibleVideoPanels) || isempty(visibleOtherPanels)
+                % The time slider should fill the window.
+                set(obj.timeSlider, 'Position', [1, 0, pos(3), 16]);
+            else
+                % The time slider should only be under the non-video panels.
+                set(obj.timeSlider, 'Position', [videoPanelWidth + 1, 0, pos(3) - videoPanelWidth, 16]);
+            end
         end
         
         
@@ -533,7 +567,6 @@ classdef AnalysisController < handle
                             audioChanged = true;
                         elseif rec.isVideo
                             obj.addVideoRecording(rec);
-                            handles = guidata(handles.figure1);
                             videoChanged = true;
                         end
                     end

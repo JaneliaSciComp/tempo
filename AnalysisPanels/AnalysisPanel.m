@@ -5,10 +5,9 @@ classdef AnalysisPanel < handle
         panel
         axes
         
-        timeLine
-        selectionPatch
-        
         visible = true
+        
+        axesBorder = [0 0 0 0]  % left, bottom, right, top
     end
     
     methods
@@ -34,26 +33,10 @@ classdef AnalysisPanel < handle
             % TODO: defer this until the first resize so all of the panels' controls aren't all on top of each other?
             obj.createControls([100 - 16 100]);
             
-%            hold on
-            
-            % Use a line to indicate the current time in the axes.
-            obj.timeLine = line([0 0], [-100000 200000], 'Color', [1 0 0]);
-            set(obj.timeLine, 'HitTest', 'off');
-            
-            % Use a filled rectangle to indicate the current selection in the axes.
-%            obj.selectionRect = rectangle('Position', [0 -100000 1 200000], 'EdgeColor', 'none', 'FaceColor', [1 0.9 0.9], 'Visible', 'off');
-            obj.selectionPatch = patch([0 1 1 0], [-100000 -100000 200000 200000], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'Visible', 'off');
-            set(obj.selectionPatch, 'HitTest', 'off');
-            
             % Add listeners so we know when the current time and selection change.
-            addlistener(obj.controller, 'displayedTime', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
-            addlistener(obj.controller, 'timeWindow', 'PostSet', @obj.handleTimeWindowChanged);
-            addlistener(obj.controller, 'currentTime', 'PostSet', @obj.handleCurrentTimeChanged);
-            addlistener(obj.controller, 'selectedTime', 'PostSet', @obj.handleSelectedTimeChanged);
+            addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
             
-            obj.handleCurrentTimeChanged();
-            obj.handleSelectedTimeChanged();
-            obj.handleTimeWindowChanged();
+            obj.handleCurrentTimeChanged([], []);
         end
         
         
@@ -65,7 +48,10 @@ classdef AnalysisPanel < handle
                 panelPos = get(obj.panel, 'Position');
                 set(obj.panel, 'Units', prevUnits);
                 
-                axesPos = [0, 0, panelPos(3) - 16, panelPos(4)];
+                axesPos = [obj.axesBorder(1), ...
+                    obj.axesBorder(2), ...
+                    panelPos(3) - obj.axesBorder(1) - obj.axesBorder(3), ...
+                    panelPos(4) - obj.axesBorder(2) - obj.axesBorder(4)];
                 set(obj.axes, 'Units', 'pixels');
                 set(obj.axes, 'Position', axesPos);
                 
@@ -101,65 +87,13 @@ classdef AnalysisPanel < handle
         
         function handleCurrentTimeChanged(obj, ~, ~)
             if obj.visible
-                % Update the position of the current time indicator.
-                set(obj.timeLine, 'XData', [obj.controller.currentTime obj.controller.currentTime]);
+                obj.currentTimeChanged();
             end
         end
         
         
-        function handleSelectedTimeChanged(obj, ~, ~)
-            if obj.visible
-                % Update the position and visibility of the current selection indicator.
-                if obj.controller.selectedTime(1) ~= obj.controller.selectedTime(2)
-                    selectionStart = min(obj.controller.selectedTime);
-                    selectionEnd = max(obj.controller.selectedTime);
-                    set(obj.selectionPatch, 'XData', [selectionStart selectionEnd selectionEnd selectionStart], 'Visible', 'on');
-%                    set(obj.selectionRect, 'Position', [selectionStart -100000 selectionEnd - selectionStart 200000], 'Visible', 'on');
-                else
-                    set(obj.selectionPatch, 'Visible', 'off');
-                end
-            end
-        end
-        
-        
-        function handleTimeWindowChanged(obj, ~, ~)
-            if obj.visible
-                % Update the range of time being displayed in the axes.
-                minTime = obj.controller.displayedTime - obj.controller.timeWindow / 2;
-                if minTime < 0
-                    minTime = 0;
-                end
-                maxTime = minTime + obj.controller.timeWindow;
-                if maxTime > obj.controller.duration
-                    maxTime = obj.controller.duration;
-                end
-                set(obj.axes, 'XLim', [minTime maxTime]);
-                
-                % Let the subclass update the axes content.
-                obj.updateAxes([minTime maxTime])
-            end
-        end
-        
-        
-        function updateAxes(obj, timeRange) %#ok<INUSD,MANU>
+        function currentTimeChanged(obj) %#ok<MANU>
             % TODO: make abstract?
-        end
-        
-        
-        function showSelection(obj, flag)
-            if obj.visible
-                % Show or hide the current time line and selected time indicators.
-                if flag
-                    set(obj.timeLine, 'Visible', 'on');
-                    if obj.controller.selectedTime(1) ~= obj.controller.selectedTime(2)
-                        set(obj.selectionPatch, 'Visible', 'on');
-                    else
-                        set(obj.selectionPatch, 'Visible', 'off');
-                    end
-                else
-                    set([obj.timeLine, obj.selectionPatch], 'Visible', 'off');
-                end
-            end
         end
         
     end

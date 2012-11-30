@@ -7,6 +7,7 @@ classdef Recording < handle
         sampleRate
         duration
         videoReader
+        videoSize = [0 0]
         isAudio = false
         isVideo = false
     end
@@ -36,6 +37,7 @@ classdef Recording < handle
                 obj.data = [];
                 obj.sampleRate = get(obj.videoReader, 'FrameRate');
                 obj.duration = get(obj.videoReader, 'Duration');
+                obj.videoSize = [get(obj.videoReader, 'Height') get(obj.videoReader, 'Width')];
             elseif strcmp(ext, '.daq')
                 info = daqread(filePath, 'info');
                 

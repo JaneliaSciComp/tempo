@@ -1,6 +1,8 @@
-classdef WaveformPanel < MediaPanel
+classdef WaveformPanel < TimelinePanel
 
 	properties
+        audio
+        
         plotHandle
         sampleCount
         
@@ -11,9 +13,14 @@ classdef WaveformPanel < MediaPanel
 	methods
 	
 		function obj = WaveformPanel(controller, recording)
-			obj = obj@MediaPanel(controller, recording);
-		end
+			obj = obj@TimelinePanel(controller);
+            
+            obj.audio = recording;
+            
+            obj.axesBorder = [0 0 16 0];
+        end
 	    
+        
 	    function createControls(obj, panelSize)
             set(obj.controller.figure, 'CurrentAxes', obj.axes);
             
@@ -36,11 +43,11 @@ classdef WaveformPanel < MediaPanel
         
         
         function updateAxes(obj, timeRange)
-            if isempty(obj.recording)
+            if isempty(obj.audio)
                 return
             end
             
-            audioData = obj.recording.dataInTimeRange(timeRange);
+            audioData = obj.audio.dataInTimeRange(timeRange);
 
 %             windowSampleCount = length(audioWindow);
 % 
@@ -50,7 +57,7 @@ classdef WaveformPanel < MediaPanel
             if false    % TODO: get(handles.autoGainCheckBox, 'Value') == 1.0
 %                 maxAmp = max(abs(audioWindow(1:step:windowSampleCount)));
             else
-                maxAmp = obj.recording.maxAmplitude() / 1.0;    % TODO: get(handles.gainSlider, 'Value');
+                maxAmp = obj.audio.maxAmplitude() / 1.0;    % TODO: get(handles.gainSlider, 'Value');
             end
 
             % Update the existing oscillogram pieces for faster rendering.
