@@ -95,7 +95,32 @@ classdef Recording < handle
                 obj.isAudio = true;
             end
         end
-
+        
+        
+        function d = dataInTimeRange(obj, timeRange)
+            if obj.isAudio
+                sampleRange = floor(timeRange * obj.sampleRate);
+                if sampleRange(1) < 1
+                    sampleRange(1) = 1;
+                end
+                if sampleRange(2) > length(obj.data)
+                    sampleRange(2) = length(obj.data);
+                end
+                d = obj.data(sampleRange(1):sampleRange(2));
+            else
+                d = [];
+            end
+        end
+        
+        
+        function m = maxAmplitude(obj)
+            if obj.isAudio
+                m = max(obj.data);
+            else
+                m = 0;
+            end
+        end
+        
 
         function addReporter(obj, reporter)
             obj.reporterList{end + 1} = reporter;
