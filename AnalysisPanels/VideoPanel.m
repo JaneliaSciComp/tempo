@@ -14,21 +14,23 @@ classdef VideoPanel < AnalysisPanel
 			obj = obj@AnalysisPanel(controller);
             
             obj.video = recording;
+            
+            frameNum = min([floor(obj.controller.currentTime * obj.video.sampleRate + 1) obj.video.videoReader.NumberOfFrames]);
+            obj.currentFrame = read(obj.video.videoReader, frameNum);
 		end
         
         
-        function createControls(obj, panelSize)
-            obj.imageHandle = image(panelSize(1), panelSize(2), zeros(panelSize), ...
-                'HitTest', 'off');
+        function createControls(obj, ~)
+            obj.imageHandle = image(obj.currentFrame, 'HitTest', 'off');
+            axis(obj.axes, 'image');
             set(obj.axes, 'XTick', [], 'YTick', []);
-            axis image;
         end
         
         
         function resizeControls(obj, ~)
             set(gcf, 'CurrentAxes', obj.axes);
             cla;
-            obj.imageHandle = image(obj.currentFrame);
+            obj.imageHandle = image(obj.currentFrame, 'HitTest', 'off');
             axis(obj.axes, 'image');
             set(obj.axes, 'XTick', [], 'YTick', []);
         end
