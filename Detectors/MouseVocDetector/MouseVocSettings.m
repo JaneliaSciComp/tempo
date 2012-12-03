@@ -218,7 +218,7 @@ function MergeTimeEdit_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of MergeTimeEdit as a double
 
 str2num(get(hObject,'String'));
-if (isempty(ans) || (ans<1))
+if (isempty(ans) || (ans<0))
   warndlg('merge time must be a positive float');
 end
 
