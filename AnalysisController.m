@@ -60,6 +60,7 @@ classdef AnalysisController < handle
                 'Color', 'black', ...
                 'ResizeFcn', @(source, event)handleResize(obj, source, event), ...
                 'KeyPressFcn', @(source, event)handleKeyPress(obj, source, event), ...
+                'KeyReleaseFcn', @(source, event)handleKeyRelease(obj, source, event), ...
                 'CloseRequestFcn', @(source, event)handleClose(obj, source, event), ...
                 'WindowButtonDownFcn', @(source, event)handleMouseButtonDown(obj, source, event), ...
                 'WindowButtonUpFcn', @(source, event)handleMouseButtonUp(obj, source, event)); %#ok<CPROP>
@@ -211,24 +212,29 @@ classdef AnalysisController < handle
         end
         
         
+        function vp = visiblePanels(obj, isVideo)
+            if isVideo
+                panels = obj.videoPanels;
+            else
+                panels = obj.otherPanels;
+            end
+            
+            vp = {};
+            for i = 1:length(panels)
+                panel = panels{i};
+                if (panel.visible)
+                    vp{end + 1} = panel; %#ok<AGROW>
+                end
+            end
+        end
+        
+        
         function arrangePanels(obj)
             pos = get(obj.figure, 'Position');
             
             % Figure out which panels are currently visible.
-            visibleVideoPanels = {};
-            for i = 1:length(obj.videoPanels)
-                panel = obj.videoPanels{i};
-                if (panel.visible)
-                    visibleVideoPanels{end + 1} = panel; %#ok<AGROW>
-                end
-            end
-            visibleOtherPanels = {};
-            for i = 1:length(obj.otherPanels)
-                panel = obj.otherPanels{i};
-                if (panel.visible)
-                    visibleOtherPanels{end + 1} = panel; %#ok<AGROW>
-                end
-            end
+            visibleVideoPanels = obj.visiblePanels(true);
+            visibleOtherPanels = obj.visiblePanels(false);
             
             if isempty(visibleVideoPanels)
                 videoPanelWidth = 0;
@@ -443,8 +449,41 @@ classdef AnalysisController < handle
         end
         
         
-        function handleKeyPress(obj, ~, ~)
-            % TODO
+        function handleKeyPress(obj, ~, keyEvent)
+            if strcmp(keyEvent.Key, 'space')
+                if isplaying(obj.audioPlayer)
+                    obj.pauseMedia();
+                else
+                    obj.playMedia();
+                end
+            else
+                % Let one of the panels handle the event.
+                visiblePanels = horzcat(obj.visiblePanels(false), obj.visiblePanels(true));
+                for i = 1:length(visiblePanels)
+                    if visiblePanels{i}.keyWasPressed(keyEvent)
+                        break
+                    end
+                end
+            end
+        end
+        
+        
+        function handleKeyRelease(obj, ~, keyEvent)
+            if strcmp(keyEvent.Key, 'space')
+                if isplaying(obj.audioPlayer)
+                    obj.pauseMedia();
+                else
+                    obj.playMedia();
+                end
+            else
+                % Let one of the panels handle the event.
+                visiblePanels = horzcat(obj.visiblePanels(false), obj.visiblePanels(true));
+                for i = 1:length(visiblePanels)
+                    if visiblePanels{i}.keyWasReleased(keyEvent)
+                        break
+                    end
+                end
+            end
         end
         
         
@@ -650,6 +689,19 @@ classdef AnalysisController < handle
 %                 string = ['10^{' num2str(timeScale) '} sec'];
 %             end
 %             set(obj.timeScaleText, 'Position', [windowSampleCount -maxAmp], 'String', string);
+        end
+        
+        
+        function range = displayedTimeRange(obj)
+            timeRangeSize = obj.duration / obj.zoom;
+            range = [obj.displayedTime - timeRangeSize / 2 obj.displayedTime + timeRangeSize / 2];
+            if range(2) - range(1) > obj.duration
+                range = [0.0 obj.duration];
+            elseif range(1) < 0.0
+                range = [0.0 timeRangeSize];
+            elseif range(2) > obj.duration
+                range = [obj.duration - timeRangeSize obj.duration];
+            end
         end
         
         

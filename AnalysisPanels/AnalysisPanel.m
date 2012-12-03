@@ -61,11 +61,11 @@ classdef AnalysisPanel < handle
         end
         
         
-        function createControls(obj, panelSize)
+        function createControls(obj, panelSize) %#ok<INUSD,MANU>
         end
         
         
-        function resizeControls(obj, panelSize)
+        function resizeControls(obj, panelSize) %#ok<INUSD,MANU>
         end
         
         
@@ -82,6 +82,16 @@ classdef AnalysisPanel < handle
             else
                 set(obj.panel, 'Visible', 'off');
             end
+        end
+        
+        
+        function handled = keyWasPressed(obj, event) %#ok<INUSD,MANU>
+            handled = false;
+        end
+        
+        
+        function handled = keyWasReleased(obj, event) %#ok<INUSD,MANU>
+            handled = false;
         end
         
         
