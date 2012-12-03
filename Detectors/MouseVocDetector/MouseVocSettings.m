@@ -105,8 +105,8 @@ function NWEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of NWEdit as text
 %        str2double(get(hObject,'String')) returns contents of NWEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || ~isinteger(ans) || (ans<=0))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<=0))
   warndlg('NW must be a positive integer, >=(K+1)/2');
 end
 
@@ -133,8 +133,8 @@ function KEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of KEdit as text
 %        str2double(get(hObject,'String')) returns contents of KEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || ~isinteger(ans) || (ans<=0))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<=0))
   warndlg('K must be a positive integer, <=2*NW-1');
 end
 
@@ -161,8 +161,8 @@ function PValEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of PValEdit as text
 %        str2double(get(hObject,'String')) returns contents of PValEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || (ans<=0))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp<=0))
   warndlg('PVal must be a positive float');
 end
 
@@ -189,8 +189,8 @@ function NFFTEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of NFFTEdit as text
 %        str2double(get(hObject,'String')) returns contents of NFFTEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || (sum(sign(ans)~=1)>0))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (sum(sign(tmp)~=1)>0))
   warndlg('NFFT must be a comma-separated list of positive floats');
 end
 
@@ -217,8 +217,8 @@ function MergeTimeEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of MergeTimeEdit as text
 %        str2double(get(hObject,'String')) returns contents of MergeTimeEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || (ans<0))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp<0))
   warndlg('merge time must be a positive float');
 end
 
@@ -245,8 +245,8 @@ function MergeFreqEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of MergeFreqEdit as text
 %        str2double(get(hObject,'String')) returns contents of MergeFreqEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || ((ans~=0) && (ans~=1)))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || ((tmp~=0) && (tmp~=1)))
   warndlg('merge freq must be 0 or 1');
 end
 
@@ -273,8 +273,8 @@ function MergeFreqOverlapEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of MergeFreqOverlapEdit as text
 %        str2double(get(hObject,'String')) returns contents of MergeFreqOverlapEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || (ans<0) || (ans>1))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp<0) || (tmp>1))
   warndlg('merge freq must be between 0 and 1');
 end
 
@@ -324,8 +324,8 @@ function MergeFreqFractionEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of MergeFreqFractionEdit as text
 %        str2double(get(hObject,'String')) returns contents of MergeFreqFractionEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || (ans<0) || (ans>1))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp<0) || (tmp>1))
   warndlg('merge freq must be between 0 and 1');
 end
 
@@ -351,8 +351,8 @@ function ObjSizeEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of ObjSizeEdit as text
 %        str2double(get(hObject,'String')) returns contents of ObjSizeEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || ~isinteger(ans) || (ans<1))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
   warndlg('obj size must be a positive integer');
 end
 
@@ -379,8 +379,8 @@ function ConvWidthEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of ConvWidthEdit as text
 %        str2double(get(hObject,'String')) returns contents of ConvWidthEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || ~isinteger(ans) || (ans<1))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
   warndlg('conv width must be a positive integer');
 end
 
@@ -407,8 +407,8 @@ function ConvHeightEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of ConvHeightEdit as text
 %        str2double(get(hObject,'String')) returns contents of ConvHeightEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || ~isinteger(ans) || (ans<1))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
   warndlg('conv height must be a positive integer');
 end
 
@@ -435,8 +435,8 @@ function FreqLowEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of FreqLowEdit as text
 %        str2double(get(hObject,'String')) returns contents of FreqLowEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || (ans<1))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp<1))
   warndlg('freq low must be a positive float');
 end
 
@@ -463,8 +463,8 @@ function FreqHighEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of FreqHighEdit as text
 %        str2double(get(hObject,'String')) returns contents of FreqHighEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || (ans<1))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp<1))
   warndlg('freq high must be a positive float');
 end
 
@@ -491,8 +491,8 @@ function NSegEdit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of NSegEdit as text
 %        str2double(get(hObject,'String')) returns contents of NSegEdit as a double
 
-str2num(get(hObject,'String'));
-if (isempty(ans) || ~isinteger(ans) || (ans<1))
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
   warndlg('nharm must be a positive integer');
 end
 
