@@ -1446,6 +1446,7 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
     % Up/down arrow keys zoom out/in
     % Command+up arrow zooms all the way out
     if isfield(handles, 'audio')
+        sync_gui = false;
         timeChange = 0;
         timeRange = displayedTimeRange(handles);
         pageSize = timeRange(2) - timeRange(1);
@@ -1455,6 +1456,7 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
         cmdDown = any(ismember(keyEvent.Modifier, 'command'));
         ctrlDown = any(ismember(keyEvent.Modifier, 'control'));
         if strcmp(keyEvent.Key, 'leftarrow')
+            sync_gui = true;
             if cmdDown
                 timeChange = -handles.currentTime;
             elseif altDown
@@ -1469,6 +1471,7 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
                 timeChange = -stepSize;
             end
         elseif strcmp(keyEvent.Key, 'rightarrow')
+            sync_gui = true;
             if cmdDown
                 timeChange = handles.maxMediaTime - handles.currentTime;
             elseif altDown
@@ -1483,25 +1486,31 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
                 timeChange = stepSize;
             end
         elseif strcmp(keyEvent.Key, 'pageup')
+            sync_gui = true;
             timeChange = -pageSize;
         elseif strcmp(keyEvent.Key, 'pagedown')
+            sync_gui = true;
             timeChange = pageSize;
         elseif strcmp(keyEvent.Key, 'space')
+            sync_gui = true;
             if isplaying(handles.audioPlayer)
                 pauseMediaCallback(handles.figure1, [], handles);
             else
                 playMediaCallback(handles.figure1, [], handles);
             end
         elseif strcmp(keyEvent.Key, 'uparrow')
+            sync_gui = true;
             if cmdDown
                 setZoom(1, handles);
             else
                 setZoom(handles.zoom / 2, handles);
             end
         elseif strcmp(keyEvent.Key, 'downarrow')
+            sync_gui = true;
             % TODO: is there a maximum zoom that could be set if command was down?
             setZoom(handles.zoom * 2, handles);
         elseif strcmp(keyEvent.Key, 'leftbracket')
+            sync_gui = true;
             if shiftDown
                 tmp=(handles.spectrogramFreqMax-handles.spectrogramFreqMin)/2;
                 handles.spectrogramFreqMin=...
@@ -1517,6 +1526,7 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
                     min(floor(handles.audio.sampleRate/2),handles.spectrogramFreqMax+tmp);
             end
         elseif strcmp(keyEvent.Key, 'rightbracket')
+            sync_gui = true;
             if shiftDown
                 tmp=(handles.spectrogramFreqMax-handles.spectrogramFreqMin)/2;
                 handles.spectrogramFreqMin=...
@@ -1533,6 +1543,7 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
         end
         
         if timeChange ~= 0
+            sync_gui = true;
             newTime = max([0 min([handles.maxMediaTime handles.currentTime + timeChange])]);
             if shiftDown
                 if handles.currentTime == handles.selectedTime(1)
@@ -1547,6 +1558,8 @@ function figure1_WindowKeyPressFcn(~, keyEvent, handles)
             handles.displayedTime = handles.currentTime;
             guidata(handles.figure1, handles);
         end
-        syncGUIWithTime(handles);
+        if(sync_gui)
+            syncGUIWithTime(handles);
+        end
     end
 end
