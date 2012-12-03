@@ -365,6 +365,7 @@ end
 function syncGUIWithTime(handles)
     % This is the main GUI update function.
 
+    set(handles.figure1,'pointer','watch');  %drawnow;
     % Calculate the range of time currently being displayed.
     timeRange = displayedTimeRange(handles);
 
@@ -406,6 +407,7 @@ function syncGUIWithTime(handles)
     handles.timeLabel.setToolTipText(timeToolTip);
     
     guidata(handles.figure1, handles);
+    set(handles.figure1,'pointer','arrow');  %drawnow;
 end
 
 
@@ -701,6 +703,7 @@ function newHandles = updateSpectrogram(handles, ~, audioWindow, ~, sampleRate)
     set(handles.figure1, 'CurrentAxes', handles.spectrogram);
     cla;
     if handles.showSpectrogram && isfield(handles, 'audio')
+        drawnow;
         set(gca, 'Units', 'pixels');
         pos = get(gca, 'Position');
         pixelWidth = pos(3);
@@ -923,6 +926,7 @@ end
 
 function openRecordingCallback(~, ~, handles)
     [fileNames, pathName] = uigetfile2('Select an audio or video file to analyze');
+    set(handles.figure1,'pointer','watch');  %drawnow;
     
     if ischar(fileNames)
         fileNames = {fileNames};
@@ -1082,6 +1086,7 @@ function openRecordingCallback(~, ~, handles)
         
         syncGUIWithTime(handles);
     end
+    set(handles.figure1,'pointer','arrow');  %drawnow;
 end
 
 
