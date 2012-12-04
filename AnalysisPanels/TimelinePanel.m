@@ -133,6 +133,8 @@ classdef TimelinePanel < AnalysisPanel
             end
 
             if timeChange ~= 0
+                set(obj.controller.figure, 'Pointer', 'watch'); drawnow
+                
                 newTime = max([0 min([obj.controller.duration obj.controller.currentTime + timeChange])]);
                 if shiftDown
                     if obj.controller.currentTime == obj.controller.selectedTime(1)
@@ -145,6 +147,8 @@ classdef TimelinePanel < AnalysisPanel
                 end
                 obj.controller.currentTime = newTime;
                 obj.controller.displayedTime = newTime;
+                
+                set(obj.controller.figure, 'Pointer', 'arrow'); drawnow update
                 
                 handled = true;
             else

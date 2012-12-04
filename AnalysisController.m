@@ -597,6 +597,7 @@ classdef AnalysisController < handle
 
                 % Next check if it's an audio or video file.
                 try
+                    set(obj.figure, 'Pointer', 'watch'); drawnow
                     recs = Recording(fullPath);
                     
                     for j = 1:length(recs)
@@ -609,7 +610,9 @@ classdef AnalysisController < handle
                             videoChanged = true;
                         end
                     end
+                    set(obj.figure, 'Pointer', 'arrow'); drawnow
                 catch ME
+                    set(obj.figure, 'Pointer', 'arrow'); drawnow
                     warndlg(['Error opening media file:\n\n' ME.message]);
                     rethrow(ME);
                 end
