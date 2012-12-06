@@ -22,7 +22,7 @@ function varargout = MouseVocSettings(varargin)
 
 % Edit the above text to modify the response to help MouseVocSettings
 
-% Last Modified by GUIDE v2.5 14-Nov-2012 17:00:13
+% Last Modified by GUIDE v2.5 06-Dec-2012 18:48:40
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -219,7 +219,7 @@ function MergeTimeEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
-  warndlg('merge time must be a positive float');
+  warndlg('merge_time must be a non-negative float');
 end
 
 
@@ -247,7 +247,7 @@ function MergeFreqEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || ((tmp~=0) && (tmp~=1)))
-  warndlg('merge freq must be 0 or 1');
+  warndlg('merge_freq must be 0 or 1');
 end
 
 
@@ -275,7 +275,7 @@ function MergeFreqOverlapEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0) || (tmp>1))
-  warndlg('merge freq must be between 0 and 1');
+  warndlg('merge_freq must be between 0 and 1');
 end
 
 
@@ -300,6 +300,11 @@ function MergeFreqRatioEdit_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of MergeFreqRatioEdit as text
 %        str2double(get(hObject,'String')) returns contents of MergeFreqRatioEdit as a double
+
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp<0))
+  warndlg('merge_freq_ratio must be a non-negative float');
+end
 
 
 % --- Executes during object creation, after setting all properties.
@@ -326,7 +331,7 @@ function MergeFreqFractionEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0) || (tmp>1))
-  warndlg('merge freq must be between 0 and 1');
+  warndlg('merge_freq must be between 0 and 1');
 end
 
 
@@ -353,7 +358,7 @@ function ObjSizeEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
-  warndlg('obj size must be a positive integer');
+  warndlg('obj_size must be a positive integer');
 end
 
 
@@ -381,7 +386,7 @@ function ConvWidthEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
-  warndlg('conv width must be a positive integer');
+  warndlg('conv_width must be a positive integer');
 end
 
 
@@ -409,7 +414,7 @@ function ConvHeightEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
-  warndlg('conv height must be a positive integer');
+  warndlg('conv_height must be a positive integer');
 end
 
 
@@ -437,7 +442,7 @@ function FreqLowEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<1))
-  warndlg('freq low must be a positive float');
+  warndlg('freq_low must be a positive float');
 end
 
 
@@ -465,7 +470,7 @@ function FreqHighEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<1))
-  warndlg('freq high must be a positive float');
+  warndlg('freq_high must be a positive float');
 end
 
 
@@ -493,13 +498,41 @@ function NSegEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
-  warndlg('nharm must be a positive integer');
+  warndlg('nseg must be a positive integer');
 end
 
 
 % --- Executes during object creation, after setting all properties.
 function NSegEdit_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to NSegEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function MinLengthEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to MinLengthEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of MinLengthEdit as text
+%        str2double(get(hObject,'String')) returns contents of MinLengthEdit as a double
+
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp<0))
+  warndlg('min_length must be a non-negative float');
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function MinLengthEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to MinLengthEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 

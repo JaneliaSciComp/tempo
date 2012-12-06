@@ -6,19 +6,22 @@ classdef MouseVocDetector < FeatureDetector
         PVal=0.01;
         NFFT=[0.001 0.0005 0.00025];
 
-        ObjSize=1500;
-        ConvWidth=15;
-        ConvHeight=7;
         FreqLow=20e3;
         FreqHigh=120e3;
+        ConvWidth=15;
+        ConvHeight=7;
+        ObjSize=1500;
 
-        NSeg=1;
-
-        MergeTime=0.005;
         MergeFreq=0;
         MergeFreqOverlap=0;
         MergeFreqRatio=0;
         MergeFreqFraction=0;
+
+        MergeTime=0.005;
+
+        NSeg=1;
+
+        MinLength=0;
     end
     
     
@@ -51,8 +54,9 @@ classdef MouseVocDetector < FeatureDetector
         
         function s = settingNames(~)
             s = {'NW', 'K', 'PVal', 'NFFT', ...
-                 'ObjSize', 'ConvWidth', 'ConvHeight', 'FreqLow', 'FreqHigh', 'NSeg', ...
-                 'MergeTime', 'MergeFreq', 'MergeFreqOverlap', 'MergeFreqRatio', 'MergeFreqFraction'};
+                 'FreqLow', 'FreqHigh', 'ConvWidth', 'ConvHeight', 'ObjSize', ...
+                 'MergeFreq', 'MergeFreqOverlap', 'MergeFreqRatio', 'MergeFreqFraction', ...
+                 'MergeTime', 'NSeg', 'MinLength'};
         end
         
         
@@ -77,8 +81,8 @@ classdef MouseVocDetector < FeatureDetector
               nsteps=(2+length(obj.NFFT));
               for i=1:length(obj.NFFT)
                 obj.updateProgress('Running multitaper analysis on signal...', (i-1)/nsteps);
-                mtbp(fullfile(p,n),['tmp' num2str(i)],obj.recording.sampleRate,...
-                    obj.NFFT(i),obj.NW,obj.K,obj.PVal,timeRange(1),timeRange(2));
+                mtbp(obj.recording.sampleRate,obj.NFFT(i),obj.NW,obj.K,obj.PVal,...
+                    fullfile(p,n),['tmp' num2str(i)],timeRange(1),timeRange(2));
               end
 
               tmp=dir([fullfile(p,n) '*tmp*.mtbp']);
@@ -99,11 +103,9 @@ classdef MouseVocDetector < FeatureDetector
             timeRange2=timeRange;
 
             obj.updateProgress('Heuristically segmenting syllables...', (nsteps-2)/nsteps);
-            mtbp2([],...
-                obj.ObjSize, [obj.ConvHeight obj.ConvWidth], obj.FreqLow, obj.FreqHigh, ...
-                obj.NSeg, obj.MergeTime, obj.MergeFreq, ...
-                obj.MergeFreqOverlap, obj.MergeFreqRatio, obj.MergeFreqFraction,...
-                fullfile(tempdir,n));
+            mtbp2(obj.FreqLow, obj.FreqHigh, [obj.ConvHeight obj.ConvWidth], obj.ObjSize, ...
+                obj.MergeFreq, obj.MergeFreqOverlap, obj.MergeFreqRatio, obj.MergeFreqFraction,...
+                obj.MergeTime, obj.NSeg, obj.MinLength, [], fullfile(tempdir,n));
 
             obj.updateProgress('Adding features...', (nsteps-1)/nsteps);
             tmp=dir([fullfile(tempdir,n) '.voc*']);
