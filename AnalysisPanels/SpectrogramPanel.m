@@ -8,6 +8,10 @@ classdef SpectrogramPanel < TimelinePanel
         freqMax
         
         imageHandle
+        
+        freqMaxLabel
+        freqMinLabel
+        otherLabel
 	end
 	
 	methods
@@ -32,6 +36,10 @@ classdef SpectrogramPanel < TimelinePanel
             set(obj.axes, 'XTick', [], 'YTick', []);
             colormap(flipud(gray));
             axis xy;
+            
+            obj.freqMaxLabel = text(1, 1, '', 'Units', 'normalized', 'BackgroundColor', 'w', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
+            obj.freqMinLabel = text(1, 0, '', 'Units', 'normalized', 'BackgroundColor', 'w', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
+            obj.otherLabel = text(0, 1, '', 'Units', 'normalized', 'BackgroundColor', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top');
         end
         
         
@@ -55,20 +63,13 @@ classdef SpectrogramPanel < TimelinePanel
             P(P < tmp(1)) = tmp(1);
             P(P > tmp(2)) = tmp(2);
             
-            set(obj.imageHandle, 'CData', P, ...
-                'XData', timeRange);
+            set(obj.imageHandle, 'CData', P, 'XData', timeRange);
 
+            set(obj.freqMaxLabel, 'String', [num2str(round(obj.freqMax)) ' Hz']);
+            set(obj.freqMinLabel, 'String', [num2str(round(obj.freqMin)) ' Hz']);
+            set(obj.otherLabel, 'String', sprintf('%.3g msec\n%.3g Hz', window / obj.audio.sampleRate / 2 * 1000, obj.audio.sampleRate / window / 2));
+            
 % TODO
-%             % "axis xy" or something is doing weird things with the limits of the axes.
-%             % The lower-left corner is not (0, 0) but the size of P.
-%             text(size(P, 2) * 2, size(P, 1) * 2 - 1, [num2str(round(obj.freqMax)) ' Hz'], ...
-%                 'BackgroundColor', 'w', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
-%             text(size(P, 2) * 2, size(P, 1), [num2str(round(obj.freqMin)) ' Hz'], ...
-%                 'BackgroundColor', 'w', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'baseline');
-%             text(size(P, 2), size(P, 1) * 2 - 1, ...
-%                  sprintf('%.3g msec\n%.3g Hz',[window/sampleRate/2*1000 sampleRate/window/2]), ...
-%                 'BackgroundColor', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top');
-% 
 %             % Add a text object to show the time and frequency of where the mouse is currently hovering.
 %             obj.spectrogramTooltip = text(size(P, 2), size(P, 1), '', 'BackgroundColor', 'w', ...
 %                 'HorizontalAlignment', 'left', 'VerticalAlignment', 'bottom', 'Visible', 'off');
