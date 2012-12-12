@@ -10,13 +10,13 @@ classdef TimelinePanel < AnalysisPanel
 		function obj = TimelinePanel(controller)
 			obj = obj@AnalysisPanel(controller);
             
+            obj.axesBorder = [0 0 16 0];
+            
             % Use a line to indicate the current time in the axes.
-            obj.timeLine = line([0 0], [-100000 200000], 'Color', [1 0 0]);
-            set(obj.timeLine, 'HitTest', 'off');
+            obj.timeLine = line([0 0], [-100000 200000], 'Color', [1 0 0], 'HitTest', 'off');
             
             % Use a filled rectangle to indicate the current selection in the axes.
-            obj.selectionPatch = patch([0 1 1 0], [-100000 -100000 200000 200000], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'Visible', 'off');
-            set(obj.selectionPatch, 'HitTest', 'off');
+            obj.selectionPatch = patch([0 1 1 0], [-100000 -100000 200000 200000], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'Visible', 'off', 'HitTest', 'off');
             
             % Add listeners so we know when the current time and selection change.
             addlistener(obj.controller, 'displayedTime', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));

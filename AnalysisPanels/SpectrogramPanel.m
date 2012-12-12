@@ -24,8 +24,6 @@ classdef SpectrogramPanel < TimelinePanel
             obj.windowSize = 0.001;
             obj.freqMin = 0;
             obj.freqMax = floor(recording.sampleRate / 2);
-            
-            obj.axesBorder = [0 0 16 0];
         end
         
         

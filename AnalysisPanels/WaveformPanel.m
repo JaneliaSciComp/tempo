@@ -16,8 +16,6 @@ classdef WaveformPanel < TimelinePanel
 			obj = obj@TimelinePanel(controller);
             
             obj.audio = recording;
-            
-            obj.axesBorder = [0 0 16 0];
         end
 	    
         
