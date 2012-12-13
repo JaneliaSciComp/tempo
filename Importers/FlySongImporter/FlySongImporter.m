@@ -20,10 +20,8 @@ classdef FlySongImporter < FeatureImporter
             addpath(genpath(fullfile(parentDir, 'chronux')));
         end
         
-        function [c, audioPath, channel] = canImportFromPath(featuresFilePath)
+        function c = canImportFromPath(featuresFilePath)
             c = false;
-            audioPath = [];
-            channel = [];
             
             if exist(featuresFilePath, 'file')
                 [~, ~, ext] = fileparts(featuresFilePath);
@@ -31,22 +29,23 @@ classdef FlySongImporter < FeatureImporter
                     fieldInfo = whos('winnowed_sine', 'pulseInfo2', '-file', featuresFilePath);
                     if length(fieldInfo) == 2
                         c = true;
-                        fieldInfo = whos('song_path', 'daq_channel', '-file', featuresFilePath);
-                        if length(fieldInfo) == 2
-                            S = load(featuresFilePath, 'song_path', 'daq_channel');
-                            [parentDir, ~, ~] = fileparts(featuresFilePath);
-                            audioPath = fullfile(parentDir, S.song_path);
-                            if ~exist(audioPath, 'file')
-                                [parentDir, ~, ~] = fileparts(parentDir);
-                                audioPath = fullfile(parentDir, S.song_path);
-                                if ~exist(audioPath, 'file')
-                                    audioPath = [];
-                                end
-                            end
-                            if ~isempty(audioPath)
-                                channel = S.daq_channel;
-                            end
-                        end
+% TODO: do this in importFeatures() instead
+%                         fieldInfo = whos('song_path', 'daq_channel', '-file', featuresFilePath);
+%                         if length(fieldInfo) == 2
+%                             S = load(featuresFilePath, 'song_path', 'daq_channel');
+%                             [parentDir, ~, ~] = fileparts(featuresFilePath);
+%                             audioPath = fullfile(parentDir, S.song_path);
+%                             if ~exist(audioPath, 'file')
+%                                 [parentDir, ~, ~] = fileparts(parentDir);
+%                                 audioPath = fullfile(parentDir, S.song_path);
+%                                 if ~exist(audioPath, 'file')
+%                                     audioPath = [];
+%                                 end
+%                             end
+%                             if ~isempty(audioPath)
+%                                 channel = S.daq_channel;
+%                             end
+%                         end
                     end
                 end
             end
@@ -56,8 +55,8 @@ classdef FlySongImporter < FeatureImporter
     
     methods
         
-        function obj = FlySongImporter(recording, featuresFilePath)
-            obj = obj@FeatureImporter(recording, featuresFilePath);
+        function obj = FlySongImporter(controller, featuresFilePath)
+            obj = obj@FeatureImporter(controller, featuresFilePath);
             obj.name = 'Fly Song Importer';
         end
         

@@ -10,10 +10,8 @@ classdef SavedFeaturesImporter < FeatureImporter
             n = 'Saved Features';
         end
         
-        function [c, audioPath, channel] = canImportFromPath(featuresFilePath)
+        function c = canImportFromPath(featuresFilePath)
             c = false;
-            audioPath = [];
-            channel = [];
             
             if exist(featuresFilePath, 'file')
                 [~, ~, ext] = fileparts(featuresFilePath);
@@ -30,8 +28,8 @@ classdef SavedFeaturesImporter < FeatureImporter
     
     methods
         
-        function obj = SavedFeaturesImporter(recording, featuresFilePath)
-            obj = obj@FeatureImporter(recording, featuresFilePath);
+        function obj = SavedFeaturesImporter(controller, featuresFilePath)
+            obj = obj@FeatureImporter(controller, featuresFilePath);
             obj.name = 'Saved Features Importer';
         end
         

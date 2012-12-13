@@ -1,6 +1,7 @@
 classdef FeatureReporter < handle
     
     properties
+        controller
         name;
         waitBarHandle;
         contextualMenu;
@@ -15,9 +16,8 @@ classdef FeatureReporter < handle
     end
     
     
-    properties (SetAccess = private)
-        % Can only be changed by setRecording().
-        recording
+    events
+        FeaturesDidChange
     end
     
     
@@ -48,22 +48,14 @@ classdef FeatureReporter < handle
     
     methods
         
-        function obj = FeatureReporter(recording, varargin)
+        function obj = FeatureReporter(controller, varargin)
             obj = obj@handle();
             
-            obj.setRecording(recording);
+            obj.controller = controller;
             
-            % TODO: what if the reporter wants to look at the video?
-        end
-        
-        
-        function setRecording(obj, recording)
-            if ~isequal(recording, obj.recording)
-                obj.recording = recording;
-                obj.featureList = cell(1, 1000);
-                obj.featureListSize = 1000;
-                obj.featureCount = 0;
-            end
+            obj.featureList = cell(1, 1000);
+            obj.featureListSize = 1000;
+            obj.featureCount = 0;
         end
         
         
@@ -90,6 +82,9 @@ classdef FeatureReporter < handle
                 if obj.featureList{i} == feature
                     obj.featureList(i) = [];
                     obj.featureListSize = obj.featureListSize - 1;
+                    
+                    notify(obj, 'FeaturesDidChange');
+                    
                     break;
                 end
                 
@@ -142,6 +137,8 @@ classdef FeatureReporter < handle
                 obj.featureListSize = obj.featureListSize + 1000;
             end
             obj.featureList{obj.featureCount} = feature;
+            
+            notify(obj, 'FeaturesDidChange');
         end
         
     end

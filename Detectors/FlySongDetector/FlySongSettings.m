@@ -22,7 +22,7 @@ function varargout = FlySongSettings(varargin)
 
     % Edit the above text to modify the response to help FlySongSettings
 
-    % Last Modified by GUIDE v2.5 08-Feb-2012 11:19:29
+    % Last Modified by GUIDE v2.5 12-Dec-2012 15:54:11
     
     % Begin initialization code - DO NOT EDIT
     gui_Singleton = 1;
@@ -66,8 +66,6 @@ function FlySongSettings_OpeningFcn(hObject, eventdata, handles, varargin)
         handles.editable = true;
     end
     
-    guidata(hObject, handles);
-    
     % Populate the fields.
     %   Modelled after: set(handles.ipiMinEdit, 'String', num2str(handles.detector.ipiMin));
     for field = handles.detector.settingNames()
@@ -76,6 +74,24 @@ function FlySongSettings_OpeningFcn(hObject, eventdata, handles, varargin)
             eval(['set(handles.' field{1} 'Edit, ''Enable'', ''off'')'])
         end
     end
+    
+    % Populate the recordings pop-up.
+    recNames = {};
+    handles.recordings = Recording.empty();
+    for rec = handles.detector.controller.recordings
+        if rec.isAudio
+            recNames{end + 1} = rec.name; %#ok<AGROW>
+            handles.recordings(end + 1) = rec;
+        end
+    end
+    if isempty(recNames)
+        set(handles.recordingPopUp, 'String', 'None available', 'Enable', 'off');
+        set(handles.okButton, 'Enable', 'off');
+    else
+        set(handles.recordingPopUp, 'String', recNames);
+    end
+    
+    guidata(hObject, handles);
     
     uiwait(handles.settingsFigure);
 end
@@ -102,7 +118,9 @@ function okButton_Callback(hObject, eventdata, handles)
             value = eval(['get(handles.' field{1} 'Edit, ''String'')']);
             handles.detector.(field{1}) = str2num(value); %#ok<ST2NM>
         end
-
+        
+        handles.detector.recording = handles.recordings(get(handles.recordingPopUp, 'Value'));
+        
         % Indicate that the user accepted the settings and trigger the close of
         % the dialog.
         handles.output = true;
@@ -120,4 +138,21 @@ function cancelButton_Callback(hObject, eventdata, handles)
     handles.output = false;
     guidata(hObject, handles);
     uiresume(handles.settingsFigure);
+end
+
+
+function recordingPopUp_CreateFcn(hObject, eventdata, handles)
+    if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+        set(hObject,'BackgroundColor','white');
+    end
+end
+
+
+function recordingPopUp_Callback(hObject, eventdata, handles)
+% hObject    handle to recordingPopUp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns recordingPopUp contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from recordingPopUp
 end

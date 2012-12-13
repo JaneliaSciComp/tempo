@@ -20,10 +20,8 @@ classdef MouseVocImporter < FeatureImporter
             %addpath(genpath(fullfile(parentDir, 'chronux')));
         end
         
-        function [c, audioPath, channel] = canImportFromPath(featuresFilePath)
+        function c = canImportFromPath(featuresFilePath)
             c = false;
-            audioPath = [];
-            channel = [];
             
             if exist(featuresFilePath, 'file')
                 [~, ~, ext] = fileparts(featuresFilePath);
@@ -65,8 +63,8 @@ classdef MouseVocImporter < FeatureImporter
     
     methods
         
-        function obj = MouseVocImporter(recording, featuresFilePath)
-            obj = obj@FeatureImporter(recording, featuresFilePath);
+        function obj = MouseVocImporter(controller, featuresFilePath)
+            obj = obj@FeatureImporter(controller, featuresFilePath);
             obj.name = 'Mouse Vocalization Importer';
         end
         

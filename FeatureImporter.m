@@ -25,14 +25,14 @@ classdef FeatureImporter < FeatureReporter
     
     
     methods(Static, Abstract)
-        [c, audioPath, channel] = canImportFromPath(featuresFilePath)
+        c = canImportFromPath(featuresFilePath)
     end
     
     
     methods
         
-        function obj = FeatureImporter(recording, featuresFilePath, varargin)
-            obj = obj@FeatureReporter(recording, varargin{:});
+        function obj = FeatureImporter(controller, featuresFilePath, varargin)
+            obj = obj@FeatureReporter(controller, varargin{:});
             
             obj.featuresFilePath = featuresFilePath;
         end

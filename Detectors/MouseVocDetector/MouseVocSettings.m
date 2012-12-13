@@ -22,7 +22,7 @@ function varargout = MouseVocSettings(varargin)
 
 % Edit the above text to modify the response to help MouseVocSettings
 
-% Last Modified by GUIDE v2.5 06-Dec-2012 18:48:40
+% Last Modified by GUIDE v2.5 13-Dec-2012 16:13:25
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -66,8 +66,6 @@ else
     handles.editable = true;
 end
 
-guidata(hObject, handles);
-
 % Populate the fields.
 %   Modelled after: set(handles.ipiMinEdit, 'String', num2str(handles.detector.ipiMin));
 for field = handles.detector.settingNames()
@@ -80,6 +78,24 @@ for field = handles.detector.settingNames()
         eval(['set(handles.' field{1} 'Edit, ''Enable'', ''off'')'])
     end
 end
+
+% Populate the recordings pop-up.
+recNames = {};
+handles.recordings = Recording.empty();
+for rec = handles.detector.controller.recordings
+    if rec.isAudio
+        recNames{end + 1} = rec.name; %#ok<AGROW>
+        handles.recordings(end + 1) = rec;
+    end
+end
+if isempty(recNames)
+    set(handles.recordingPopUp, 'String', 'None available', 'Enable', 'off');
+    set(handles.okButton, 'Enable', 'off');
+else
+    set(handles.recordingPopUp, 'String', recNames);
+end
+
+guidata(hObject, handles);
 
 uiwait(handles.settingsFigure);
 
@@ -557,6 +573,8 @@ if handles.editable
         handles.detector.(field{1}) = str2num(value); %#ok<ST2NM>
     end
 
+    handles.detector.recording = handles.recordings(get(handles.recordingPopUp, 'Value'));
+
     % Indicate that the user accepted the settings and trigger the close of
     % the dialog.
     handles.output = true;
@@ -576,3 +594,26 @@ function ButtonCancel_Callback(hObject, eventdata, handles)
 handles.output = false;
 guidata(hObject, handles);
 uiresume(handles.settingsFigure);
+
+
+% --- Executes on selection change in recordingPopUp.
+function recordingPopUp_Callback(hObject, eventdata, handles)
+% hObject    handle to recordingPopUp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns recordingPopUp contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from recordingPopUp
+
+
+% --- Executes during object creation, after setting all properties.
+function recordingPopUp_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to recordingPopUp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

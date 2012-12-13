@@ -2,7 +2,9 @@ classdef AnalysisController < handle
     
     properties
         figure
+        
         recordings = Recording.empty()
+        reporters = {}
         
         duration = 300
         zoom = 1
@@ -14,6 +16,7 @@ classdef AnalysisController < handle
         
         toolbar
         zoomOutTool
+        detectPopUpTool
         
         timeLabel
         timeLabelFormat
@@ -56,29 +59,16 @@ classdef AnalysisController < handle
             obj.figure = figure('Name', 'Song Analysis', ...
                 'NumberTitle', 'off', ...
                 'Toolbar', 'none', ...
+                'MenuBar', 'none', ...
                 'Position', getpref('SongAnalysis', 'MainWindowPosition', [100 100 400 200]), ...
-                'Color', 'black', ...
+                'Color', [0.4 0.4 0.4], ...
+                'Renderer', 'opengl', ...
                 'ResizeFcn', @(source, event)handleResize(obj, source, event), ...
                 'KeyPressFcn', @(source, event)handleKeyPress(obj, source, event), ...
                 'KeyReleaseFcn', @(source, event)handleKeyRelease(obj, source, event), ...
                 'CloseRequestFcn', @(source, event)handleClose(obj, source, event), ...
                 'WindowButtonDownFcn', @(source, event)handleMouseButtonDown(obj, source, event), ...
                 'WindowButtonUpFcn', @(source, event)handleMouseButtonUp(obj, source, event)); %#ok<CPROP>
-            
-            obj.createToolbar();
-            
-            % Create the scroll bar that lets the user scrub through time.
-            obj.timeSlider = uicontrol('Style', 'slider',...
-                'Min', 0, ...
-                'Max', obj.duration, ...
-                'Value', 0, ...
-                'Position', [1 1 400 16], ...
-                'Callback', @(source, event)handleTimeSliderChanged(obj, source, event));
-            if verLessThan('matlab', '7.12.0')
-                addlistener(obj.timeSlider, 'Action', @(source, event)handleTimeSliderChanged(obj, source, event));
-            else
-                addlistener(obj.timeSlider, 'ContinuousValueChange', @(source, event)handleTimeSliderChanged(obj, source, event));
-            end
             
             if isdeployed && exist(fullfile(ctfroot, 'Detectors'), 'dir')
                 % Look for the detectors in the CTF archive.
@@ -98,6 +88,21 @@ classdef AnalysisController < handle
             if ismac
                 % Make sure the export_fig can find Ghostscript if it was installed via MacPorts.
                 setenv('DYLD_LIBRARY_PATH', ['/opt/local/lib:' getenv('DYLD_LIBRARY_PATH')]);
+            end
+            
+            obj.createToolbar();
+            
+            % Create the scroll bar that lets the user scrub through time.
+            obj.timeSlider = uicontrol('Style', 'slider',...
+                'Min', 0, ...
+                'Max', obj.duration, ...
+                'Value', 0, ...
+                'Position', [1 1 400 16], ...
+                'Callback', @(source, event)handleTimeSliderChanged(obj, source, event));
+            if verLessThan('matlab', '7.12.0')
+                addlistener(obj.timeSlider, 'Action', @(source, event)handleTimeSliderChanged(obj, source, event));
+            else
+                addlistener(obj.timeSlider, 'ContinuousValueChange', @(source, event)handleTimeSliderChanged(obj, source, event));
             end
             
             obj.arrangePanels();
@@ -148,7 +153,7 @@ classdef AnalysisController < handle
                 'ClickedCallback', @(hObject, eventdata)handlePause(obj, hObject, eventdata));
             
             iconData = double(imread(fullfile(iconRoot, 'detect.png'), 'BackgroundColor', defaultBackground)) / 255;
-            uipushtool(obj.toolbar, ...
+            obj.detectPopUpTool = uisplittool('Parent', obj.toolbar, ...
                 'Tag', 'detectFeatures', ...
                 'CData', iconData, ...
                 'TooltipString', 'Detect features',... 
@@ -198,17 +203,30 @@ classdef AnalysisController < handle
             
             drawnow;
             
-            % Add a right-aligned text field to show the current time and selection.
-            % TODO: move this somewhere that will be included in screen shots
-            toolbarSize = length(get(obj.toolbar, 'Children'));
             jToolbar = get(get(obj.toolbar, 'JavaContainer'), 'ComponentPeer');
-            jToolbar.add(javax.swing.Box.createHorizontalGlue());
-            label = javax.swing.JLabel('');
-            jToolbar.add(label, toolbarSize + 8);
-            jToolbar.repaint;
-            jToolbar.revalidate;
-            obj.timeLabel = handle(label);
-            obj.timeLabelFormat = 1;    % default to displaying time in minutes and seconds
+            if ~isempty(jToolbar)
+                jDetect = get(obj.detectPopUpTool,'JavaContainer');
+                jMenu = get(jDetect,'MenuComponent');
+                jMenu.removeAll;
+                for actionIdx = 1:length(obj.detectorTypeNames)
+                    jActionItem = jMenu.add(obj.detectorTypeNames(actionIdx));
+                    oldWarn = warning('off', 'MATLAB:hg:JavaSetHGProperty');
+                    set(jActionItem, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
+                        'UserData', actionIdx);
+                    warning(oldWarn);
+                end
+                
+                % Add a right-aligned text field to show the current time and selection.
+                % TODO: move this somewhere that will be included in screen shots
+                toolbarSize = length(get(obj.toolbar, 'Children'));
+                jToolbar.add(javax.swing.Box.createHorizontalGlue());
+                label = javax.swing.JLabel('');
+                jToolbar.add(label, toolbarSize + 8);
+                jToolbar.repaint;
+                jToolbar.revalidate;
+                obj.timeLabel = handle(label);
+                obj.timeLabelFormat = 1;    % default to displaying time in minutes and seconds
+            end
         end
         
         
@@ -251,6 +269,10 @@ classdef AnalysisController < handle
                     else
                         panelHeight = floor(pos(4) / numPanels);
                         videoPanelWidth = floor(max(cellfun(@(panel) panelHeight / panel.video.videoSize(1) * panel.video.videoSize(2), visibleVideoPanels)));
+                        videoWidth = max(cellfun(@(panel) panel.video.videoSize(1), visibleVideoPanels));
+                        if videoWidth < videoPanelWidth
+                            videoPanelWidth = videoWidth;
+                        end
                     end
                     
                     for i = 1:numPanels
@@ -263,6 +285,7 @@ classdef AnalysisController < handle
             
             if ~isempty(visibleOtherPanels)
                 % Arrange the other panels
+                % TODO: leave a one pixel gap between panels so there's a visible line between them.
                 panelsHeight = pos(4) - 16;
                 numPanels = length(visibleOtherPanels);
                 panelHeight = floor(panelsHeight / numPanels);
@@ -328,6 +351,58 @@ classdef AnalysisController < handle
         end
         
         
+        function handleDetectFeatures(obj, hObject, ~)
+            index = get(hObject, 'UserData');
+            
+            if isempty(index)
+                % The user clicked the icon instead of the little pop-up arrow.
+                % We want the pop-up menu to appear in this case as well.
+                jDetect = get(obj.detectPopUpTool,'JavaContainer');
+                if ~isempty(jDetect)
+                    jDetect.showMenu();
+                else
+                    waitfor(warndlg({'Could not automatically pop up the detectors toolbar menu.', '', 'Please click the small arrow next to the icon instead.'}, 'Song Analysis', 'modal'));
+                end
+            else
+                detectorClassName = obj.detectorClassNames{index};
+                
+                constructor = str2func(detectorClassName);
+                detector = constructor(obj);
+
+                if detector.editSettings()
+%TODO               addContextualMenu(detector);
+
+                    detector.startProgress();
+                    try
+                        if obj.selectedTime(2) > obj.selectedTime(1)
+                            n = detector.detectFeatures(obj.selectedTime);
+                        else
+                            n = detector.detectFeatures([0.0 obj.duration]);
+                        end
+                        detector.endProgress();
+
+                        if n == 0
+                            waitfor(msgbox('No features were detected.', detectorClassName, 'warn', 'modal'));
+                        else
+                            obj.reporters{end + 1} = detector;
+                            obj.otherPanels{end + 1} = FeaturesPanel(detector);
+
+                            obj.arrangePanels();
+
+                        end
+
+%TODO                   handles = updateFeatureTimes(handles);
+                    catch ME
+                        waitfor(msgbox(['An error occurred while detecting features:' char(10) char(10) ME.message char(10) char(10) '(See the command window for details.)'], ...
+                                       detectorClassName, 'error', 'modal'));
+                        detector.endProgress();
+                        rethrow(ME);
+                    end
+                end
+            end
+        end
+        
+        
         function setZoom(obj, zoom)
             if zoom < 1
                 obj.zoom = 1;
@@ -366,16 +441,16 @@ classdef AnalysisController < handle
         
         
         function handleMouseButtonDown(obj, ~, ~)
-% TODO: make control-click work again
-%             if strcmp(get(gcf, 'SelectionType'), 'alt')
-%                 contextualMenu = get(clickedObject, 'UIContextMenu');
-%                 if ~isempty(contextualMenu)
-%                     set(contextualMenu, 'Position', get(handles.figure1, 'CurrentPoint'), 'Visible', 'On');
-%                     return
-%                 end
-%             end
-            
             clickedObject = get(obj.figure, 'CurrentObject');
+            
+            if strcmp(get(gcf, 'SelectionType'), 'alt')
+                contextualMenu = get(clickedObject, 'UIContextMenu');
+                if ~isempty(contextualMenu)
+                    set(contextualMenu, 'Position', get(obj.figure, 'CurrentPoint'), 'Visible', 'On');
+                    return
+                end
+            end
+            
             for i = 1:length(obj.otherPanels)
                 if clickedObject == obj.otherPanels{i}.axes
                     clickedPoint = get(clickedObject, 'CurrentPoint');
@@ -392,8 +467,6 @@ classdef AnalysisController < handle
                         obj.panelSelectingTime = obj.otherPanels{i};
                     end
                     
-                    obj.updateTimeLabel();
-                    
                     break
                 end
             end
@@ -409,8 +482,6 @@ classdef AnalysisController < handle
                 else
                     obj.selectedTime = sort([clickedTime obj.selectedTime(2)]);
                 end
-                
-                obj.updateTimeLabel();
             elseif false    %handles.showSpectrogram && isfield(handles, 'spectrogramTooltip')
 % TODO:
 %                 currentPoint = get(handles.spectrogram, 'CurrentPoint');
@@ -443,8 +514,6 @@ classdef AnalysisController < handle
                     obj.selectedTime = sort([clickedTime obj.selectedTime(2)]);
                 end
                 obj.panelSelectingTime = [];
-                
-                obj.updateTimeLabel();
             end
         end
         
@@ -518,82 +587,54 @@ classdef AnalysisController < handle
                 fullPath = char(bs);
 
                 % First check if the file can be imported by one of the feature importers.
-%                 try
-%                     possibleImporters = [];
-%                     audioPaths = {};
-%                     channels = {};
-%                     for j = 1:length(handles.importerClassNames)
-%                         [canImport, audioPath, channel] = eval([handles.importerClassNames{j} '.canImportFromPath(''' strrep(fullPath, '''', '''''') ''')']);
-%                         if canImport
-%                             possibleImporters(end+1) = j; %#ok<AGROW>
-%                             audioPaths{end + 1} = audioPath; %#ok<AGROW>
-%                             channels{end + 1} = channel; %#ok<AGROW>
-%                         end
-%                     end
-% 
-%                     % If there is no audio file open then only importers that indicate which audio file to open can be used.
-%                     if ~isempty(possibleImporters) && ~isfield(handles, 'audio')
-%                         inds = ~isempty(audioPaths{:});
-%                         possibleImporters = possibleImporters(inds);
-%                         audioPaths = audioPaths(inds);
-%                         channels = channels(inds);
-% 
-%                         if isempty(possibleImporters)
-%                             warndlg('You must open an audio file before you can import these features.', 'Fly Song Analysis', 'modal');
-%                             return
-%                         end
-%                     end
-% 
-%                     if ~isempty(possibleImporters)
-%                         index = [];
-%                         if length(possibleImporters) == 1
-%                             index = possibleImporters(1);
-%                         else
-%                             choice = listdlg('PromptString', 'Choose which importer to use:', ...
-%                                              'SelectionMode', 'Single', ...
-%                                              'ListString', handles.importerTypeNames(possibleImporters));
-%                             if ~isempty(choice)
-%                                 index = choice(1);
-%                             end
-%                         end
-%                         if ~isempty(index)
-%                             if ~isfield(handles, 'audio') && ~isempty(audioPaths{index})
-%                                 % Load the audio file indicated by the importer.
-%                                 rec = Recording(audioPaths{index}, channels{index});
-%                                 if rec.isAudio
-%                                     setAudioRecording(rec);
-%                                     audioChanged = true;
-%                                     handles = guidata(handles.figure1);
-%                                 end
-%                             end
-% 
-%                             constructor = str2func(handles.importerClassNames{index});
-%                             importer = constructor(handles.audio, fullPath);
-%                             importer.startProgress();
-%                             try
-%                                 n = importer.importFeatures();
-%                                 importer.endProgress();
-% 
-%                                 if n == 0
-%                                     waitfor(msgbox('No features were imported.', handles.importerTypeNames{index}, 'warn', 'modal'));
-%                                 else
-%                                     handles.reporters{numel(handles.reporters) + 1, 1} = importer;  %TODO: just use handles.audio.reporters() instead?
-%                                     handles.audio.addReporter(importer);
-%                                     handles = updateFeatureTimes(handles);
-%                                     guidata(handles.figure1, handles);
-%                                 end
-%                             catch ME
-%                                 waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', handles.importerTypeNames{index}, 'error', 'modal'));
-%                                 importer.endProgress();
-%                                 rethrow(ME);
-%                             end
-% 
-%                             addContextualMenu(importer);
-%                         end
-%                     end
-%                 catch ME
-%                     rethrow(ME);
-%                 end
+                try
+                    possibleImporters = [];
+                    for j = 1:length(obj.importerClassNames)
+                        if eval([obj.importerClassNames{j} '.canImportFromPath(''' strrep(fullPath, '''', '''''') ''')'])
+                            possibleImporters(end+1) = j; %#ok<AGROW>
+                        end
+                    end
+                    
+                    if ~isempty(possibleImporters)
+                        index = [];
+                        if length(possibleImporters) == 1
+                            index = possibleImporters(1);
+                        else
+                            choice = listdlg('PromptString', 'Choose which importer to use:', ...
+                                             'SelectionMode', 'Single', ...
+                                             'ListString', handles.importerTypeNames(possibleImporters));
+                            if ~isempty(choice)
+                                index = choice(1);
+                            end
+                        end
+                        if ~isempty(index)
+                            constructor = str2func(obj.importerClassNames{index});
+                            importer = constructor(obj, fullPath);
+                            importer.startProgress();
+                            try
+                                n = importer.importFeatures();
+                                importer.endProgress();
+
+                                if n == 0
+                                    waitfor(msgbox('No features were imported.', obj.importerTypeNames{index}, 'warn', 'modal'));
+                                else
+                                    obj.reporters{end + 1} = importer;
+                                    obj.otherPanels{end + 1} = FeaturesPanel(importer);
+                                    
+                                    obj.arrangePanels();
+                                end
+                            catch ME
+                                waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', obj.importerTypeNames{index}, 'error', 'modal'));
+                                importer.endProgress();
+                                rethrow(ME);
+                            end
+
+% TODO                            addContextualMenu(importer);
+                        end
+                    end
+                catch ME
+                    rethrow(ME);
+                end
 
                 % Next check if it's an audio or video file.
                 try
@@ -661,6 +702,27 @@ classdef AnalysisController < handle
         end
         
         
+        function set.currentTime(obj, value)
+            obj.currentTime = value;
+            
+            obj.updateTimeLabel();
+        end
+        
+        
+        function set.selectedTime(obj, value)
+            obj.selectedTime = value;
+            
+            obj.updateTimeLabel();
+        end
+        
+        
+        function set.timeLabelFormat(obj, value)
+            obj.timeLabelFormat = value;
+            
+            obj.updateTimeLabel();
+        end
+        
+        
         function updateTimeLabel(obj)
             % Display the current time and selection in the toolbar text field.
             if obj.selectedTime(1) == obj.selectedTime(2)
@@ -721,7 +783,18 @@ classdef AnalysisController < handle
 %               matlabpool close
 %             end
             
-            % TODO: Close all of the panels?
+            % TODO: Send a "will close" message to all of the panels?
+            
+            % Fix a Java memory leak that prevents this object from ever being deleted.
+            % TODO: there's probably a better way to do this...
+            jDetect = get(obj.detectPopUpTool, 'JavaContainer');
+            jMenu = get(jDetect, 'MenuComponent');
+            jMenuItems = jMenu.getSubElements();
+            for i = 1:length(jMenuItems)
+                oldWarn = warning('off', 'MATLAB:hg:JavaSetHGProperty');
+                set(jMenuItems(i), 'ActionPerformedCallback', []);
+                warning(oldWarn);
+            end
             
             delete(obj.figure);
         end

@@ -1,6 +1,8 @@
 classdef FlySongDetector < FeatureDetector
     
     properties
+        recording
+        
         % Multi-spectral analysis properties
         taperTBP = 12;
         taperNum = 20;
@@ -52,8 +54,8 @@ classdef FlySongDetector < FeatureDetector
     
     methods
         
-        function obj = FlySongDetector(recording)
-            obj = obj@FeatureDetector(recording);
+        function obj = FlySongDetector(controller)
+            obj = obj@FeatureDetector(controller);
             obj.name = 'Fly Song Detector';
         end
         
@@ -62,14 +64,6 @@ classdef FlySongDetector < FeatureDetector
             s = {'taperTBP', 'taperNum', 'windowLength', 'windowStepSize', 'pValue', ...
                  'sineFreqMin', 'sineFreqMax', 'sineGapMaxPercent', 'sineEventsMin', ...
                  'putativePulseFudge', 'pulseMaxGapSize', 'ipiMin', 'ipiMax', 'pulseMaxScale', 'pulseMinHeight'};
-        end
-        
-        
-        function setRecording(obj, recording)
-            setRecording@FeatureDetector(obj, recording);
-            
-            obj.backgroundNoise = [];
-            obj.backgroundSSF = [];
         end
         
         

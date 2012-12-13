@@ -26,13 +26,8 @@ classdef FeatureDetector < FeatureReporter
     
     methods
         
-        function obj = FeatureDetector(recording, varargin)
-            obj = obj@FeatureReporter(recording, varargin{:});
-        end
-        
-        
-        function setRecording(obj, recording)
-            setRecording@FeatureReporter(obj, recording);
+        function obj = FeatureDetector(controller, varargin)
+            obj = obj@FeatureReporter(controller, varargin{:});
             
             obj.detectedTimeRanges = [];
         end

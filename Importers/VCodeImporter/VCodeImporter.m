@@ -10,10 +10,8 @@ classdef VCodeImporter < FeatureImporter
             n = 'VCode';
         end
         
-        function [c, audioPath, channel] = canImportFromPath(featuresFilePath)
+        function c = canImportFromPath(featuresFilePath)
             c = false;
-            audioPath = [];
-            channel = [];
             
             if exist(featuresFilePath, 'file')
                 [~, ~, ext] = fileparts(featuresFilePath);
@@ -36,8 +34,8 @@ classdef VCodeImporter < FeatureImporter
     
     methods
         
-        function obj = VCodeImporter(recording, featuresFilePath)
-            obj = obj@FeatureImporter(recording, featuresFilePath);
+        function obj = VCodeImporter(controller, featuresFilePath)
+            obj = obj@FeatureImporter(controller, featuresFilePath);
             obj.name = 'VCode Importer';
         end
         

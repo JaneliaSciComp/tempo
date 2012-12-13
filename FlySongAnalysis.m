@@ -12,6 +12,11 @@ function varargout = FlySongAnalysis(varargin)
         error 'FlySongAnalysis requires MATLAB 7.9 (2009b) or later.'
     end
     
+    % This triggers the new code architecture, nothing past here is used anymore.
+    % TODO: implement app-level features like window menu, etc.
+    AnalysisController();
+    return
+    
     % Begin initialization code - DO NOT EDIT
     gui_Singleton = 0;
     gui_State = struct('gui_Name',       mfilename, ...
