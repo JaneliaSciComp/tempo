@@ -47,9 +47,9 @@ classdef WaveformPanel < TimelinePanel
             
             audioData = obj.audio.dataInTimeRange(timeRange);
 
-%             windowSampleCount = length(audioWindow);
-% 
-%             step = max(1, floor(windowSampleCount/panelSize(2)/100));
+            windowSampleCount = length(audioData);
+            axesSize = get(obj.axes, 'Position');
+            step = max(1, floor(windowSampleCount/axesSize(3)/100));
 
             % Update the waveform.
             if false    % TODO: get(handles.autoGainCheckBox, 'Value') == 1.0
@@ -70,8 +70,8 @@ classdef WaveformPanel < TimelinePanel
 %                 set(handles.oscillogramPlot, 'YData', audioWindow(1:step:windowSampleCount));
 %             end
             
-            xData = (0:length(audioData) - 1) / length(audioData) * (timeRange(2) - timeRange(1)) + timeRange(1);
-            set(obj.plotHandle, 'XData', xData, 'YData', audioData);
+            xData = (0:step:length(audioData) - 1) / length(audioData) * (timeRange(2) - timeRange(1)) + timeRange(1);
+            set(obj.plotHandle, 'XData', xData, 'YData', audioData(1:step:windowSampleCount));
 %            stepSize = (timeRange(2) - timeRange(1)) / length(audioData);
 %            set(obj.plotHandle, 'XData', timeRange(1):stepSize:timeRange(2) - stepSize, 'YData', audioData);
             
