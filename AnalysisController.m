@@ -706,14 +706,6 @@ classdef AnalysisController < handle
 %             end
 %             tickSpacing = 10 ^ timeScale * sampleRate;
 %             set(handles.oscillogram, 'XTick', tickSpacing-mod(minSample, tickSpacing):tickSpacing:windowSampleCount);
-%             if timeScale == 0
-%                 string = '1 sec';
-%             elseif timeScale == 1
-%                 string = '10 sec';
-%             else
-%                 string = ['10^{' num2str(timeScale) '} sec'];
-%             end
-%             set(obj.timeScaleText, 'Position', [windowSampleCount -maxAmp], 'String', string);
         end
         
         

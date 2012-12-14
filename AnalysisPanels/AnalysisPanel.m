@@ -31,7 +31,6 @@ classdef AnalysisPanel < handle
                 'YLim', [0 1], ...
                 'YTick', []); %#ok<CPROP>
             
-            % TODO: defer this until the first resize so all of the panels' controls aren't all on top of each other?
             obj.createControls([100 - 16 100]);
             
             % Add listeners so we know when the current time and selection change.

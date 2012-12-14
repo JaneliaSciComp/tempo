@@ -50,11 +50,12 @@ classdef TimeIndicatorPanel < TimelinePanel
             textFont = 'FixedWidth';
             redColor = [0.5 0.0 0.0];
             
+            % TODO: draw time ticks
+            % Use obj.controller.timeWindow to determine number of ticks
+            % If the current time is off screen then the tick closest to the center should show the full time.
             
             if obj.controller.selectedTime(1) == obj.controller.selectedTime(2)
-                % TODO: draw time ticks and current time indicator
-                % Use obj.controller.timeWindow to determine number of ticks
-                % If the current time is off screen then the tick closest to the center should show the full time.
+                % Draw current time indicator
                 if obj.controller.currentTime > timeRange(1) && obj.controller.currentTime < timeRange(2)
                     line([obj.controller.currentTime obj.controller.currentTime], [0.8 1], 'Color', 'red');
                     text(obj.controller.currentTime, textY, secondstr(obj.controller.currentTime, obj.controller.timeLabelFormat, 2), ...
@@ -62,7 +63,7 @@ classdef TimeIndicatorPanel < TimelinePanel
                         'FontName', textFont, 'Color', redColor);
                 end
             else
-                % TODO: draw range start, range end, range size and current time indicators
+                % Draw range start, range end, range size and current time indicators
                 startInRange = obj.controller.selectedTime(1) > timeRange(1) && obj.controller.selectedTime(1) < timeRange(2);
                 endInRange = obj.controller.selectedTime(2) > timeRange(1) && obj.controller.selectedTime(2) < timeRange(2);
                 if startInRange
