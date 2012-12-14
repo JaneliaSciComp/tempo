@@ -45,6 +45,9 @@ classdef WaveformPanel < TimelinePanel
                 return
             end
             
+            % TODO: this does strange things if the displayed range goes beyond the end of the audio data.
+            % For example: open two audio files of different lengths and set displayed time to length of the shorter.
+            
             audioData = obj.audio.dataInTimeRange(timeRange);
 
             windowSampleCount = length(audioData);

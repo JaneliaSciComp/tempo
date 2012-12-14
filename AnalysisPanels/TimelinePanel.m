@@ -43,7 +43,7 @@ classdef TimelinePanel < AnalysisPanel
         
         
         function handleTimeWindowChanged(obj, ~, ~)
-            if obj.visible
+            if obj.visible && obj.controller.timeWindow > 0
                 % Update the range of time being displayed in the axes.
                 minTime = obj.controller.displayedTime - obj.controller.timeWindow / 2;
                 if minTime < 0
