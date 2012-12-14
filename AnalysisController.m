@@ -11,6 +11,7 @@ classdef AnalysisController < handle
         
         videoPanels = {}
         otherPanels = {}
+        timeIndicatorPanel = []
         
         timeSlider
         
@@ -18,8 +19,7 @@ classdef AnalysisController < handle
         zoomOutTool
         detectPopUpTool
         
-        timeLabel
-        timeLabelFormat
+        timeLabelFormat = 1     % default to displaying time in minutes and seconds
         
         panelSelectingTime
         
@@ -89,6 +89,8 @@ classdef AnalysisController < handle
                 % Make sure the export_fig can find Ghostscript if it was installed via MacPorts.
                 setenv('DYLD_LIBRARY_PATH', ['/opt/local/lib:' getenv('DYLD_LIBRARY_PATH')]);
             end
+            
+            obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
             
             obj.createToolbar();
             
@@ -215,17 +217,6 @@ classdef AnalysisController < handle
                         'UserData', actionIdx);
                     warning(oldWarn);
                 end
-                
-                % Add a right-aligned text field to show the current time and selection.
-                % TODO: move this somewhere that will be included in screen shots
-                toolbarSize = length(get(obj.toolbar, 'Children'));
-                jToolbar.add(javax.swing.Box.createHorizontalGlue());
-                label = javax.swing.JLabel('');
-                jToolbar.add(label, toolbarSize + 8);
-                jToolbar.repaint;
-                jToolbar.revalidate;
-                obj.timeLabel = handle(label);
-                obj.timeLabelFormat = 1;    % default to displaying time in minutes and seconds
             end
         end
         
@@ -240,7 +231,7 @@ classdef AnalysisController < handle
             vp = {};
             for i = 1:length(panels)
                 panel = panels{i};
-                if (panel.visible)
+                if panel.visible
                     vp{end + 1} = panel; %#ok<AGROW>
                 end
             end
@@ -283,17 +274,22 @@ classdef AnalysisController < handle
                 end
             end
             
-            if ~isempty(visibleOtherPanels)
+            if isempty(visibleOtherPanels)
+                obj.timeIndicatorPanel.setVisible(false);
+            else
                 % Arrange the other panels
-                % TODO: leave a one pixel gap between panels so there's a visible line between them.
-                panelsHeight = pos(4) - 16;
+                % Leave a one pixel gap between panels so there's a visible line between them.
+                panelsHeight = pos(4) - 13 - 16;
                 numPanels = length(visibleOtherPanels);
                 panelHeight = floor(panelsHeight / numPanels);
                 for i = 1:numPanels - 1
-                    set(visibleOtherPanels{i}.panel, 'Position', [videoPanelWidth + 1, pos(4) - i * panelHeight, pos(3) - videoPanelWidth, panelHeight + 1]);
+                    set(visibleOtherPanels{i}.panel, 'Position', [videoPanelWidth + 1, pos(4) - 13 - i * panelHeight, pos(3) - videoPanelWidth, panelHeight - 2]);
                 end
-                lastPanelHeight = panelsHeight - panelHeight * (numPanels - 1);
-                set(visibleOtherPanels{end}.panel, 'Position', [videoPanelWidth + 1, 16, pos(3) - videoPanelWidth, lastPanelHeight]);
+                lastPanelHeight = panelsHeight - panelHeight * (numPanels - 1) - 4;
+                set(visibleOtherPanels{end}.panel, 'Position', [videoPanelWidth + 1, 18, pos(3) - videoPanelWidth, lastPanelHeight]);
+                
+                obj.timeIndicatorPanel.setVisible(true);
+                set(obj.timeIndicatorPanel.panel, 'Position', [videoPanelWidth + 1, pos(4) - 13, pos(3) - videoPanelWidth, 14]);
             end
             
             if isempty(visibleVideoPanels) || isempty(visibleOtherPanels)
@@ -410,10 +406,9 @@ classdef AnalysisController < handle
                 obj.zoom = zoom;
             end
             
-            % Center the display on the current time.
-            obj.displayedTime = obj.currentTime;
             obj.timeWindow = obj.duration / obj.zoom;
             
+            % Adjust the step and page sizes of the time slider.
             stepSize = 1 / obj.zoom;
             set(obj.timeSlider, 'SliderStep', [stepSize / 50.0 stepSize]);
             
@@ -702,41 +697,6 @@ classdef AnalysisController < handle
         end
         
         
-        function set.currentTime(obj, value)
-            obj.currentTime = value;
-            
-            obj.updateTimeLabel();
-        end
-        
-        
-        function set.selectedTime(obj, value)
-            obj.selectedTime = value;
-            
-            obj.updateTimeLabel();
-        end
-        
-        
-        function set.timeLabelFormat(obj, value)
-            obj.timeLabelFormat = value;
-            
-            obj.updateTimeLabel();
-        end
-        
-        
-        function updateTimeLabel(obj)
-            % Display the current time and selection in the toolbar text field.
-            if obj.selectedTime(1) == obj.selectedTime(2)
-                timeString = secondstr(obj.currentTime, obj.timeLabelFormat);
-                timeToolTip = '';
-            else
-                timeString = [secondstr(obj.currentTime, obj.timeLabelFormat) ' [' secondstr(obj.selectedTime(1), obj.timeLabelFormat) '-' secondstr(obj.selectedTime(2), obj.timeLabelFormat) ']'];
-                timeToolTip = [num2str(obj.selectedTime(2) - obj.selectedTime(1)) ' seconds'];
-            end
-            obj.timeLabel.setText(timeString);
-            obj.timeLabel.setToolTipText(timeToolTip);
-        end
-        
-        
         function updateTimeTicks(obj)
             % Update the time ticks and scale label.
 % TODO:            
@@ -789,11 +749,13 @@ classdef AnalysisController < handle
             % TODO: there's probably a better way to do this...
             jDetect = get(obj.detectPopUpTool, 'JavaContainer');
             jMenu = get(jDetect, 'MenuComponent');
-            jMenuItems = jMenu.getSubElements();
-            for i = 1:length(jMenuItems)
-                oldWarn = warning('off', 'MATLAB:hg:JavaSetHGProperty');
-                set(jMenuItems(i), 'ActionPerformedCallback', []);
-                warning(oldWarn);
+            if ~isempty(jMenu)
+                jMenuItems = jMenu.getSubElements();
+                for i = 1:length(jMenuItems)
+                    oldWarn = warning('off', 'MATLAB:hg:JavaSetHGProperty');
+                    set(jMenuItems(i), 'ActionPerformedCallback', []);
+                    warning(oldWarn);
+                end
             end
             
             delete(obj.figure);

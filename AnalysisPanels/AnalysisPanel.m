@@ -71,17 +71,19 @@ classdef AnalysisPanel < handle
         
         
         function setVisible(obj, visible)
-            obj.visible = visible;
-            
-            if obj.visible
-                set(obj.panel, 'Visible', 'on');
+            if obj.visible ~= visible
+                obj.visible = visible;
                 
-                % Make sure everything is in sync.
-                obj.handleCurrentTimeChanged([], []);
-                obj.handleSelectedTimeChanged([], []);
-                obj.handleTimeWindowChanged([], []);
-            else
-                set(obj.panel, 'Visible', 'off');
+                if obj.visible
+                    set(obj.panel, 'Visible', 'on');
+                    
+                    % Make sure everything is in sync.
+                    obj.handleCurrentTimeChanged([], []);
+                    obj.handleSelectedTimeChanged([], []);
+                    obj.handleTimeWindowChanged([], []);
+                else
+                    set(obj.panel, 'Visible', 'off');
+                end
             end
         end
         
