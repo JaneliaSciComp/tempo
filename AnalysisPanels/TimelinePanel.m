@@ -52,6 +52,7 @@ classdef TimelinePanel < AnalysisPanel
                 maxTime = minTime + obj.controller.timeWindow;
                 if maxTime > obj.controller.duration
                     maxTime = obj.controller.duration;
+                    minTime = maxTime - obj.controller.timeWindow;
                 end
                 set(obj.axes, 'XLim', [minTime maxTime]);
                 
