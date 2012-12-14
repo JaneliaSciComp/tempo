@@ -28,16 +28,28 @@ classdef SpectrogramPanel < TimelinePanel
         
         
         function createControls(obj, panelSize)
+            panelSize(1) = panelSize(1) - obj.axesBorder(3);
+            
             obj.imageHandle = image(panelSize(1), panelSize(2), zeros(panelSize), ...
                 'CDataMapping', 'scaled', ...
                 'HitTest', 'off');
-            set(obj.axes, 'XTick', [], 'YTick', []);
             colormap(flipud(gray));
             axis xy;
+            set(obj.axes, 'XTick', [], 'YTick', [], 'Box', 'off');
             
-            obj.freqMaxLabel = text(1, 1, '', 'Units', 'normalized', 'BackgroundColor', 'w', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top');
-            obj.freqMinLabel = text(1, 0, '', 'Units', 'normalized', 'BackgroundColor', 'w', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
-            obj.otherLabel = text(0, 1, '', 'Units', 'normalized', 'BackgroundColor', 'w', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top');
+            obj.freqMaxLabel = text(panelSize(1)  - 1, panelSize(2), '', 'Units', 'pixels', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'BackgroundColor', 'white');
+            obj.freqMinLabel = text(panelSize(1) - 1, 4, '', 'Units', 'pixels', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', 'BackgroundColor', 'white');
+            obj.otherLabel = text(5, panelSize(2), '', 'Units', 'pixels', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'BackgroundColor', 'white');
+        end
+        
+        
+        function resizeControls(obj, panelSize)
+            panelSize(1) = panelSize(1) - obj.axesBorder(3);
+            
+            % Update the positions of the labels.
+            set(obj.freqMaxLabel, 'Position', [panelSize(1)  - 1, panelSize(2)]);
+            set(obj.freqMinLabel, 'Position', [panelSize(1) - 1, 4]);
+            set(obj.otherLabel, 'Position', [5, panelSize(2)]);
         end
         
         
