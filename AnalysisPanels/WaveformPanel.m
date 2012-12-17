@@ -8,6 +8,8 @@ classdef WaveformPanel < TimelinePanel
         
 	    autoGainCheckbox
 	    gainSlider
+        
+        grayRect
 	end
 	
 	methods
@@ -30,6 +32,8 @@ classdef WaveformPanel < TimelinePanel
 % 	        obj.autoGainCheckbox = uicontrol('Parent', obj.panel);
 % 	        obj.gainSlider = uicontrol('Parent', obj.panel);
             
+            obj.grayRect = rectangle('Position', [0, -1, 1, 2], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off', 'Visible', 'off');
+            
             % TODO: mute button?
         end
 	    
@@ -45,10 +49,10 @@ classdef WaveformPanel < TimelinePanel
                 return
             end
             
-            % TODO: this does strange things if the displayed range goes beyond the end of the audio data.
-            % For example: open two audio files of different lengths and set displayed time to length of the shorter.
-            
             audioData = obj.audio.dataInTimeRange(timeRange);
+            
+            % The audio may not span the entire time range.
+            dataDuration = length(audioData) / obj.audio.sampleRate;
 
             windowSampleCount = length(audioData);
             axesSize = get(obj.axes, 'Position');
@@ -56,31 +60,26 @@ classdef WaveformPanel < TimelinePanel
 
             % Update the waveform.
             if false    % TODO: get(handles.autoGainCheckBox, 'Value') == 1.0
-%                 maxAmp = max(abs(audioWindow(1:step:windowSampleCount)));
+                maxAmp = max(abs(audioData(1:step:windowSampleCount)));
             else
                 maxAmp = obj.audio.maxAmplitude() / 1.0;    % TODO: get(handles.gainSlider, 'Value');
             end
-
-            % Update the existing oscillogram pieces for faster rendering.
-% TODO:
-%             if windowSampleCount ~= timeRangeSize
-%                 % the number of samples changed
-%                 set(handles.oscillogramPlot, 'XData', 1:step:windowSampleCount, 'YData', audioWindow(1:step:windowSampleCount));
-%                 handles.oscillogramSampleCount = windowSampleCount;
-%                 set(handles.oscillogram, 'XLim', [1 windowSampleCount]);
-%             elseif minSample ~= timeRange(1)
-%                 % the number of samples is the same but the time point is different
-%                 set(handles.oscillogramPlot, 'YData', audioWindow(1:step:windowSampleCount));
-%             end
             
-            xData = (0:step:length(audioData) - 1) / length(audioData) * (timeRange(2) - timeRange(1)) + timeRange(1);
+            % Update the line with the data in this time range.
+            xData = (0:step:length(audioData) - 1) / length(audioData) * dataDuration + timeRange(1);
             set(obj.plotHandle, 'XData', xData, 'YData', audioData(1:step:windowSampleCount));
-%            stepSize = (timeRange(2) - timeRange(1)) / length(audioData);
-%            set(obj.plotHandle, 'XData', timeRange(1):stepSize:timeRange(2) - stepSize, 'YData', audioData);
             
+            % Update the y limits of the axes based on the gain settings.
             curYLim = get(obj.axes, 'YLim');
             if curYLim(1) ~= -maxAmp || curYLim(2) ~= maxAmp
                 set(obj.axes, 'YLim', [-maxAmp maxAmp]);
+            end
+            
+            % Display a gray rectangle where there isn't audio data available.
+            if obj.audio.duration < obj.controller.duration
+                set(obj.grayRect, 'Position', [obj.audio.duration, -maxAmp, obj.controller.duration - obj.audio.duration, maxAmp * 2], 'Visible', 'on');
+            else
+                set(obj.grayRect, 'Visible', 'off');
             end
         end
         

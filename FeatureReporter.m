@@ -16,6 +16,11 @@ classdef FeatureReporter < handle
     end
     
     
+    properties (Dependent = true)
+        duration
+    end
+    
+    
     events
         FeaturesDidChange
     end
@@ -90,6 +95,14 @@ classdef FeatureReporter < handle
                 
             end
         end
+        
+        
+        function d = get.duration(obj)
+            % TODO: this value could be pre-computed
+            fs = obj.features();
+            d = max([fs.endTime]);
+        end
+        
     end
     
     

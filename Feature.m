@@ -6,6 +6,11 @@ classdef Feature < dynamicprops
         contextualMenu
     end
     
+    properties (Dependent = true)
+        startTime
+        endTime
+    end
+    
     
     methods
         
@@ -30,6 +35,16 @@ classdef Feature < dynamicprops
                 addprop(obj, varargin{argIndex * 2 - 1});
                 obj.(varargin{argIndex * 2 - 1}) = varargin{argIndex * 2};
             end
+        end
+        
+        
+        function t = get.startTime(obj)
+            t = obj.sampleRange(1);
+        end
+        
+        
+        function t = get.endTime(obj)
+            t = obj.sampleRange(2);
         end
         
     end
