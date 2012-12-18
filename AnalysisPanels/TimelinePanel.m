@@ -62,6 +62,14 @@ classdef TimelinePanel < AnalysisPanel
         end
         
         
+        function handleResize(obj, source, event)
+            handleResize@AnalysisPanel(obj, source, event);
+            if obj.visible
+                obj.handleTimeWindowChanged(source, event);
+            end
+        end
+        
+        
         function showSelection(obj, flag)
             if obj.visible
                 % Show or hide the current time line and selected time indicators.
