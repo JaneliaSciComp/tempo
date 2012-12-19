@@ -90,6 +90,9 @@ classdef TimelinePanel < AnalysisPanel
         function currentTimeChanged(obj)
             % Update the position of the current time indicator.
             set(obj.timeLine, 'XData', [obj.controller.currentTime obj.controller.currentTime]);
+            
+            % Make sure they are still rendered in front of all other objects.
+            uistack([obj.timeLine, obj.selectionPatch], 'top');
         end
         
         
