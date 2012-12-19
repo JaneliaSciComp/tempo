@@ -38,7 +38,7 @@ classdef AnalysisController < handle
     properties (SetObservable)
         % The analysis panels will listen for changes to these properties.
         displayedTime = 0       % The time that all of the non-video panels should center their display on (in seconds).
-        timeWindow = 5          % The width of the time window the non-video panels should display (in seconds).
+        timeWindow = 0          % The width of the time window the non-video panels should display (in seconds).
         currentTime = 0         % The time point currently being played (in seconds).
         selectedTime = [0 0]    % The range of time currently selected (in seconds).  The two values will be equal if there is a point selection.
     end
@@ -106,6 +106,8 @@ classdef AnalysisController < handle
             else
                 addlistener(obj.timeSlider, 'ContinuousValueChange', @(source, event)handleTimeSliderChanged(obj, source, event));
             end
+            addlistener(obj, 'displayedTime', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
+            addlistener(obj, 'timeWindow', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
             
             obj.arrangePanels();
         end
@@ -213,9 +215,11 @@ classdef AnalysisController < handle
                 for actionIdx = 1:length(obj.detectorTypeNames)
                     jActionItem = jMenu.add(obj.detectorTypeNames(actionIdx));
                     oldWarn = warning('off', 'MATLAB:hg:JavaSetHGProperty');
+                    oldWarn2 = warning('off', 'MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');
                     set(jActionItem, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
                         'UserData', actionIdx);
                     warning(oldWarn);
+                    warning(oldWarn2);
                 end
             end
         end
@@ -408,9 +412,7 @@ classdef AnalysisController < handle
             
             obj.timeWindow = obj.duration / obj.zoom;
             
-            % Adjust the step and page sizes of the time slider.
-            stepSize = 1 / obj.zoom;
-            set(obj.timeSlider, 'SliderStep', [stepSize / 50.0 stepSize]);
+            obj.displayedTime = sum(obj.selectedTime) / 2;
             
             if obj.zoom > 1
                 set(obj.zoomOutTool, 'Enable', 'on')
@@ -437,14 +439,6 @@ classdef AnalysisController < handle
         
         function handleMouseButtonDown(obj, ~, ~)
             clickedObject = get(obj.figure, 'CurrentObject');
-            
-            if strcmp(get(gcf, 'SelectionType'), 'alt')
-                contextualMenu = get(clickedObject, 'UIContextMenu');
-                if ~isempty(contextualMenu)
-                    set(contextualMenu, 'Position', get(obj.figure, 'CurrentPoint'), 'Visible', 'On');
-                    return
-                end
-            end
             
             for i = 1:length(obj.otherPanels)
                 if clickedObject == obj.otherPanels{i}.axes
@@ -552,7 +546,18 @@ classdef AnalysisController < handle
         
         
         function handleTimeSliderChanged(obj, ~, ~)
-            obj.displayedTime = get(obj.timeSlider, 'Value');
+            if get(obj.timeSlider, 'Value') ~= obj.displayedTime
+                obj.displayedTime = get(obj.timeSlider, 'Value');
+            end
+        end
+        
+        
+        function handleTimeWindowChanged(obj, ~, ~)
+            set(obj.timeSlider, 'Value', obj.displayedTime);
+            
+            % Adjust the step and page sizes of the time slider.
+            stepSize = 1 / obj.zoom;
+            set(obj.timeSlider, 'SliderStep', [stepSize / 50.0 stepSize]);
         end
         
         
@@ -564,9 +569,8 @@ classdef AnalysisController < handle
             elseif isnumeric(fileNames)
                 fileNames = {};
             end
-
-            audioChanged = false;
-            videoChanged = false;
+            
+            somethingOpened = false;
 
             for i = 1:length(fileNames)
                 fileName = fileNames{i};
@@ -617,6 +621,8 @@ classdef AnalysisController < handle
                                     obj.otherPanels{end + 1} = FeaturesPanel(importer);
                                     
                                     obj.arrangePanels();
+                                    
+                                    somethingOpened = true;
                                 end
                             catch ME
                                 waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', obj.importerTypeNames{index}, 'error', 'modal'));
@@ -640,10 +646,10 @@ classdef AnalysisController < handle
                         rec = recs(j);
                         if rec.isAudio
                             obj.addAudioRecording(rec);
-                            audioChanged = true;
+                            somethingOpened = true;
                         elseif rec.isVideo
                             obj.addVideoRecording(rec);
-                            videoChanged = true;
+                            somethingOpened = true;
                         end
                     end
                     set(obj.figure, 'Pointer', 'arrow'); drawnow
@@ -653,10 +659,18 @@ classdef AnalysisController < handle
                     rethrow(ME);
                 end
             end
-
-            if audioChanged || videoChanged
-                obj.duration = max([obj.recordings.duration]);
-                obj.zoom = max(1.0, obj.duration / 60);
+            
+            if somethingOpened
+                obj.duration = max([obj.recordings.duration cellfun(@(r) r.duration, obj.reporters)]);
+                
+                % Alter the zoom so that the same window of time is visible.
+                if obj.timeWindow == 0
+                    obj.timeWindow = obj.duration;
+                    obj.setZoom(1);
+                else
+                    obj.setZoom(obj.duration / obj.timeWindow);
+                end
+                
                 set(obj.timeSlider, 'Max', obj.duration);
                 
                 obj.displayedTime = obj.displayedTime;
@@ -697,18 +711,6 @@ classdef AnalysisController < handle
         end
         
         
-        function updateTimeTicks(obj)
-            % Update the time ticks and scale label.
-% TODO:            
-%             timeScale = fix(log10(obj.timeWindow));
-%             if obj.timeWindow < 1
-%                 timeScale = timeScale - 1;
-%             end
-%             tickSpacing = 10 ^ timeScale * sampleRate;
-%             set(handles.oscillogram, 'XTick', tickSpacing-mod(minSample, tickSpacing):tickSpacing:windowSampleCount);
-        end
-        
-        
         function range = displayedTimeRange(obj)
             timeRangeSize = obj.duration / obj.zoom;
             range = [obj.displayedTime - timeRangeSize / 2 obj.displayedTime + timeRangeSize / 2];
@@ -745,8 +747,10 @@ classdef AnalysisController < handle
                 jMenuItems = jMenu.getSubElements();
                 for i = 1:length(jMenuItems)
                     oldWarn = warning('off', 'MATLAB:hg:JavaSetHGProperty');
+                    oldWarn2 = warning('off', 'MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');
                     set(jMenuItems(i), 'ActionPerformedCallback', []);
                     warning(oldWarn);
+                    warning(oldWarn2);
                 end
             end
             
