@@ -39,28 +39,20 @@ classdef FeaturesPanel < TimelinePanel
             
             % Indicate the time spans in which feature detection has occurred for each reporter.
             lastTime = 0.0;
-            timeRangeRects = {};
             if isa(obj.reporter, 'FeatureDetector')
-% TODO:
-%                 for j = 1:size(obj.reporter.detectedTimeRanges, 1)
-%                     detectedTimeRange = obj.reporter.detectedTimeRanges(j, :);
-% 
-%                     if detectedTimeRange(1) > lastTime
-%                         % Add a gray background before the current range.
-%                         timeRangeRects{end + 1} = rectangle('Position', [lastTime 0 detectedTimeRange(1) - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'UIContextMenu', obj.reporter.contextualMenu); %#ok<AGROW>
-%                     end
-% 
-%                     % Add a white background for this range.
-%                     timeRangeRects{end + 1} = rectangle('Position', [detectedTimeRange(1) 0 detectedTimeRange(2) - detectedTimeRange(1) 1], 'FaceColor', 'white', 'EdgeColor', 'none', 'UIContextMenu', obj.reporter.contextualMenu); %#ok<AGROW>
-% 
-%                     lastTime = detectedTimeRange(2);
-%                 end
-%                 if lastTime < obj.controller.duration
-%                     timeRangeRects{end + 1} = rectangle('Position', [lastTime 0 obj.controller.duration - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'UIContextMenu', obj.reporter.contextualMenu);
-%                 end
-            elseif isa(obj.reporter, 'FeatureImporter')
-                % Importers cover all time spans.
-                timeRangeRects{end + 1} = rectangle('Position', [0 0 obj.controller.duration 1], 'FaceColor', 'white', 'EdgeColor', 'none', 'UIContextMenu', obj.reporter.contextualMenu, 'HitTest', 'off');
+                for j = 1:size(obj.reporter.detectedTimeRanges, 1)
+                    detectedTimeRange = obj.reporter.detectedTimeRanges(j, :);
+
+                    if detectedTimeRange(1) > lastTime
+                        % Add a gray background before the current range.
+                        rectangle('Position', [lastTime 0 detectedTimeRange(1) - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
+                    end
+
+                    lastTime = detectedTimeRange(2);
+                end
+                if lastTime < obj.controller.duration
+                    rectangle('Position', [lastTime 0 obj.controller.duration - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
+                end
             end
 
             % Draw the features that have been reported.
@@ -93,12 +85,6 @@ classdef FeaturesPanel < TimelinePanel
                 featureType = featureTypes{y};
                 obj.featureTypeShadows{end + 1} = text(6, (length(featureTypes) - y + 0.75) * spacing * axesPos(4) - 1, featureType, 'VerticalAlignment', 'middle', 'Units', 'pixels', 'HitTest', 'off', 'Color', [0.75 0.75 0.75]);
                 obj.featureTypeLabels{end + 1} = text(5, (length(featureTypes) - y + 0.75) * spacing * axesPos(4), featureType, 'VerticalAlignment', 'middle', 'Units', 'pixels', 'HitTest', 'off', 'Color', [0.25 0.25 0.25]);
-            end
-            
-            % Make sure all of the time range rectangles are drawmn behind everything else.
-            % TODO: is this necessary anymore?
-            for i = 1:length(timeRangeRects)
-                uistack(timeRangeRects{i}, 'bottom');
             end
         end
         
@@ -160,7 +146,7 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function showFeatureProperties(obj, ~, ~) %#ok<MANU>
+        function showFeatureProperties(obj, ~, ~) %#ok<INUSD>
             feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
             
             msg = '';
@@ -191,7 +177,6 @@ classdef FeaturesPanel < TimelinePanel
                 obj.reporter.removeFeature(feature);
             end
         end
-        
 	end
 	
 end
