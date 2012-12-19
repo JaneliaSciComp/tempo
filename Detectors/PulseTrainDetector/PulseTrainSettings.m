@@ -1,6 +1,6 @@
 function edited = PulseTrainSettings(pulseTrainDetector, varargin)
     handles.detector = pulseTrainDetector;
-    handles.reporters = pulseTrainDetector.recording.reporters;
+    handles.reporters = pulseTrainDetector.controller.reporters;
     
     if isempty(handles.reporters)
         msgbox('You must find or import pulses before you can detect pulse trains.', 'Pulse Train Detector', 'warn', 'modal');

@@ -23,19 +23,14 @@ classdef PulseTrainDetector < FeatureDetector
     
     methods
         
-        function obj = PulseTrainDetector(recording)
-            obj = obj@FeatureDetector(recording);
+        function obj = PulseTrainDetector(controller)
+            obj = obj@FeatureDetector(controller);
             obj.name = 'Pulse Train Detector';
         end
         
         
         function s = settingNames(~)
             s = {};
-        end
-        
-        
-        function setRecording(obj, recording)
-            setRecording@FeatureDetector(obj, recording);
         end
         
         
