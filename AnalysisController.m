@@ -30,6 +30,9 @@ classdef AnalysisController < handle
         importerClassNames
         importerTypeNames
         
+        importing = false
+        recordingsToAdd = Recording.empty()
+        
         showWaveforms
         showSpectrograms
         showFeatures
@@ -279,7 +282,9 @@ classdef AnalysisController < handle
             end
             
             if isempty(visibleOtherPanels)
-                obj.timeIndicatorPanel.setVisible(false);
+                if ~isempty(obj.timeIndicatorPanel)
+                    obj.timeIndicatorPanel.setVisible(false);
+                end
             else
                 % Arrange the other panels
                 % Leave a one pixel gap between panels so there's a visible line between them.
@@ -302,6 +307,44 @@ classdef AnalysisController < handle
             else
                 % The time slider should only be under the non-video panels.
                 set(obj.timeSlider, 'Position', [videoPanelWidth + 1, 0, pos(3) - videoPanelWidth, 16]);
+            end
+        end
+        
+        
+        function handleSaveScreenshot(obj, ~, ~)
+            % TODO: determine if Ghostscript is installed and reduce choices if not.
+            if isempty(obj.recordings)
+                defaultPath = '';
+                defaultName = 'Screenshot';
+            else
+                [defaultPath, defaultName, ~] = fileparts(obj.recordings(1).filePath);
+            end
+            [fileName, pathName] = uiputfile({'*.pdf','Portable Document Format (*.pdf)'; ...
+                                              '*.png','PNG format (*.png)'; ...
+                                              '*.jpg','JPEG format (*.jpg)'}, ...
+                                             'Select an audio or video file to analyze', ...
+                                             fullfile(defaultPath, [defaultName '.pdf']));
+
+            if ~isnumeric(fileName)
+                % Determine the list of axes to export.
+                axesToSave = [obj.timeIndicatorPanel.axes];
+                visibleVideoPanels = obj.visiblePanels(true);
+                for i = 1:length(visibleVideoPanels)
+                    axesToSave(end + 1) = visibleVideoPanels{i}.axes; %#ok<AGROW>
+                end
+                visibleOtherPanels = obj.visiblePanels(false);
+                for i = 1:length(visibleOtherPanels)
+                    axesToSave(end + 1) = visibleOtherPanels{i}.axes; %#ok<AGROW>
+%                    visibleOtherPanels{i}.showSelection(false);
+                end
+                
+                print(obj.figure, '-dpng', fullfile(pathName, fileName));
+%                export_fig(fullfile(pathName, fileName), '-opengl', '-a1');  %, axesToSave);
+
+                % Show the current selection again.
+                for i = 1:length(visibleOtherPanels)
+                    visibleOtherPanels{i}.showSelection(true);
+                end
             end
         end
         
@@ -439,6 +482,12 @@ classdef AnalysisController < handle
         
         function handleMouseButtonDown(obj, ~, ~)
             clickedObject = get(obj.figure, 'CurrentObject');
+            
+            % TODO: allow panels to handle clicks on their objects
+            %
+            %     handled = panel{i}.handleMouseDown(...);
+            %     if ~handled
+            %         ...
             
             for i = 1:length(obj.otherPanels)
                 if clickedObject == obj.otherPanels{i}.axes
@@ -607,13 +656,24 @@ classdef AnalysisController < handle
                             end
                         end
                         if ~isempty(index)
+                            obj.importing = true;
                             constructor = str2func(obj.importerClassNames{index});
                             importer = constructor(obj, fullPath);
                             importer.startProgress();
                             try
                                 n = importer.importFeatures();
                                 importer.endProgress();
-
+                                obj.importing = false;
+                                
+                                for rec = obj.recordingsToAdd
+                                    if rec.isAudio
+                                        obj.addAudioRecording(rec);
+                                    elseif rec.isVideo
+                                        obj.addVideoRecording(rec);
+                                    end
+                                end
+                                obj.recordingsToAdd = Recording.empty();
+                                
                                 if n == 0
                                     waitfor(msgbox('No features were imported.', obj.importerTypeNames{index}, 'warn', 'modal'));
                                 else
@@ -625,8 +685,10 @@ classdef AnalysisController < handle
                                     somethingOpened = true;
                                 end
                             catch ME
-                                waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', obj.importerTypeNames{index}, 'error', 'modal'));
                                 importer.endProgress();
+                                obj.importing = false;
+                                obj.recordingsToAdd = Recording.empty();
+                                waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', obj.importerTypeNames{index}, 'error', 'modal'));
                                 rethrow(ME);
                             end
 
@@ -679,35 +741,47 @@ classdef AnalysisController < handle
         
         
         function addAudioRecording(obj, recording)
-            if isempty(obj.recordings)
-                set(obj.figure, 'Name', ['Song Analysis: ' recording.name]);
+            if obj.importing
+                % There seems to be a bug in MATLAB where you can't create new axes while a waitbar is open.
+                % Queue the recording to be added after the waitbar has gone away.
+                obj.recordingsToAdd(end + 1) = recording;
+            else
+                if isempty(obj.recordings)
+                    set(obj.figure, 'Name', ['Song Analysis: ' recording.name]);
+                end
+                
+                obj.recordings(end + 1) = recording;
+                
+                panel = WaveformPanel(obj, recording);
+                obj.otherPanels{end + 1} = panel;
+                panel.setVisible(obj.showWaveforms);
+                
+                panel = SpectrogramPanel(obj, recording);
+                obj.otherPanels{end + 1} = panel;
+                panel.setVisible(obj.showSpectrograms);
+                
+                obj.arrangePanels();
             end
-            
-            obj.recordings(end + 1) = recording;
-            
-            panel = WaveformPanel(obj, recording);
-            obj.otherPanels{end + 1} = panel;
-            panel.setVisible(obj.showWaveforms);
-            
-            panel = SpectrogramPanel(obj, recording);
-            obj.otherPanels{end + 1} = panel;
-            panel.setVisible(obj.showSpectrograms);
-            
-            obj.arrangePanels();
         end
         
         
         function addVideoRecording(obj, recording)
-            if isempty(obj.recordings)
-                set(obj.figure, 'Name', ['Song Analysis: ' recording.name]);
+            if obj.importing
+                % There seems to be a bug in MATLAB where you can't create new axes while a waitbar is open.
+                % Queue the recording to be added after the waitbar has gone away.
+                obj.recordingsToAdd(end + 1) = recording;
+            else
+                if isempty(obj.recordings)
+                    set(obj.figure, 'Name', ['Song Analysis: ' recording.name]);
+                end
+                
+                obj.recordings(end + 1) = recording;
+                
+                panel = VideoPanel(obj, recording);
+                obj.videoPanels{end + 1} = panel;
+                
+                obj.arrangePanels();
             end
-            
-            obj.recordings(end + 1) = recording;
-            
-            panel = VideoPanel(obj, recording);
-            obj.videoPanels{end + 1} = panel;
-            
-            obj.arrangePanels();
         end
         
         
@@ -720,6 +794,95 @@ classdef AnalysisController < handle
                 range = [0.0 timeRangeSize];
             elseif range(2) > obj.duration
                 range = [obj.duration - timeRangeSize obj.duration];
+            end
+        end
+        
+        
+        function handleSaveAllFeatures(obj, ~, ~)
+            % Save the features from all of the reporters.
+            if length(obj.recordings) == 1
+                obj.saveFeatures(obj.reporters, obj.recordings(1).name);
+            else
+                obj.saveFeatures(obj.reporters);
+            end
+        end
+        
+        
+        function saveFeatures(obj, reporters, fileName)
+            if nargin < 4
+                fileName = 'Song';
+            end
+            
+            [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', [fileName ' features.mat']);
+            
+            if ischar(fileName)
+                features = {};
+                for i = 1:length(reporters)
+                    features = horzcat(features, reporters{i}.features()); %#ok<AGROW>
+                end
+
+                if filterIndex == 1
+                    % Save as a MATLAB file
+                    featureTypes = {features.type}; %#ok<NASGU>
+                    startTimes = arrayfun(@(a) a.startTime, features); %#ok<NASGU>
+                    stopTimes = arrayfun(@(a) a.endTime, features); %#ok<NASGU>
+
+                    % TODO: also save audio recording path, reporter properties, ???
+                    save(fullfile(pathName, fileName), 'features', 'featureTypes', 'startTimes', 'stopTimes');
+                else
+                    % Save as an Excel tsv file
+                    fid = fopen(fullfile(pathName, fileName), 'w');
+
+                    propNames = {};
+                    ignoreProps = {'type', 'sampleRange', 'contextualMenu', 'startTime', 'endTime'};
+
+                    % Find all of the feature properties so we know how many columns there will be.
+                    for f = 1:length(features)
+                        feature = features(f);
+                        props = properties(feature);
+                        for p = 1:length(props)
+                            if ~ismember(props{p}, ignoreProps)
+                                propName = [feature.type ':' props{p}];
+                                if ~ismember(propName, propNames)
+                                    propNames{end + 1} = propName; %#ok<AGROW>
+                                end
+                            end
+                        end
+                    end
+                    propNames = sort(propNames);
+
+                    % Save a header row.
+                    fprintf(fid, 'Type\tStart Time\tEnd Time');
+                    for p = 1:length(propNames)
+                        fprintf(fid, '\t%s', propNames{p});
+                    end
+                    fprintf(fid, '\n');
+
+                    for i = 1:length(features)
+                        feature = features(i);
+                        fprintf(fid, '%s\t%f\t%f', feature.type, feature.startTime, feature.endTime);
+
+                        propValues = cell(1, length(propNames));
+                        props = sort(properties(feature));
+                        for j = 1:length(props)
+                            if ~ismember(props{j}, ignoreProps)
+                                propName = [feature.type ':' props{j}];
+                                index = strcmp(propNames, propName);
+                                value = feature.(props{j});
+                                if isnumeric(value)
+                                    value = num2str(value);
+                                end
+                                propValues{index} = value;
+                            end
+                        end
+                        for p = 1:length(propNames)
+                            fprintf(fid, '\t%s', propValues{p});
+                        end
+                        fprintf(fid, '\n');
+                    end
+
+                    fclose(fid);
+                end
             end
         end
         

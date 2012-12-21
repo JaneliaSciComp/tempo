@@ -6,6 +6,7 @@ classdef Recording < handle
         data
         sampleRate
         duration
+        maxAmp
         videoReader
         videoSize = [0 0]
         isAudio = false
@@ -119,7 +120,10 @@ classdef Recording < handle
         
         function m = maxAmplitude(obj)
             if obj.isAudio
-                m = max(obj.data);
+                if isempty(obj.maxAmp)
+                    obj.maxAmp = max(obj.data);
+                end
+                m = obj.maxAmp;
             else
                 m = 0;
             end

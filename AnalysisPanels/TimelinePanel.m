@@ -54,10 +54,13 @@ classdef TimelinePanel < AnalysisPanel
                     maxTime = obj.controller.duration;
                     minTime = maxTime - obj.controller.timeWindow;
                 end
-                set(obj.axes, 'XLim', [minTime maxTime]);
-                
-                % Let the subclass update the axes content.
-                obj.updateAxes([minTime maxTime])
+                curLims = get(obj.axes, 'XLim');
+                if any(curLims ~= [minTime maxTime])
+                    set(obj.axes, 'XLim', [minTime maxTime]);
+
+                    % Let the subclass update the axes content.
+                    obj.updateAxes([minTime maxTime])
+                end
             end
         end
         

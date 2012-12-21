@@ -20,6 +20,18 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
+        function createControls(obj, ~)
+%             menu = uicontextmenu('Callback', @(source, event)enableReporterMenuItems(obj, source, event));
+%             uimenu(menu, 'Tag', 'reporterNameMenuItem', 'Label', obj.reporter.name, 'Enable', 'off');
+%             uimenu(menu, 'Tag', 'showReporterSettingsMenuItem', 'Label', 'Show Reporter Settings', 'Callback', @(source, event)showSettings(obj, source, event), 'Separator', 'on');
+%             uimenu(menu, 'Tag', 'detectFeaturesInSelectionMenuItem', 'Label', 'Detect Features in Selection', 'Callback', @(source, event)detectFeaturesInSelection(obj, source, event));
+%             uimenu(menu, 'Tag', 'saveFeaturesMenuItem', 'Label', 'Save Features...', 'Callback', @(source, event)saveFeatures(obj, source, event));
+%             uimenu(menu, 'Tag', 'setFeaturesColorMenuItem', 'Label', 'Set Features Color...', 'Callback', @(source, event)setFeaturesColor(obj, source, event));
+%             uimenu(menu, 'Tag', 'removeReporterMenuItem', 'Label', 'Remove Reporter...', 'Callback', @(source, event)removeReporter(obj, source, event), 'Separator', 'on');
+%             set(obj.axes, 'UIContextMenu', menu);
+        end
+        
+        
         function handleFeaturesDidChange(obj, ~, ~)
             % TODO: how to avoid repetitive calls during detection?
             obj.populateFeatures();
@@ -141,8 +153,18 @@ classdef FeaturesPanel < TimelinePanel
                 
                 handled = true;
             else
-                handled = keyWasPressed@TimelinePanel(obj, keyEvent);
+                handled = obj.reporter.keyWasPressed(keyEvent);
+                
+                if ~handled
+                    handled = keyWasPressed@TimelinePanel(obj, keyEvent);
+                end
             end
+        end
+        
+        
+        function saveFeatures(obj, ~, ~)
+            % TODO: default name to recording used by detector
+            obj.controller.saveFeatures({obj.reporter});
         end
         
         

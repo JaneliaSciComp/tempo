@@ -103,6 +103,11 @@ classdef FeatureReporter < handle
             d = max([fs.endTime]);
         end
         
+        
+        function handled = keyWasPressed(obj, keyEvent) %#ok<INUSD>
+            handled = false;
+        end
+        
     end
     
     

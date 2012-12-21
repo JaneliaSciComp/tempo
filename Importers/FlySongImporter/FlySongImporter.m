@@ -29,23 +29,6 @@ classdef FlySongImporter < FeatureImporter
                     fieldInfo = whos('winnowed_sine', 'pulseInfo2', '-file', featuresFilePath);
                     if length(fieldInfo) == 2
                         c = true;
-% TODO: do this in importFeatures() instead
-%                         fieldInfo = whos('song_path', 'daq_channel', '-file', featuresFilePath);
-%                         if length(fieldInfo) == 2
-%                             S = load(featuresFilePath, 'song_path', 'daq_channel');
-%                             [parentDir, ~, ~] = fileparts(featuresFilePath);
-%                             audioPath = fullfile(parentDir, S.song_path);
-%                             if ~exist(audioPath, 'file')
-%                                 [parentDir, ~, ~] = fileparts(parentDir);
-%                                 audioPath = fullfile(parentDir, S.song_path);
-%                                 if ~exist(audioPath, 'file')
-%                                     audioPath = [];
-%                                 end
-%                             end
-%                             if ~isempty(audioPath)
-%                                 channel = S.daq_channel;
-%                             end
-%                         end
                     end
                 end
             end
@@ -64,10 +47,37 @@ classdef FlySongImporter < FeatureImporter
         function n = importFeatures(obj)
             n = 0;
             
-            obj.updateProgress('Loading events from file...', 0/3)
+            fieldInfo = whos('song_path', 'daq_channel', '-file', obj.featuresFilePath);
+            if length(fieldInfo) == 2
+                % Load the audio file indicating in the features file.
+                S = load(obj.featuresFilePath, 'song_path', 'daq_channel');
+                [parentDir, ~, ~] = fileparts(obj.featuresFilePath);
+                audioPath = fullfile(parentDir, S.song_path);
+                if ~exist(audioPath, 'file')
+                    % If it's not next to the features file then check the next folder up.
+                    [parentDir, ~, ~] = fileparts(parentDir);
+                    audioPath = fullfile(parentDir, S.song_path);
+                    if ~exist(audioPath, 'file')
+                        audioPath = [];
+                    end
+                end
+                if ~isempty(audioPath)
+                    obj.updateProgress('Loading audio file...', 0/4)
+                    
+                    % TODO: check if audio file is already open
+                    
+                    channel = S.daq_channel;
+                    rec = Recording(audioPath, channel);
+                    obj.controller.addAudioRecording(rec);
+                end
+            else
+                % Require an audio file to already be open?
+            end
+            
+            obj.updateProgress('Loading events from file...', 1/4)
             s = load(obj.featuresFilePath, 'winnowed_sine', 'pulseInfo2');
             
-            obj.updateProgress('Adding sine song events...', 1/3)
+            obj.updateProgress('Adding sine song events...', 2/4)
             if s.winnowed_sine.num_events > 0 && ~isempty(s.winnowed_sine.events)
                 for i = 1:size(s.winnowed_sine.start, 1)
                     x_start = s.winnowed_sine.start(i);
@@ -80,12 +90,12 @@ classdef FlySongImporter < FeatureImporter
                 n = n + size(s.winnowed_sine.start, 1);
             end
             
-            obj.updateProgress('Adding pulse events...', 2/3)
+            obj.updateProgress('Adding pulse events...', 3/4)
             pulseCount = length(s.pulseInfo2.wc);
             for i = 1:pulseCount
-                x = double(s.pulseInfo2.wc(i)) / obj.recording.sampleRate;
-                a = double(s.pulseInfo2.w0(i)) / obj.recording.sampleRate;
-                b = double(s.pulseInfo2.w1(i)) / obj.recording.sampleRate;
+                x = double(s.pulseInfo2.wc(i)) / rec.sampleRate;
+                a = double(s.pulseInfo2.w0(i)) / rec.sampleRate;
+                b = double(s.pulseInfo2.w1(i)) / rec.sampleRate;
                 obj.addFeature(Feature('Pulse', x, ...
                                        'pulseWindow', [a b], ...
                                        'dogOrder', s.pulseInfo2.dog(i), ...
