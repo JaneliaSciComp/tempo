@@ -113,6 +113,7 @@ classdef TimelinePanel < AnalysisPanel
             % Shift plus any of the above extends the selection.
             % Up/down arrow keys zoom out/in
             % Command+up arrow zooms all the way out
+            handled = false;
             timeChange = 0;
             timeRange = obj.controller.displayedTimeRange();
             pageSize = timeRange(2) - timeRange(1);
@@ -142,9 +143,13 @@ classdef TimelinePanel < AnalysisPanel
                 else
                     obj.controller.setZoom(obj.controller.zoom / 2);
                 end
+                
+                handled = true;
             elseif strcmp(keyEvent.Key, 'downarrow')
                 % TODO: is there a maximum zoom that could be set if command was down?
                 obj.controller.setZoom(obj.controller.zoom * 2);
+                
+                handled = true;
             end
 
             if timeChange ~= 0
@@ -166,7 +171,7 @@ classdef TimelinePanel < AnalysisPanel
                 set(obj.controller.figure, 'Pointer', 'arrow'); drawnow update
                 
                 handled = true;
-            else
+            elseif ~handled
                 handled = keyWasPressed@AnalysisPanel(obj, keyEvent);
             end
         end

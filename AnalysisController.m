@@ -71,6 +71,7 @@ classdef AnalysisController < handle
                 'KeyReleaseFcn', @(source, event)handleKeyRelease(obj, source, event), ...
                 'CloseRequestFcn', @(source, event)handleClose(obj, source, event), ...
                 'WindowButtonDownFcn', @(source, event)handleMouseButtonDown(obj, source, event), ...
+                'WindowButtonMotionFcn', @(source, event)handleMouseMotion(obj, source, event), ...
                 'WindowButtonUpFcn', @(source, event)handleMouseButtonUp(obj, source, event)); %#ok<CPROP>
             
             if isdeployed && exist(fullfile(ctfroot, 'Detectors'), 'dir')
@@ -511,7 +512,7 @@ classdef AnalysisController < handle
         end
 
 
-        function handleMouseButtonMotion(obj, ~, ~)
+        function handleMouseMotion(obj, ~, ~)
             if ~isempty(obj.panelSelectingTime)
                 clickedPoint = get(obj.panelSelectingTime.axes, 'CurrentPoint');
                 clickedTime = clickedPoint(1);
