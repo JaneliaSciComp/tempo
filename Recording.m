@@ -7,10 +7,14 @@ classdef Recording < handle
         sampleRate
         duration
         maxAmp
+        
         videoReader
         videoSize = [0 0]
+        
         isAudio = false
         isVideo = false
+        
+        timeOffset = 0  % in seconds.  (allows recordings to be offset in time to sync up with other recordings)
     end
     
     
@@ -32,7 +36,7 @@ classdef Recording < handle
                 [obj.data, obj.sampleRate] = wavread(filePath, 'native');
                 obj.data = double(obj.data);
                 obj.duration = length(obj.data) / obj.sampleRate;
-            elseif strcmp(ext, '.avi')
+            elseif strcmp(ext, '.avi') ||  strcmp(ext, '.mov')
                 obj.isVideo = true;
                 obj.videoReader = VideoReader(filePath);
                 obj.data = [];
@@ -104,7 +108,7 @@ classdef Recording < handle
         
         function d = dataInTimeRange(obj, timeRange)
             if obj.isAudio
-                sampleRange = floor(timeRange * obj.sampleRate);
+                sampleRange = floor((timeRange + obj.timeOffset) * obj.sampleRate);
                 if sampleRange(1) < 1
                     sampleRange(1) = 1;
                 end
@@ -115,6 +119,12 @@ classdef Recording < handle
             else
                 d = [];
             end
+        end
+        
+        
+        function d = frameAtTime(obj, time)
+            frameNum = min([floor((time + obj.timeOffset) * obj.sampleRate + 1) obj.videoReader.NumberOfFrames]);
+            d = read(obj.videoReader, frameNum);
         end
         
         
