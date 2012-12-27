@@ -44,7 +44,7 @@ classdef TimelinePanel < AnalysisPanel
         
         function handleTimeWindowChanged(obj, ~, ~)
             if obj.visible && obj.controller.timeWindow > 0
-                % Update the range of time being displayed in the axes.
+                % Calculate the range of time being displayed in the axes.
                 minTime = obj.controller.displayedTime - obj.controller.timeWindow / 2;
                 if minTime < 0
                     minTime = 0;
@@ -54,10 +54,13 @@ classdef TimelinePanel < AnalysisPanel
                     maxTime = obj.controller.duration;
                     minTime = maxTime - obj.controller.timeWindow;
                 end
+                
+                % For performance only update the axes if the time range has changed.
+                % The spectogram needs to update even when the media stops playing and the range doesn't change so it's special cased.
                 curLims = get(obj.axes, 'XLim');
-                if any(curLims ~= [minTime maxTime])
+                if any(curLims ~= [minTime maxTime]) || isa(obj, 'SpectrogramPanel')
                     set(obj.axes, 'XLim', [minTime maxTime]);
-
+                
                     % Let the subclass update the axes content.
                     obj.updateAxes([minTime maxTime])
                 end

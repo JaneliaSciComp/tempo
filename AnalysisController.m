@@ -17,13 +17,18 @@ classdef AnalysisController < handle
         
         toolbar
         zoomOutTool
+        playMediaTool
+        pauseMediaTool
         detectPopUpTool
         
         timeLabelFormat = 1     % default to displaying time in minutes and seconds
         
         panelSelectingTime
         
+        isPlayingMedia = false
         playTimer
+        mediaTimer
+        mediaTimeSync
         
         detectorClassNames
         detectorTypeNames
@@ -89,10 +94,6 @@ classdef AnalysisController < handle
             addpath(fullfile(parentDir, 'AnalysisPanels'));
             
             addpath(fullfile(parentDir, 'export_fig'));
-            if ismac
-                % Make sure the export_fig can find Ghostscript if it was installed via MacPorts.
-                setenv('DYLD_LIBRARY_PATH', ['/opt/local/lib:' getenv('DYLD_LIBRARY_PATH')]);
-            end
             
             obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
             
@@ -114,6 +115,9 @@ classdef AnalysisController < handle
             addlistener(obj, 'timeWindow', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
             
             obj.arrangePanels();
+            
+            % Set up a timer to fire 30 times per second when the media is being played.
+            obj.mediaTimer = timer('ExecutionMode', 'fixedRate', 'TimerFcn', @(timerObj, event)handleMediaTimer(obj, timerObj, event), 'Period', round(1.0 / 30.0 * 1000) / 1000);
         end
         
         
@@ -147,18 +151,18 @@ classdef AnalysisController < handle
                 'ClickedCallback', @(hObject, eventdata)handleZoomOut(obj, hObject, eventdata));
             
             iconData = double(imread(fullfile(iconRoot, 'play.png'), 'BackgroundColor', defaultBackground)) / 255;
-            uipushtool(obj.toolbar, ...
+            obj.playMediaTool = uipushtool(obj.toolbar, ...
                 'Tag', 'playMedia', ...
                 'CData', iconData, ...
                 'TooltipString', 'Play audio/video recordings',... 
                 'Separator', 'on', ...
-                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata));
+                'ClickedCallback', @(hObject, eventdata)handlePlayMedia(obj, hObject, eventdata));
             iconData = double(imread(fullfile(iconRoot, 'pause.png'), 'BackgroundColor', defaultBackground)) / 255;
-            uipushtool(obj.toolbar, ...
+            obj.pauseMediaTool = uipushtool(obj.toolbar, ...
                 'Tag', 'pauseMedia', ...
                 'CData', iconData, ...
                 'TooltipString', 'Pause audio/video recordings',... 
-                'ClickedCallback', @(hObject, eventdata)handlePause(obj, hObject, eventdata));
+                'ClickedCallback', @(hObject, eventdata)handlePauseMedia(obj, hObject, eventdata));
             
             iconData = double(imread(fullfile(iconRoot, 'detect.png'), 'BackgroundColor', defaultBackground)) / 255;
             obj.detectPopUpTool = uisplittool('Parent', obj.toolbar, ...
@@ -312,6 +316,76 @@ classdef AnalysisController < handle
         end
         
         
+        function handlePlayMedia(obj, ~, ~)
+            set(obj.playMediaTool, 'Enable', 'off');
+            set(obj.pauseMediaTool, 'Enable', 'on');
+            
+            if obj.selectedTime(1) ~= obj.selectedTime(2)
+                % Only play within the selected range.
+                if obj.currentTime >= obj.selectedTime(1) && obj.currentTime < obj.selectedTime(2) - 0.1
+                    playRange = [obj.currentTime obj.selectedTime(2)];
+                else
+                    playRange = [obj.selectedTime(1) obj.selectedTime(2)];
+                end
+            else
+                % Play the whole song, starting at the current time unless it's at the end.
+                if obj.currentTime < obj.duration
+                    playRange = [obj.currentTime obj.duration];
+                else
+                    playRange = [0.0 obj.duration];
+                end
+            end
+            
+            obj.isPlayingMedia = true;
+            
+% TODO: get audio playing again            
+%             playRange = round(playRange * handles.audio.sampleRate);
+%             if playRange(1) == 0
+%                 playRange(1) = 1;
+%             end
+%             play(obj.audioPlayer, playRange);
+            
+            obj.mediaTimeSync = [playRange now];
+            start(obj.mediaTimer);
+        end
+        
+        
+        function handleMediaTimer(obj, ~, ~)
+            offset = (now - obj.mediaTimeSync(3)) * 24 * 60 * 60;
+            newTime = obj.mediaTimeSync(1) + offset;
+            if newTime >= obj.mediaTimeSync(2)
+                obj.handlePauseMedia([], []);
+            else
+                obj.currentTime = newTime;
+                obj.displayedTime = newTime;
+            end
+        end
+        
+        
+        function handlePauseMedia(obj, hObject, ~)
+            set(obj.playMediaTool, 'Enable', 'on');
+            set(obj.pauseMediaTool, 'Enable', 'off');
+
+%            stop(obj.audioPlayer);
+            stop(obj.mediaTimer);
+            
+            obj.isPlayingMedia = false;
+            
+            if isempty(hObject)
+                % The media played to the end without the user clicking the pause button.
+                if obj.selectedTime(1) ~= obj.selectedTime(2)
+                    obj.currentTime = obj.selectedTime(2);
+                else
+                    obj.currentTime = obj.duration;
+                end
+                obj.displayedTime = obj.currentTime;
+            else
+                obj.currentTime = obj.currentTime;
+                obj.displayedTime = obj.displayedTime;
+            end
+        end
+        
+        
         function handleSaveScreenshot(obj, ~, ~)
             % TODO: determine if Ghostscript is installed and reduce choices if not.
             if isempty(obj.recordings)
@@ -327,6 +401,12 @@ classdef AnalysisController < handle
                                              fullfile(defaultPath, [defaultName '.pdf']));
 
             if ~isnumeric(fileName)
+                if ismac
+                    % Make sure export_fig can find Ghostscript if it was installed via MacPorts.
+                    prevEnv = getenv('DYLD_LIBRARY_PATH');
+                    setenv('DYLD_LIBRARY_PATH', ['/opt/local/lib:' prevEnv]);
+                end
+                
                 % Determine the list of axes to export.
                 axesToSave = [obj.timeIndicatorPanel.axes];
                 visibleVideoPanels = obj.visiblePanels(true);
@@ -345,6 +425,10 @@ classdef AnalysisController < handle
                 % Show the current selection again.
                 for i = 1:length(visibleOtherPanels)
                     visibleOtherPanels{i}.showSelection(true);
+                end
+                
+                if ismac
+                    setenv('DYLD_LIBRARY_PATH', prevEnv);
                 end
             end
         end
@@ -558,13 +642,7 @@ classdef AnalysisController < handle
         
         
         function handleKeyPress(obj, ~, keyEvent)
-            if strcmp(keyEvent.Key, 'space')
-                if isplaying(obj.audioPlayer)
-                    obj.pauseMedia();
-                else
-                    obj.playMedia();
-                end
-            else
+            if ~strcmp(keyEvent.Key, 'space')
                 % Let one of the panels handle the event.
                 visiblePanels = horzcat(obj.visiblePanels(false), obj.visiblePanels(true));
                 for i = 1:length(visiblePanels)
@@ -576,12 +654,12 @@ classdef AnalysisController < handle
         end
         
         
-        function handleKeyRelease(obj, ~, keyEvent)
+        function handleKeyRelease(obj, source, keyEvent)
             if strcmp(keyEvent.Key, 'space')
-                if isplaying(obj.audioPlayer)
-                    obj.pauseMedia();
+                if obj.isPlayingMedia
+                    obj.handlePauseMedia(source, keyEvent);
                 else
-                    obj.playMedia();
+                    obj.handlePlayMedia(source, keyEvent);
                 end
             else
                 % Let one of the panels handle the event.
@@ -718,7 +796,7 @@ classdef AnalysisController < handle
                     set(obj.figure, 'Pointer', 'arrow'); drawnow
                 catch ME
                     set(obj.figure, 'Pointer', 'arrow'); drawnow
-                    warndlg(['Error opening media file:\n\n' ME.message]);
+                    warndlg(sprintf('Error opening media file:\n\n%s', ME.message));
                     rethrow(ME);
                 end
             end
@@ -889,9 +967,10 @@ classdef AnalysisController < handle
         
         
         function handleClose(obj, ~, ~)
-            if ~isempty(obj.playTimer)
-                stop(obj.playTimer);
+            if obj.isPlayingMedia
+                stop(obj.mediaTimer);
             end
+            delete(obj.mediaTimer);
 
             % Remember the window position.
             setpref('SongAnalysis', 'MainWindowPosition', get(obj.figure, 'Position'));

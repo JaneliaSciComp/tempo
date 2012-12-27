@@ -12,7 +12,8 @@ classdef SpectrogramPanel < TimelinePanel
         freqMaxLabel
         freqMinLabel
         otherLabel
-        zoomInLabel
+        
+        noDisplayLabel
 	end
 	
 	methods
@@ -41,7 +42,7 @@ classdef SpectrogramPanel < TimelinePanel
             obj.freqMaxLabel = text(panelSize(1) - 1, panelSize(2), '', 'Units', 'pixels', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'BackgroundColor', 'white');
             obj.freqMinLabel = text(panelSize(1) - 1, 4, '', 'Units', 'pixels', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', 'BackgroundColor', 'white');
             obj.otherLabel = text(5, panelSize(2), '', 'Units', 'pixels', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'BackgroundColor', 'white');
-            obj.zoomInLabel = text(panelSize(1) / 2, panelSize(2) / 2, 'Zoom in to see the spectrogram', 'Units', 'pixels', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'Visible', 'off');
+            obj.noDisplayLabel = text(panelSize(1) / 2, panelSize(2) / 2, 'Zoom in to see the spectrogram', 'Units', 'pixels', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'Visible', 'off');
         end
         
         
@@ -52,7 +53,7 @@ classdef SpectrogramPanel < TimelinePanel
             set(obj.freqMaxLabel, 'Position', [panelSize(1) - 1, panelSize(2)]);
             set(obj.freqMinLabel, 'Position', [panelSize(1) - 1, 4]);
             set(obj.otherLabel, 'Position', [5, panelSize(2)]);
-            set(obj.zoomInLabel, 'Position', [panelSize(1) / 2, panelSize(2) / 2]);
+            set(obj.noDisplayLabel, 'Position', [panelSize(1) / 2, panelSize(2) / 2]);
         end
         
         
@@ -64,15 +65,19 @@ classdef SpectrogramPanel < TimelinePanel
             fullLength = floor((timeRange(2) - timeRange(1)) * obj.audio.sampleRate);
             window = 2 ^ nextpow2(obj.windowSize * obj.audio.sampleRate);
             
-            if fullLength > 100000
+            if obj.controller.isPlayingMedia
+                P = zeros(100, 100);
+                set(obj.axes, 'CLim', [-1 9]);
+                set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'No spectrogram while media is playing');
+            elseif fullLength > 100000
                 % It will take too long to compute the spectrogram for this much data.
                 P = zeros(100, 100);
                 set(obj.axes, 'CLim', [-1 9]);
-                set(obj.zoomInLabel, 'Visible', 'on');
+                set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'Zoom in to see the spectrogram');
             else
                 audioData = obj.audio.dataInTimeRange(timeRange);
                 set(obj.axes, 'CLimMode', 'auto')
-                set(obj.zoomInLabel, 'Visible', 'off');
+                set(obj.noDisplayLabel, 'Visible', 'off');
 
                 if isempty(audioData)
                     P = zeros(100, 100);
