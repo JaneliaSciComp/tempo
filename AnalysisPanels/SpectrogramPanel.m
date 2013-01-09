@@ -3,10 +3,6 @@ classdef SpectrogramPanel < TimelinePanel
 	properties
         audio
         
-        windowSize
-        freqMin
-        freqMax
-        
         imageHandle
         
         freqMaxLabel
@@ -23,11 +19,20 @@ classdef SpectrogramPanel < TimelinePanel
             
             obj.audio = recording;
             
-            obj.windowSize = 0.001;
-            obj.freqMin = 0;
-            obj.freqMax = floor(recording.sampleRate / 2);
+            obj.controller.windowSize = 0.001;
+            obj.controller.freqMin = 0;
+            obj.controller.freqMax = floor(recording.sampleRate / 2);
+            addlistener(obj.controller, 'windowSize', 'PostSet', ...
+                @(source, event)handleSpectrogramParametersChanged(obj, source, event));
+            addlistener(obj.controller, 'freqMin', 'PostSet', ...
+                @(source, event)handleSpectrogramParametersChanged(obj, source, event));
+            addlistener(obj.controller, 'freqMax', 'PostSet', ...
+                @(source, event)handleSpectrogramParametersChanged(obj, source, event));
         end
         
+        function handleSpectrogramParametersChanged(obj, ~, ~)
+            obj.updateAxes(obj.controller.displayedTimeRange());
+        end
         
         function createControls(obj, panelSize)
             panelSize(1) = panelSize(1) - obj.axesBorder(3);
@@ -63,13 +68,13 @@ classdef SpectrogramPanel < TimelinePanel
             end
             
             fullLength = floor((timeRange(2) - timeRange(1)) * obj.audio.sampleRate);
-            window = 2 ^ nextpow2(obj.windowSize * obj.audio.sampleRate);
+            window = 2 ^ nextpow2(obj.controller.windowSize * obj.audio.sampleRate);
             
             if obj.controller.isPlayingMedia
                 P = zeros(100, 100);
                 set(obj.axes, 'CLim', [-1 9]);
                 set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'No spectrogram while media is playing');
-            elseif fullLength > 100000
+            elseif fullLength > 1000000
                 % It will take too long to compute the spectrogram for this much data.
                 P = zeros(100, 100);
                 set(obj.axes, 'CLim', [-1 9]);
@@ -88,7 +93,7 @@ classdef SpectrogramPanel < TimelinePanel
                     [~, f, ~, P] = spectrogram(double(audioData), window, [], [], obj.audio.sampleRate);
                     
                     % Restrict to the frequencies of interest.
-                    idx = (f > obj.freqMin) & (f < obj.freqMax);
+                    idx = (f > obj.controller.freqMin) & (f < obj.controller.freqMax);
                     P = log10(abs(P(idx, :)));
                     
                     % Reduce the dimensions of P so that there are no more than 2x2 data points per pixel.
@@ -123,8 +128,8 @@ classdef SpectrogramPanel < TimelinePanel
             
             set(obj.imageHandle, 'CData', P, 'XData', timeRange, 'YData', [1 size(P, 1)]);
             
-            set(obj.freqMaxLabel, 'String', [num2str(round(obj.freqMax)) ' Hz']);
-            set(obj.freqMinLabel, 'String', [num2str(round(obj.freqMin)) ' Hz']);
+            set(obj.freqMaxLabel, 'String', [num2str(round(obj.controller.freqMax)) ' Hz']);
+            set(obj.freqMinLabel, 'String', [num2str(round(obj.controller.freqMin)) ' Hz']);
             set(obj.otherLabel, 'String', sprintf('%.3g msec\n%.3g Hz', window / obj.audio.sampleRate / 2 * 1000, obj.audio.sampleRate / window / 2));
             
 % TODO
@@ -140,43 +145,43 @@ classdef SpectrogramPanel < TimelinePanel
             if strcmp(keyEvent.Key, 'leftbracket')
                 if shiftDown
                     % Scroll up to higher frequencies.
-                    tmp=(obj.freqMax - obj.freqMin) / 2;
-                    obj.freqMin = min(floor(obj.audio.sampleRate / 2) - 1, obj.freqMin + tmp);
-                    obj.freqMax = min(floor(obj.audio.sampleRate / 2), obj.freqMax + tmp);
+                    tmp=(obj.controller.freqMax - obj.controller.freqMin) / 2;
+                    obj.controller.freqMin = min(floor(obj.audio.sampleRate / 2) - 1, obj.controller.freqMin + tmp);
+                    obj.controller.freqMax = min(floor(obj.audio.sampleRate / 2), obj.controller.freqMax + tmp);
                 elseif ctrlDown
                     % Halve the window size.
-                    obj.windowSize = max(64 / obj.audio.sampleRate, obj.windowSize / 2);
+                    obj.controller.windowSize = max(64 / obj.audio.sampleRate, obj.controller.windowSize / 2);
                 else
                     % Double the range of frequencies shown.
-                    tmp = (obj.freqMax - obj.freqMin) / 2;
-                    obj.freqMin = max(0,obj.freqMin - tmp);
-                    obj.freqMax = min(floor(obj.audio.sampleRate / 2), obj.freqMax + tmp);
+                    tmp = (obj.controller.freqMax - obj.controller.freqMin) / 2;
+                    obj.controller.freqMin = max(0,obj.controller.freqMin - tmp);
+                    obj.controller.freqMax = min(floor(obj.audio.sampleRate / 2), obj.controller.freqMax + tmp);
                 end
-                obj.updateAxes(obj.controller.displayedTimeRange());
+                %obj.updateAxes(obj.controller.displayedTimeRange());
                 handled = true;
             elseif strcmp(keyEvent.Key, 'rightbracket')
                 if shiftDown
                     % Scroll down to lower frequencies.
-                    tmp= (obj.freqMax - obj.freqMin) / 2;
-                    obj.freqMin = max(0, obj.freqMin - tmp);
-                    obj.freqMax = max(1, obj.freqMax - tmp);
+                    tmp= (obj.controller.freqMax - obj.controller.freqMin) / 2;
+                    obj.controller.freqMin = max(0, obj.controller.freqMin - tmp);
+                    obj.controller.freqMax = max(1, obj.controller.freqMax - tmp);
                 elseif ctrlDown
                     % Double the window size.
-                    obj.windowSize = min(1, obj.windowSize * 2);
+                    obj.controller.windowSize = min(1, obj.controller.windowSize * 2);
                 else
                     % Halve the range of frequencies shown.
-                    tmp = (obj.freqMax - obj.freqMin) / 4;
-                    obj.freqMin = obj.freqMin + tmp;
-                    obj.freqMax = obj.freqMax - tmp;
+                    tmp = (obj.controller.freqMax - obj.controller.freqMin) / 4;
+                    obj.controller.freqMin = obj.controller.freqMin + tmp;
+                    obj.controller.freqMax = obj.controller.freqMax - tmp;
                 end
-                obj.updateAxes(obj.controller.displayedTimeRange());
+                %obj.updateAxes(obj.controller.displayedTimeRange());
                 handled = true;
             elseif keyEvent.Character == '|'
                 % Reset to the defaults.
-                obj.windowSize = 0.001;
-                obj.freqMin = 0;
-                obj.freqMax = floor(obj.audio.sampleRate / 2);
-                obj.updateAxes(obj.controller.displayedTimeRange());
+                obj.controller.windowSize = 0.001;
+                obj.controller.freqMin = 0;
+                obj.controller.freqMax = floor(obj.audio.sampleRate / 2);
+                %obj.updateAxes(obj.controller.displayedTimeRange());
                 handled = true;
             else
                 handled = keyWasPressed@TimelinePanel(obj, keyEvent);

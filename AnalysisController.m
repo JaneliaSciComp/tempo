@@ -49,6 +49,9 @@ classdef AnalysisController < handle
         timeWindow = 0          % The width of the time window the non-video panels should display (in seconds).
         currentTime = 0         % The time point currently being played (in seconds).
         selectedTime = [0 0]    % The range of time currently selected (in seconds).  The two values will be equal if there is a point selection.
+        windowSize = 0
+        freqMin = 0
+        freqMax = 0
     end
     
     %                   On change update:                           Can be changed by:

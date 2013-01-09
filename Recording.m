@@ -93,11 +93,11 @@ classdef Recording < handle
                 len=ftell(fid)/4/obj.sampleRate/60;
                 fseek(fid,0,'bof');
                 if(len>15)
-                  inputdlg(['recording is ' num2str(len,3) ' min long.  starting at which minute should i read a 15-min block of data? '],'',1,{'1'});
+                  inputdlg(['recording is ' num2str(len,3) ' min long.  starting at which minute should i read a 1-min block of data? '],'',1,{'1'});
                   fseek(fid,60*(str2num(char(ans))-1)*obj.sampleRate*4,'bof');
                 end
                 %set(handles.figure1,'pointer','watch');
-                obj.data=fread(fid,15*60*obj.sampleRate,'single');
+                obj.data=fread(fid,1*60*obj.sampleRate,'single');
                 fclose(fid);
                 obj.duration = length(obj.data) / obj.sampleRate;
                 obj.isAudio = true;
