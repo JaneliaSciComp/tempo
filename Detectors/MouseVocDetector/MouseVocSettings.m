@@ -80,20 +80,20 @@ for field = handles.detector.settingNames()
 end
 
 % Populate the recordings pop-up.
-recNames = {};
+%recNames = {};
 handles.recordings = Recording.empty();
 for rec = handles.detector.controller.recordings
     if rec.isAudio
-        recNames{end + 1} = rec.name; %#ok<AGROW>
+%        recNames{end + 1} = rec.name; %#ok<AGROW>
         handles.recordings(end + 1) = rec;
     end
 end
-if isempty(recNames)
-    set(handles.recordingPopUp, 'String', 'None available', 'Enable', 'off');
-    set(handles.okButton, 'Enable', 'off');
-else
-    set(handles.recordingPopUp, 'String', recNames);
-end
+%if isempty(recNames)
+%    set(handles.recordingPopUp, 'String', 'None available', 'Enable', 'off');
+%    set(handles.okButton, 'Enable', 'off');
+%else
+%    set(handles.recordingPopUp, 'String', recNames);
+%end
 
 guidata(hObject, handles);
 
@@ -573,7 +573,8 @@ if handles.editable
         handles.detector.(field{1}) = str2num(value); %#ok<ST2NM>
     end
 
-    handles.detector.recording = handles.recordings(get(handles.recordingPopUp, 'Value'));
+    handles.detector.recording = handles.recordings;
+    %handles.detector.recording = handles.recordings(get(handles.recordingPopUp, 'Value'));
 
     % Indicate that the user accepted the settings and trigger the close of
     % the dialog.

@@ -1,6 +1,8 @@
 classdef MouseVocDetector < FeatureDetector
     
     properties
+        recording
+        
         NW=22;
         K=43;
         PVal=0.01;
@@ -69,9 +71,9 @@ classdef MouseVocDetector < FeatureDetector
 
             persistent sampleRate2 NFFT2 NW2 K2 PVal2 timeRange2
 
-            [p,n,~]=fileparts(obj.recording.filePath);
+            [p,n,~]=fileparts(obj.recording(1).filePath);
 
-            if(isempty(sampleRate2) || (sampleRate2~=obj.recording.sampleRate) || ...
+            if(isempty(sampleRate2) || (sampleRate2~=obj.recording(1).sampleRate) || ...
                 isempty(NFFT2) || (sum(NFFT2~=obj.NFFT)>0) || ...
                 isempty(NW2) || (NW2~=obj.NW) || ...
                 isempty(K2) || (K2~=obj.K) || ...
@@ -81,7 +83,7 @@ classdef MouseVocDetector < FeatureDetector
               nsteps=(2+length(obj.NFFT));
               for i=1:length(obj.NFFT)
                 obj.updateProgress('Running multitaper analysis on signal...', (i-1)/nsteps);
-                mtbp(obj.recording.sampleRate,obj.NFFT(i),obj.NW,obj.K,obj.PVal,...
+                mtbp(obj.recording(1).sampleRate,obj.NFFT(i),obj.NW,obj.K,obj.PVal,...
                     fullfile(p,n),['tmp' num2str(i)],timeRange(1),timeRange(2));
               end
 
@@ -95,7 +97,7 @@ classdef MouseVocDetector < FeatureDetector
               nsteps=2;
             end
 
-            sampleRate2=obj.recording.sampleRate;
+            sampleRate2=obj.recording(1).sampleRate;
             NFFT2=obj.NFFT;
             NW2=obj.NW;
             K2=obj.K;
