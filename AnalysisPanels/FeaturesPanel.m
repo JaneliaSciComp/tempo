@@ -79,6 +79,7 @@ classdef FeaturesPanel < TimelinePanel
                     end
                     feature.contextualMenu = uicontextmenu();
                     uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
+                    uimenu(feature.contextualMenu, 'Tag', 'showDetectorParametersMenuItem', 'Label', 'Show Detector Parameters', 'Callback', @(source, event)showDetectorParameters(obj, source, event), 'Separator', 'on');
                     uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', @(source, event)showFeatureProperties(obj, source, event), 'Separator', 'on');
                     uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)removeFeature(obj, source, event), 'Separator', 'off');
                 end
@@ -165,6 +166,10 @@ classdef FeaturesPanel < TimelinePanel
         function saveFeatures(obj, ~, ~)
             % TODO: default name to recording used by detector
             obj.controller.saveFeatures({obj.reporter});
+        end
+        
+        
+        function showDetectorParameters(obj, ~, ~) %#ok<INUSD>
         end
         
         
