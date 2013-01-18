@@ -534,6 +534,18 @@ classdef AnalysisController < handle
         end
         
         
+        function removeFeaturePanel(obj, featurePanel)
+            answer = questdlg('Are you sure you wish to remove this reporter?', 'Removing Reporter', 'Cancel', 'Remove', 'Cancel');
+            if strcmp(answer, 'Remove')
+                obj.otherPanels(cellfun(@(x) x == featurePanel, obj.otherPanels)) = [];
+                delete(featurePanel);
+                obj.arrangePanels();
+                
+% TODO:                handles = updateFeatureTimes(handles);
+            end
+        end
+        
+        
         function setZoom(obj, zoom)
             if zoom < 1
                 obj.zoom = 1;
@@ -569,6 +581,10 @@ classdef AnalysisController < handle
         
         
         function handleMouseButtonDown(obj, ~, ~)
+            if strcmp(get(gcf, 'SelectionType'), 'alt')
+                return  % Don't change the curren time or selection when control/right clicking.
+            end
+            
             clickedObject = get(obj.figure, 'CurrentObject');
             
             % TODO: allow panels to handle clicks on their objects

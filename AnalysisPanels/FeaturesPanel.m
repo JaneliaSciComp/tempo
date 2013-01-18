@@ -2,8 +2,15 @@ classdef FeaturesPanel < TimelinePanel
 
 	properties
         reporter
+        
         featureTypeLabels
         featureTypeShadows
+        
+        contextualMenu
+        detectFeaturesInSelectionMenuItem
+        showReporterSettingsMenuItem
+        
+        featureChangeListener
 	end
 	
 	methods
@@ -16,31 +23,35 @@ classdef FeaturesPanel < TimelinePanel
             obj.populateFeatures();
             
             % Listen for whenever the reporter changes its features.
-            addlistener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
+            obj.featureChangeListener = addlistener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
+            obj.listeners{end + 1} = obj.featureChangeListener;
         end
         
         
-        function createControls(obj, ~)
-%             menu = uicontextmenu('Callback', @(source, event)enableReporterMenuItems(obj, source, event));
-%             uimenu(menu, 'Tag', 'reporterNameMenuItem', 'Label', obj.reporter.name, 'Enable', 'off');
-%             uimenu(menu, 'Tag', 'showReporterSettingsMenuItem', 'Label', 'Show Reporter Settings', 'Callback', @(source, event)showSettings(obj, source, event), 'Separator', 'on');
-%             uimenu(menu, 'Tag', 'detectFeaturesInSelectionMenuItem', 'Label', 'Detect Features in Selection', 'Callback', @(source, event)detectFeaturesInSelection(obj, source, event));
-%             uimenu(menu, 'Tag', 'saveFeaturesMenuItem', 'Label', 'Save Features...', 'Callback', @(source, event)saveFeatures(obj, source, event));
-%             uimenu(menu, 'Tag', 'setFeaturesColorMenuItem', 'Label', 'Set Features Color...', 'Callback', @(source, event)setFeaturesColor(obj, source, event));
-%             uimenu(menu, 'Tag', 'removeReporterMenuItem', 'Label', 'Remove Reporter...', 'Callback', @(source, event)removeReporter(obj, source, event), 'Separator', 'on');
-%             set(obj.axes, 'UIContextMenu', menu);
+        function createControls(obj, ~) %#ok<INUSD>
         end
         
         
         function handleFeaturesDidChange(obj, ~, ~)
-            % TODO: how to avoid repetitive calls during detection?
             obj.populateFeatures();
         end
         
         
         function populateFeatures(obj)
+            if isempty(obj.contextualMenu)
+                obj.contextualMenu = uicontextmenu('Callback', @(source, event)enableReporterMenuItems(obj, source, event));
+                uimenu(obj.contextualMenu, 'Label', obj.reporter.name, 'Enable', 'off');
+                obj.showReporterSettingsMenuItem = uimenu(obj.contextualMenu, 'Label', 'Show Reporter Settings', 'Callback', @(source, event)showReporterSettings(obj, source, event), 'Separator', 'on');
+                obj.detectFeaturesInSelectionMenuItem = uimenu(obj.contextualMenu, 'Label', 'Detect Features in Selection', 'Callback', @(source, event)detectFeaturesInSelection(obj, source, event));
+                uimenu(obj.contextualMenu, 'Label', 'Save Detected Features...', 'Callback', @(source, event)saveFeatures(obj, source, event));
+                uimenu(obj.contextualMenu, 'Label', 'Set Features Color...', 'Callback', @(source, event)setFeaturesColor(obj, source, event));
+                uimenu(obj.contextualMenu, 'Label', 'Remove Reporter...', 'Callback', @(source, event)removeReporter(obj, source, event), 'Separator', 'on');
+                set(obj.axes, 'UIContextMenu', obj.contextualMenu);
+            end
+            
             axes(obj.axes);
             cla;
+            
             obj.featureTypeLabels= {};
             obj.featureTypeShadows = {};
             
@@ -54,19 +65,19 @@ classdef FeaturesPanel < TimelinePanel
             if isa(obj.reporter, 'FeatureDetector')
                 for j = 1:size(obj.reporter.detectedTimeRanges, 1)
                     detectedTimeRange = obj.reporter.detectedTimeRanges(j, :);
-
+                    
                     if detectedTimeRange(1) > lastTime
                         % Add a gray background before the current range.
                         rectangle('Position', [lastTime 0 detectedTimeRange(1) - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
                     end
-
+                    
                     lastTime = detectedTimeRange(2);
                 end
                 if lastTime < obj.controller.duration
                     rectangle('Position', [lastTime 0 obj.controller.duration - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
                 end
             end
-
+            
             % Draw the features that have been reported.
             features = obj.reporter.features();
             for feature = features
@@ -79,7 +90,6 @@ classdef FeaturesPanel < TimelinePanel
                     end
                     feature.contextualMenu = uicontextmenu();
                     uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
-                    uimenu(feature.contextualMenu, 'Tag', 'showDetectorParametersMenuItem', 'Label', 'Show Detector Parameters', 'Callback', @(source, event)showDetectorParameters(obj, source, event), 'Separator', 'on');
                     uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', @(source, event)showFeatureProperties(obj, source, event), 'Separator', 'on');
                     uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)removeFeature(obj, source, event), 'Separator', 'off');
                 end
@@ -143,7 +153,7 @@ classdef FeaturesPanel < TimelinePanel
                     end
                 end
             end
-
+            
             if timeChange ~= 0
                 newTime = max([0 min([obj.controller.maxMediaTime obj.controller.currentTime + timeChange])]);
                 if shiftDown
@@ -169,13 +179,70 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function saveFeatures(obj, ~, ~)
-            % TODO: default name to recording used by detector
-            obj.controller.saveFeatures({obj.reporter});
+        function enableReporterMenuItems(obj, ~, ~)
+            if obj.controller.selectedTime(2) == obj.controller.selectedTime(1)
+                set(obj.detectFeaturesInSelectionMenuItem, 'Enable', 'off');
+            else
+                set(obj.detectFeaturesInSelectionMenuItem, 'Enable', 'on');
+            end
+            if isa(obj.reporter, 'FeatureDetector')
+                set(obj.showReporterSettingsMenuItem, 'Enable', 'on');
+            else
+                set(obj.showReporterSettingsMenuItem, 'Enable', 'off');
+            end
         end
         
         
-        function showDetectorParameters(obj, ~, ~) %#ok<INUSD>
+        function showReporterSettings(obj, ~, ~)
+            obj.reporter.showSettings();
+        end
+        
+        
+        function detectFeaturesInSelection(obj, ~, ~)
+            % Detect features in the current selection using an existing detector.
+            % TODO: don't add duplicate features if selection overlaps already detected region?
+            %       or reduce selection to not overlap before detection?
+            
+            obj.reporter.startProgress();
+            obj.featureChangeListener.Enabled = false;
+            try
+                n = obj.reporter.detectFeatures(obj.controller.selectedTime);
+                obj.featureChangeListener.Enabled = true;
+                obj.reporter.endProgress();
+                
+                if n == 0
+                    waitfor(msgbox('No additional features were detected.', obj.reporter.typeName(), 'warn', 'modal'));
+                else
+                    obj.populateFeatures();
+                end
+                
+% TODO:                handles = updateFeatureTimes(handles);
+            catch ME
+                obj.featureChangeListener.Enabled = true;
+                obj.reporter.endProgress();
+                rethrow(ME);
+            end
+        end
+        
+        
+        function setFeaturesColor(~, ~, ~)
+% TODO:            
+%             newColor = uisetcolor(reporter.featuresColor);
+%             if length(newColor) == 3
+%                 reporter.featuresColor = newColor;
+%                 syncGUIWithTime(handles);
+%             end
+        end
+        
+        
+        function removeReporter(obj, ~, ~)
+            obj.controller.removeFeaturePanel(obj);
+        end
+        
+        
+        function saveFeatures(obj, ~, ~)
+            % TODO: default name to recording used by detector
+            obj.controller.saveFeatures({obj.reporter});
         end
         
         
@@ -210,6 +277,7 @@ classdef FeaturesPanel < TimelinePanel
                 obj.reporter.removeFeature(feature);
             end
         end
+        
 	end
 	
 end

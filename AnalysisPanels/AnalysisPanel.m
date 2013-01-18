@@ -8,6 +8,8 @@ classdef AnalysisPanel < handle
         visible = true
         
         axesBorder = [0 0 0 0]  % left, bottom, right, top
+        
+        listeners = {}
     end
     
     methods
@@ -34,7 +36,7 @@ classdef AnalysisPanel < handle
             obj.createControls([100 - 16 100]);
             
             % Add listeners so we know when the current time and selection change.
-            addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
+            obj.listeners{end + 1} = addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
             
             obj.handleCurrentTimeChanged([], []);
         end
@@ -61,11 +63,11 @@ classdef AnalysisPanel < handle
         end
         
         
-        function createControls(obj, panelSize) %#ok<INUSD,MANU>
+        function createControls(obj, panelSize) %#ok<INUSD>
         end
         
         
-        function resizeControls(obj, panelSize) %#ok<INUSD,MANU>
+        function resizeControls(obj, panelSize) %#ok<INUSD>
         end
         
         
@@ -87,12 +89,12 @@ classdef AnalysisPanel < handle
         end
         
         
-        function handled = keyWasPressed(obj, event) %#ok<INUSD,MANU>
+        function handled = keyWasPressed(obj, event) %#ok<INUSD>
             handled = false;
         end
         
         
-        function handled = keyWasReleased(obj, event) %#ok<INUSD,MANU>
+        function handled = keyWasReleased(obj, event) %#ok<INUSD>
             handled = false;
         end
         
@@ -106,6 +108,15 @@ classdef AnalysisPanel < handle
         
         function currentTimeChanged(obj) %#ok<MANU>
             % TODO: make abstract?
+        end
+        
+        
+        function delete(obj)
+            cellfun(@(x) delete(x), obj.listeners);
+            
+            if ishandle(obj.panel)
+                delete(obj.panel);
+            end
         end
         
     end

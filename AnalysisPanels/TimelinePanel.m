@@ -19,9 +19,9 @@ classdef TimelinePanel < AnalysisPanel
             obj.selectionPatch = patch([0 1 1 0], [-100000 -100000 200000 200000], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'Visible', 'off', 'HitTest', 'off', 'HandleVisibility', 'off');
             
             % Add listeners so we know when the current time and selection change.
-            addlistener(obj.controller, 'displayedTime', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
-            addlistener(obj.controller, 'timeWindow', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
-            addlistener(obj.controller, 'selectedTime', 'PostSet', @(source, event)handleSelectedTimeChanged(obj, source, event));
+            obj.listeners{end + 1} = addlistener(obj.controller, 'displayedTime', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
+            obj.listeners{end + 1} = addlistener(obj.controller, 'timeWindow', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
+            obj.listeners{end + 1} = addlistener(obj.controller, 'selectedTime', 'PostSet', @(source, event)handleSelectedTimeChanged(obj, source, event));
             
             obj.handleSelectedTimeChanged();
             obj.handleTimeWindowChanged();
