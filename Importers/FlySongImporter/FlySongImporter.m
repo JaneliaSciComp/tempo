@@ -67,7 +67,7 @@ classdef FlySongImporter < FeatureImporter
                     % TODO: check if audio file is already open
                     
                     channel = S.daq_channel;
-                    rec = Recording(audioPath, channel);
+                    rec = Recording(audioPath, [], channel);
                     obj.controller.addAudioRecording(rec);
                 end
             else

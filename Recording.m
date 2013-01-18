@@ -5,6 +5,7 @@ classdef Recording < handle
         filePath
         data
         sampleRate
+        beginning
         duration
         maxAmp
         
@@ -25,7 +26,7 @@ classdef Recording < handle
     
     methods
         
-        function obj = Recording(filePath, varargin)
+        function obj = Recording(filePath, objrecs, varargin)
             obj = obj@handle();
             
             obj.filePath = filePath;
@@ -86,17 +87,25 @@ classdef Recording < handle
                     obj = Recording.empty();
                 end
             elseif strncmp(ext, '.ch', 2)  % egnor's .ch? files
-                inputdlg('sample rate: ','',1,{'450450'});
-                obj.sampleRate=str2num(char(ans));
+                idx=find([objrecs.isAudio],1,'first');
                 fid=fopen(filePath,'r');
-                fseek(fid,0,'eof');
-                len=ftell(fid)/4/obj.sampleRate/60;
-                fseek(fid,0,'bof');
-                if(len>15)
-                  inputdlg(['recording is ' num2str(len,3) ' min long.  starting at which minute should i read a 1-min block of data? '],'',1,{'1'});
-                  fseek(fid,60*(str2num(char(ans))-1)*obj.sampleRate*4,'bof');
+                if(isempty(idx))
+                  inputdlg('sample rate: ','',1,{'450450'});
+                  obj.sampleRate=str2num(char(ans));
+                  fseek(fid,0,'eof');
+                  len=ftell(fid)/4/obj.sampleRate/60;
+                  fseek(fid,0,'bof');
+                  obj.beginning=1;
+                  if(len>2)
+                    inputdlg(['recording is ' num2str(len,3) ' min long.  starting at which minute should i read a 1-min block of data? '],'',1,{'1'});
+                    obj.beginning=str2num(char(ans));
+                  end
+                else
+                  obj.sampleRate=objrecs(idx).sampleRate;
+                  obj.beginning=objrecs(idx).beginning;
                 end
                 %set(handles.figure1,'pointer','watch');
+                fseek(fid,60*(obj.beginning-1)*obj.sampleRate*4,'bof');
                 obj.data=fread(fid,1*60*obj.sampleRate,'single');
                 fclose(fid);
                 obj.duration = length(obj.data) / obj.sampleRate;

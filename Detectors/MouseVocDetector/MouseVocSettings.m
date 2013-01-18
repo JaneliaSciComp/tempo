@@ -22,7 +22,7 @@ function varargout = MouseVocSettings(varargin)
 
 % Edit the above text to modify the response to help MouseVocSettings
 
-% Last Modified by GUIDE v2.5 13-Dec-2012 16:13:25
+% Last Modified by GUIDE v2.5 18-Jan-2013 14:27:24
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -586,9 +586,9 @@ guidata(hObject, handles);
 uiresume(handles.settingsFigure);
 
 
-% --- Executes on button press in ButtonCancel.
-function ButtonCancel_Callback(hObject, eventdata, handles)
-% hObject    handle to ButtonCancel (see GCBO)
+% --- Executes on button press in cancelButton.
+function cancelButton_Callback(hObject, eventdata, handles)
+% hObject    handle to cancelButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
