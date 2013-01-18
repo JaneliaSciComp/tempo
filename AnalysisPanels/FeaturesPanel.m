@@ -89,7 +89,13 @@ classdef FeaturesPanel < TimelinePanel
                 else
                     fillColor = obj.reporter.featuresColor;
                     fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
-                    rectangle('Position', [feature.sampleRange(1), yCen - spacing * 0.45, feature.sampleRange(2) - feature.sampleRange(1), spacing * 0.9], 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
+                    %rectangle('Position', [feature.sampleRange(1), yCen - spacing * 0.45, feature.sampleRange(2) - feature.sampleRange(1), spacing * 0.9], 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
+                    x0=feature.sampleRange(1);
+                    y0=yCen - spacing * 0.45;
+                    x1=x0+feature.sampleRange(2) - feature.sampleRange(1);
+                    y1=y0+spacing * 0.9;
+                    h=patch([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0],fillColor);
+                    set(h, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
                 end
             end
             
