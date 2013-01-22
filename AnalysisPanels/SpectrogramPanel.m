@@ -10,6 +10,9 @@ classdef SpectrogramPanel < TimelinePanel
         otherLabel
         
         noDisplayLabel
+
+        reporter
+        bounding_boxes
 	end
 	
 	methods
@@ -71,24 +74,20 @@ classdef SpectrogramPanel < TimelinePanel
             fullLength = floor((timeRange(2) - timeRange(1)) * obj.audio.sampleRate);
             window = 2 ^ nextpow2(obj.controller.windowSize * obj.audio.sampleRate);
             
+            P = zeros(100, 100);
+            freqRange=[1 100];
+            set(obj.axes, 'CLim', [-1 9]);
             if obj.controller.isPlayingMedia
-                P = zeros(100, 100);
-                set(obj.axes, 'CLim', [-1 9]);
                 set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'No spectrogram while media is playing');
             elseif fullLength > 1000000
                 % It will take too long to compute the spectrogram for this much data.
-                P = zeros(100, 100);
-                set(obj.axes, 'CLim', [-1 9]);
                 set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'Zoom in to see the spectrogram');
             else
                 audioData = obj.audio.dataInTimeRange(timeRange);
-                set(obj.axes, 'CLimMode', 'auto')
                 set(obj.noDisplayLabel, 'Visible', 'off');
 
-                if isempty(audioData)
-                    P = zeros(100, 100);
-                    set(obj.axes, 'CLim', [-1 9]);
-                else
+                if ~isempty(audioData)
+                    set(obj.axes, 'CLimMode', 'auto')
                     % Get the raw spectrogram data.
                     % TODO: any way to cache this to allow viewing at larger scales?
                     [~, f, ~, P] = spectrogram(double(audioData), window, [], [], obj.audio.sampleRate);
@@ -96,6 +95,7 @@ classdef SpectrogramPanel < TimelinePanel
                     % Restrict to the frequencies of interest.
                     idx = (f > obj.controller.freqMin) & (f < obj.controller.freqMax);
                     P = log10(abs(P(idx, :)));
+                    freqRange=[min(f(idx)) max(f(idx))];
                     
                     % Reduce the dimensions of P so that there are no more than 2x2 data points per pixel.
                     axesSize = get(obj.axes, 'Position');
@@ -125,9 +125,11 @@ classdef SpectrogramPanel < TimelinePanel
                 end
             end
             
-            set(obj.axes, 'YLim', [1 size(P, 1)]);
+%            set(obj.axes, 'YLim', [1 size(P, 1)]);
+            set(obj.axes, 'YLim', freqRange);
             
-            set(obj.imageHandle, 'CData', P, 'XData', timeRange, 'YData', [1 size(P, 1)]);
+%            set(obj.imageHandle, 'CData', P, 'XData', timeRange, 'YData', [1 size(P, 1)]);
+            set(obj.imageHandle, 'CData', P, 'XData', timeRange, 'YData', freqRange);
             
             set(obj.freqMaxLabel, 'String', [num2str(round(obj.controller.freqMax)) ' Hz']);
             set(obj.freqMinLabel, 'String', [num2str(round(obj.controller.freqMin)) ' Hz']);
@@ -188,6 +190,134 @@ classdef SpectrogramPanel < TimelinePanel
                 handled = keyWasPressed@TimelinePanel(obj, keyEvent);
             end
         end
+
+      function deleteAllReporters(obj)
+          for i=1:length(obj.reporter)
+              j=1;
+              while j<=length(obj.listeners) && (obj.listeners{j}.Source{1}~=obj.reporter{i})
+                 j=j+1;
+              end
+              delete(obj.listeners{j});
+              obj.listeners(j)=[];
+              obj.reporter(i)=[];
+              delete(obj.bounding_boxes{i});
+              obj.bounding_boxes(i)=[];
+          end
+      end
+
+      function addReporter(obj, reporter)
+          i=1;
+          while i<=length(obj.reporter) && (obj.reporter{i}~=reporter)
+              i=i+1;
+          end
+          if(i==(length(obj.reporter)+1))
+              obj.reporter{i}=reporter;
+              obj.bounding_boxes{i}=obj.populateFeatures(obj.reporter{i});
+              %obj.listeners{end+1} = addlistener(obj.reporter{i}, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
+              obj.listeners{i} = addlistener(obj.reporter{i}, 'FeaturesDidChange', @(src,evt,dat)handleFeaturesDidChange(obj,src,evt,i));
+          else
+              obj.reporter(i)=[];
+              delete(obj.bounding_boxes{i});
+              obj.bounding_boxes(i)=[];
+              i=1;
+              while i<=length(obj.listeners) && (obj.listeners{i}.Source{1}~=reporter)
+                  i=i+1;
+              end
+              delete(obj.listeners{i});
+              obj.listeners(i)=[];
+          end
+      end
+	
+      function handleFeaturesDidChange(obj, ~, ~, idx)
+         delete(obj.bounding_boxes{idx});
+         obj.bounding_boxes{idx}=obj.populateFeatures(obj.reporter{idx});
+      end
+      
+      
+      function bounding_boxes=populateFeatures(obj,reporter)
+%          if isempty(obj.contextualMenu)
+%              obj.contextualMenu = uicontextmenu('Callback', @(source, event)enableReporterMenuItems(obj, source, event));
+%              uimenu(obj.contextualMenu, 'Label', obj.reporter.name, 'Enable', 'off');
+%              obj.showReporterSettingsMenuItem = uimenu(obj.contextualMenu, 'Label', 'Show Reporter Settings', 'Callback', @(source, event)showReporterSettings(obj, source, event), 'Separator', 'on');
+%              obj.detectFeaturesInSelectionMenuItem = uimenu(obj.contextualMenu, 'Label', 'Detect Features in Selection', 'Callback', @(source, event)detectFeaturesInSelection(obj, source, event));
+%              uimenu(obj.contextualMenu, 'Label', 'Save Detected Features...', 'Callback', @(source, event)saveFeatures(obj, source, event));
+%              uimenu(obj.contextualMenu, 'Label', 'Set Features Color...', 'Callback', @(source, event)setFeaturesColor(obj, source, event));
+%              uimenu(obj.contextualMenu, 'Label', 'Draw Bounding Boxes', 'Callback', @(source, event)drawBoundingBoxes(obj, source, event), 'Separator', 'off');
+%              uimenu(obj.contextualMenu, 'Label', 'Remove Reporter...', 'Callback', @(source, event)removeReporter(obj, source, event), 'Separator', 'on');
+%              set(obj.axes, 'UIContextMenu', obj.contextualMenu);
+%          end
+          
+          bounding_boxes=[];
+          axes(obj.axes);
+%          cla;
+          
+%          obj.featureTypeLabels= {};
+%          obj.featureTypeShadows = {};
+          
+          featureTypes = reporter.featureTypes();
+          
+          spacing = 1 / length(featureTypes);
+          axesPos = get(obj.axes, 'Position');
+          
+          % Indicate the time spans in which feature detection has occurred for each reporter.
+%          lastTime = 0.0;
+%          if isa(obj.reporter, 'FeatureDetector')
+%              for j = 1:size(obj.reporter.detectedTimeRanges, 1)
+%                  detectedTimeRange = obj.reporter.detectedTimeRanges(j, :);
+%                  
+%                  if detectedTimeRange(1) > lastTime
+%                      % Add a gray background before the current range.
+%                      rectangle('Position', [lastTime 0 detectedTimeRange(1) - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
+%                  end
+%                  
+%                  lastTime = detectedTimeRange(2);
+%              end
+%              if lastTime < obj.controller.duration
+%                  rectangle('Position', [lastTime 0 obj.controller.duration - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
+%              end
+%          end
+          
+          % Draw the features that have been reported.
+          features = reporter.features();
+          for feature = features
+              y = find(strcmp(featureTypes, feature.type));
+%              if isempty(feature.contextualMenu)
+%                  if feature.sampleRange(1) == feature.sampleRange(2)
+%                      label = [feature.type ' @ ' secondstr(feature.sampleRange(1), obj.controller.timeLabelFormat)];
+%                  else
+%                      label = [feature.type ' @ ' secondstr(feature.sampleRange(1), obj.controller.timeLabelFormat) ' - ' secondstr(feature.sampleRange(2), obj.controller.timeLabelFormat)];
+%                  end
+%                  feature.contextualMenu = uicontextmenu();
+%                  uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
+%                  uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', @(source, event)showFeatureProperties(obj, source, event), 'Separator', 'on');
+%                  uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)removeFeature(obj, source, event), 'Separator', 'off');
+%              end
+%              yCen = (length(featureTypes) - y + 0.5) * spacing;
+%              if feature.sampleRange(1) == feature.sampleRange(2)
+%                  text(feature.sampleRange(1), yCen, 'x', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'UIContextMenu', feature.contextualMenu, 'Color', obj.reporter.featuresColor, 'UserData', feature);
+%              else
+%                  fillColor = obj.reporter.featuresColor;
+%                  fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
+                  %rectangle('Position', [feature.sampleRange(1), yCen - spacing * 0.45, feature.sampleRange(2) - feature.sampleRange(1), spacing * 0.9], 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
+                  x0=feature.sampleRange(1);
+                  y0=feature.FreqRange(1);
+                  x1=feature.sampleRange(2);
+                  y1=feature.FreqRange(2);
+%                  h=patch([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0],fillColor);
+                  h=line([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0]);
+                  bounding_boxes(end+1)=h;
+                  set(h, 'Color', reporter.featuresColor);
+%                  set(h, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
+%              end
+          end
+          
+%          % Draw the feature type names.
+%          for y = 1:length(featureTypes)
+%              featureType = featureTypes{y};
+%              obj.featureTypeShadows{end + 1} = text(6, (length(featureTypes) - y + 0.75) * spacing * axesPos(4) - 1, featureType, 'VerticalAlignment', 'middle', 'Units', 'pixels', 'HitTest', 'off', 'Color', [0.75 0.75 0.75]);
+%              obj.featureTypeLabels{end + 1} = text(5, (length(featureTypes) - y + 0.75) * spacing * axesPos(4), featureType, 'VerticalAlignment', 'middle', 'Units', 'pixels', 'HitTest', 'off', 'Color', [0.25 0.25 0.25]);
+%          end
+      end
 	
 	end
 	

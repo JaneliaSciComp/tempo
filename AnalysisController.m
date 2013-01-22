@@ -542,6 +542,13 @@ classdef AnalysisController < handle
                 obj.arrangePanels();
                 
 % TODO:                handles = updateFeatureTimes(handles);
+
+                for j = 1:length(obj.otherPanels)
+                    panel = obj.otherPanels{j};
+                    if isa(panel, 'SpectrogramPanel')
+                        panel.deleteAllReporters();
+                    end
+                end
             end
         end
         

@@ -45,6 +45,7 @@ classdef FeaturesPanel < TimelinePanel
                 obj.detectFeaturesInSelectionMenuItem = uimenu(obj.contextualMenu, 'Label', 'Detect Features in Selection', 'Callback', @(source, event)detectFeaturesInSelection(obj, source, event));
                 uimenu(obj.contextualMenu, 'Label', 'Save Detected Features...', 'Callback', @(source, event)saveFeatures(obj, source, event));
                 uimenu(obj.contextualMenu, 'Label', 'Set Features Color...', 'Callback', @(source, event)setFeaturesColor(obj, source, event));
+                uimenu(obj.contextualMenu, 'Label', 'Draw/Clear Bounding Boxes', 'Callback', @(source, event)handleBoundingBoxes(obj, source, event), 'Separator', 'off');
                 uimenu(obj.contextualMenu, 'Label', 'Remove Reporter...', 'Callback', @(source, event)removeReporter(obj, source, event), 'Separator', 'on');
                 set(obj.axes, 'UIContextMenu', obj.contextualMenu);
             end
@@ -180,10 +181,10 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function enableReporterMenuItems(obj, ~, ~)
-            if obj.controller.selectedTime(2) == obj.controller.selectedTime(1)
-                set(obj.detectFeaturesInSelectionMenuItem, 'Enable', 'off');
-            else
+            if isa(obj.reporter, 'FeatureDetector') && (obj.controller.selectedTime(2) ~= obj.controller.selectedTime(1))
                 set(obj.detectFeaturesInSelectionMenuItem, 'Enable', 'on');
+            else
+                set(obj.detectFeaturesInSelectionMenuItem, 'Enable', 'off');
             end
             if isa(obj.reporter, 'FeatureDetector')
                 set(obj.showReporterSettingsMenuItem, 'Enable', 'on');
@@ -243,6 +244,17 @@ classdef FeaturesPanel < TimelinePanel
         function saveFeatures(obj, ~, ~)
             % TODO: default name to recording used by detector
             obj.controller.saveFeatures({obj.reporter});
+        end
+        
+        
+        function handleBoundingBoxes(obj, ~, ~) %#ok<INUSD>
+%TODO:  make this work for drosophila
+          for i = 1:length(obj.controller.otherPanels)
+              panel = obj.controller.otherPanels{i};
+              if isa(panel, 'SpectrogramPanel')
+                  panel.addReporter(obj.reporter);
+              end
+          end
         end
         
         
