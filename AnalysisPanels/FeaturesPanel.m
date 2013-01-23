@@ -5,6 +5,7 @@ classdef FeaturesPanel < TimelinePanel
         
         featureTypeLabels
         featureTypeShadows
+        featureHandles
         
         contextualMenu
         detectFeaturesInSelectionMenuItem
@@ -20,7 +21,7 @@ classdef FeaturesPanel < TimelinePanel
             
             obj.reporter = reporter;
             
-            obj.populateFeatures();
+            obj.featureHandles=obj.populateFeatures();
             
             % Listen for whenever the reporter changes its features.
             obj.featureChangeListener = addlistener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
@@ -33,11 +34,12 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function handleFeaturesDidChange(obj, ~, ~)
-            obj.populateFeatures();
+            obj.featureHandles=obj.populateFeatures();
         end
         
         
-        function populateFeatures(obj)
+        function hh=populateFeatures(obj)
+            hh=[];
             if isempty(obj.contextualMenu)
                 obj.contextualMenu = uicontextmenu('Callback', @(source, event)enableReporterMenuItems(obj, source, event));
                 uimenu(obj.contextualMenu, 'Label', obj.reporter.name, 'Enable', 'off');
@@ -96,7 +98,8 @@ classdef FeaturesPanel < TimelinePanel
                 end
                 yCen = (length(featureTypes) - y + 0.5) * spacing;
                 if feature.sampleRange(1) == feature.sampleRange(2)
-                    text(feature.sampleRange(1), yCen, 'x', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'UIContextMenu', feature.contextualMenu, 'Color', obj.reporter.featuresColor, 'UserData', feature);
+                    h=text(feature.sampleRange(1), yCen, 'x', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'UIContextMenu', feature.contextualMenu, 'Color', obj.reporter.featuresColor, 'UserData', feature);
+                    hh=[hh h];
                 else
                     fillColor = obj.reporter.featuresColor;
                     fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
@@ -107,6 +110,7 @@ classdef FeaturesPanel < TimelinePanel
                     y1=y0+spacing * 0.9;
                     h=patch([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0],fillColor);
                     set(h, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
+                    hh=[hh h];
                 end
             end
             
@@ -214,7 +218,7 @@ classdef FeaturesPanel < TimelinePanel
                 if n == 0
                     waitfor(msgbox('No additional features were detected.', obj.reporter.typeName(), 'warn', 'modal'));
                 else
-                    obj.populateFeatures();
+                    obj.featureHandles=obj.populateFeatures();
                 end
                 
 % TODO:                handles = updateFeatureTimes(handles);
@@ -226,13 +230,21 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function setFeaturesColor(~, ~, ~)
-% TODO:            
-%             newColor = uisetcolor(reporter.featuresColor);
-%             if length(newColor) == 3
-%                 reporter.featuresColor = newColor;
+        function setFeaturesColor(obj, ~, ~)
+            newColor = uisetcolor(obj.reporter.featuresColor);
+            if length(newColor) == 3
+                obj.reporter.featuresColor = newColor;
 %                 syncGUIWithTime(handles);
-%             end
+                fillColor = obj.reporter.featuresColor;
+                fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
+                set(obj.featureHandles,'FaceColor',fillColor,'EdgeColor',obj.reporter.featuresColor);
+                for j = 1:length(obj.controller.otherPanels)
+                    panel = obj.controller.otherPanels{j};
+                    if isa(panel, 'SpectrogramPanel')
+                        panel.changeBoundingBoxColor(obj.reporter);
+                    end
+                end
+            end
         end
         
         

@@ -191,6 +191,14 @@ classdef SpectrogramPanel < TimelinePanel
             end
         end
 
+      function changeBoundingBoxColor(obj,reporter)
+          i=1;
+          while i<=length(obj.reporter) && (obj.reporter{i}~=reporter)
+              i=i+1;
+          end
+          set(obj.bounding_boxes{i},'Color',reporter.featuresColor);
+      end
+      
       function deleteAllReporters(obj)
           for i=1:length(obj.reporter)
               j=1;
