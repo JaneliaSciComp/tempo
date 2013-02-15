@@ -79,16 +79,16 @@ classdef MouseVocDetector < FeatureDetector
                 isempty(K2) || (K2~=obj.K) || ...
                 isempty(PVal2) || (PVal2~=obj.PVal) || ...
                 isempty(timeRange) || (sum(timeRange2~=timeRange)>0))
-              delete([fullfile(p,n) '*tmp*.mtbp']);
+              delete([fullfile(p,n) '*tmp*.ax']);
               nsteps=(2+length(obj.NFFT));
               for i=1:length(obj.NFFT)
                 obj.updateProgress('Running multitaper analysis on signal...', (i-1)/nsteps);
-                mtbp(obj.recording(1).sampleRate,obj.NFFT(i),obj.NW,obj.K,obj.PVal,...
+                ax(obj.recording(1).sampleRate,obj.NFFT(i),obj.NW,obj.K,obj.PVal,...
                     fullfile(p,n),['tmp' num2str(i)],timeRange(1),timeRange(2));
               end
 
-              tmp=dir([fullfile(p,n) '*tmp*.mtbp']);
-              cellfun(@(x) regexp(x,'.*tmp.\.mtbp'),{tmp.name});
+              tmp=dir([fullfile(p,n) '*tmp*.ax']);
+              cellfun(@(x) regexp(x,'.*tmp.\.ax'),{tmp.name});
               tmp=tmp(logical(ans));
               for i=1:length(tmp)
                 movefile(fullfile(p,tmp(i).name),tempdir);
@@ -105,7 +105,7 @@ classdef MouseVocDetector < FeatureDetector
             timeRange2=timeRange;
 
             obj.updateProgress('Heuristically segmenting syllables...', (nsteps-2)/nsteps);
-            mtbp2(obj.FreqLow, obj.FreqHigh, [obj.ConvHeight obj.ConvWidth], obj.ObjSize, ...
+            ax2(obj.FreqLow, obj.FreqHigh, [obj.ConvHeight obj.ConvWidth], obj.ObjSize, ...
                 obj.MergeFreq, obj.MergeFreqOverlap, obj.MergeFreqRatio, obj.MergeFreqFraction,...
                 obj.MergeTime, obj.NSeg, obj.MinLength, [], fullfile(tempdir,n));
 
