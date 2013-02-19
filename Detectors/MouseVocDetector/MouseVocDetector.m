@@ -104,14 +104,22 @@ classdef MouseVocDetector < FeatureDetector
             PVal2=obj.PVal;
             timeRange2=timeRange;
 
+            %rmdir([fullfile(tempdir,n) '-out*'],'s');
+            tmp=dir([fullfile(tempdir,n) '-out*']);
+            if(~isempty(tmp))
+              rmdir([fullfile(tempdir,n) '-out*'],'s');
+            end
+
             obj.updateProgress('Heuristically segmenting syllables...', (nsteps-2)/nsteps);
             ax2(obj.FreqLow, obj.FreqHigh, [obj.ConvHeight obj.ConvWidth], obj.ObjSize, ...
                 obj.MergeFreq, obj.MergeFreqOverlap, obj.MergeFreqRatio, obj.MergeFreqFraction,...
                 obj.MergeTime, obj.NSeg, obj.MinLength, [], fullfile(tempdir,n));
 
             obj.updateProgress('Adding features...', (nsteps-1)/nsteps);
-            tmp=dir([fullfile(tempdir,n) '.voc*']);
-            voclist=load(fullfile(tempdir,tmp.name));
+            %tmp=dir([fullfile(tempdir,n) '.voc*']);
+            tmp=dir([fullfile(tempdir,n) '-out*']);
+            tmp2=dir([fullfile(tempdir,tmp.name,'voc*')]);
+            voclist=load(fullfile(tempdir,tmp.name,tmp2.name));
 
             for i = 1:size(voclist, 1)
                 %x_start = timeRange(1) + voclist(i,1)./obj.recording.sampleRate;
