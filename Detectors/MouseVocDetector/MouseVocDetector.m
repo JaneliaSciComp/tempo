@@ -84,7 +84,9 @@ classdef MouseVocDetector < FeatureDetector
               for i=1:length(obj.NFFT)
                 obj.updateProgress('Running multitaper analysis on signal...', (i-1)/nsteps);
                 ax(obj.recording(1).sampleRate,obj.NFFT(i),obj.NW,obj.K,obj.PVal,...
-                    fullfile(p,n),['tmp' num2str(i)],timeRange(1),timeRange(2));
+                    fullfile(p,n),['tmp' num2str(i)],...
+                    60*(obj.recording(1).beginning-1)+timeRange(1),...
+                    60*(obj.recording(1).beginning-1)+timeRange(2));
               end
 
               tmp=dir([fullfile(p,n) '*tmp*.ax']);
