@@ -225,23 +225,135 @@ end
 
 
 
-function MergeTimeEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to MergeTimeEdit (see GCBO)
+function FreqLowEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to FreqLowEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of MergeTimeEdit as text
-%        str2double(get(hObject,'String')) returns contents of MergeTimeEdit as a double
+% Hints: get(hObject,'String') returns contents of FreqLowEdit as text
+%        str2double(get(hObject,'String')) returns contents of FreqLowEdit as a double
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
-  warndlg('merge_time must be a non-negative float');
+  warndlg('freq_low must be a non-negative real number');
 end
 
 
 % --- Executes during object creation, after setting all properties.
-function MergeTimeEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to MergeTimeEdit (see GCBO)
+function FreqLowEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to FreqLowEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function FreqHighEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to FreqHighEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of FreqHighEdit as text
+%        str2double(get(hObject,'String')) returns contents of FreqHighEdit as a double
+
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp<0))
+  warndlg('freq_high must be a non-negative real number');
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function FreqHighEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to FreqHighEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function ConvWidthEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to ConvWidthEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ConvWidthEdit as text
+%        str2double(get(hObject,'String')) returns contents of ConvWidthEdit as a double
+
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (~mod(tmp,2)) || (tmp<0) || (tmp~=round(tmp)))
+  warndlg('conv_width must be an odd positive integer');
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function ConvWidthEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ConvWidthEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function ConvHeightEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to ConvHeightEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ConvHeightEdit as text
+%        str2double(get(hObject,'String')) returns contents of ConvHeightEdit as a double
+
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (~mod(tmp,2)) || (tmp<0) || (tmp~=round(tmp)))
+  warndlg('conv_height must be a positive odd integer');
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function ConvHeightEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ConvHeightEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function ObjSizeEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to ObjSizeEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ObjSizeEdit as text
+%        str2double(get(hObject,'String')) returns contents of ObjSizeEdit as a double
+
+tmp=str2num(get(hObject,'String'));
+if (isempty(tmp) || (tmp<0) || (tmp~=round(tmp)))
+  warndlg('obj_size must be a non-negative integer');
+end
+
+
+% --- Executes during object creation, after setting all properties.
+function ObjSizeEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ObjSizeEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -291,7 +403,7 @@ function MergeFreqOverlapEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0) || (tmp>1))
-  warndlg('merge_freq must be between 0 and 1');
+  warndlg('merge_freq_overlap must be between 0 and 1');
 end
 
 
@@ -347,7 +459,7 @@ function MergeFreqFractionEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0) || (tmp>1))
-  warndlg('merge_freq must be between 0 and 1');
+  warndlg('merge_freq_fraction must be between 0 and 1');
 end
 
 
@@ -364,135 +476,23 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-function ObjSizeEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to ObjSizeEdit (see GCBO)
+function MergeTimeEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to MergeTimeEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of ObjSizeEdit as text
-%        str2double(get(hObject,'String')) returns contents of ObjSizeEdit as a double
+% Hints: get(hObject,'String') returns contents of MergeTimeEdit as text
+%        str2double(get(hObject,'String')) returns contents of MergeTimeEdit as a double
 
 tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
-  warndlg('obj_size must be a positive integer');
+if (isempty(tmp) || (tmp<0))
+  warndlg('merge_time must be a non-negative float');
 end
 
 
 % --- Executes during object creation, after setting all properties.
-function ObjSizeEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to ObjSizeEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function ConvWidthEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to ConvWidthEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of ConvWidthEdit as text
-%        str2double(get(hObject,'String')) returns contents of ConvWidthEdit as a double
-
-tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
-  warndlg('conv_width must be a positive integer');
-end
-
-
-% --- Executes during object creation, after setting all properties.
-function ConvWidthEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to ConvWidthEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function ConvHeightEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to ConvHeightEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of ConvHeightEdit as text
-%        str2double(get(hObject,'String')) returns contents of ConvHeightEdit as a double
-
-tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
-  warndlg('conv_height must be a positive integer');
-end
-
-
-% --- Executes during object creation, after setting all properties.
-function ConvHeightEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to ConvHeightEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function FreqLowEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to FreqLowEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of FreqLowEdit as text
-%        str2double(get(hObject,'String')) returns contents of FreqLowEdit as a double
-
-tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (tmp<1))
-  warndlg('freq_low must be a positive float');
-end
-
-
-% --- Executes during object creation, after setting all properties.
-function FreqLowEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to FreqLowEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function FreqHighEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to FreqHighEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of FreqHighEdit as text
-%        str2double(get(hObject,'String')) returns contents of FreqHighEdit as a double
-
-tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (tmp<1))
-  warndlg('freq_high must be a positive float');
-end
-
-
-% --- Executes during object creation, after setting all properties.
-function FreqHighEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to FreqHighEdit (see GCBO)
+function MergeTimeEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to MergeTimeEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -542,7 +542,7 @@ function MinLengthEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
-  warndlg('min_length must be a non-negative float');
+  warndlg('min_length must be a non-negative real number');
 end
 
 
