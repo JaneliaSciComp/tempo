@@ -45,8 +45,7 @@ classdef AnalysisController < handle
     
     properties (SetObservable)
         % The analysis panels will listen for changes to these properties.
-        displayedTime = 0       % The time that all of the non-video panels should center their display on (in seconds).
-        timeWindow = 0          % The width of the time window the non-video panels should display (in seconds).
+        displayedTime = []      % The time that all of the non-video panels should center their display on (in seconds, [minTime maxTime]).
         currentTime = 0         % The time point currently being played (in seconds).
         selectedTime = [0 0]    % The range of time currently selected (in seconds).  The two values will be equal if there is a point selection.
         windowSize = 0
@@ -55,8 +54,7 @@ classdef AnalysisController < handle
     end
     
     %                   On change update:                           Can be changed by:
-    % displayedTime     other panels, time slider                   time slider, key press, player
-    % timeWindow        other panels                                toolbar icons, key press
+    % displayedTime     other panels, time slider                   time slider, toolbar icons, key press, player
     % currentTime       other panels, video panels, time label      axes click, key press, player
     % selectedTime      other panels, time label                    axes click, key press
     
@@ -115,7 +113,6 @@ classdef AnalysisController < handle
                 addlistener(obj.timeSlider, 'ContinuousValueChange', @(source, event)handleTimeSliderChanged(obj, source, event));
             end
             addlistener(obj, 'displayedTime', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
-            addlistener(obj, 'timeWindow', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
             
             obj.arrangePanels();
             
@@ -360,7 +357,7 @@ classdef AnalysisController < handle
                 obj.handlePauseMedia([], []);
             else
                 obj.currentTime = newTime;
-                obj.displayedTime = newTime;
+                obj.centerDisplayAtTime(newTime);
             end
         end
         
@@ -381,10 +378,10 @@ classdef AnalysisController < handle
                 else
                     obj.currentTime = obj.duration;
                 end
-                obj.displayedTime = obj.currentTime;
+                obj.centerDisplayAtTime(obj.currentTime);
             else
                 obj.currentTime = obj.currentTime;
-                obj.displayedTime = obj.displayedTime;
+                obj.centerDisplayAtTime(mean(obj.displayedTime)); % trigger a refresh of timeline-based panels
             end
         end
         
@@ -553,6 +550,18 @@ classdef AnalysisController < handle
         end
         
         
+        function centerDisplayAtTime(obj, timeCenter)
+            timeWindowRadius = obj.duration / obj.zoom / 2;
+            if timeCenter - timeWindowRadius < 0
+                obj.displayedTime = [0, timeWindowRadius * 2];
+            elseif timeCenter + timeWindowRadius > obj.duration
+                obj.displayedTime = [obj.duration - timeWindowRadius * 2, obj.duration];
+            else
+                obj.displayedTime = [timeCenter - timeWindowRadius, timeCenter + timeWindowRadius];
+            end
+        end
+        
+        
         function setZoom(obj, zoom)
             if zoom < 1
                 obj.zoom = 1;
@@ -560,9 +569,8 @@ classdef AnalysisController < handle
                 obj.zoom = zoom;
             end
             
-            obj.timeWindow = obj.duration / obj.zoom;
-            
-            obj.displayedTime = sum(obj.selectedTime) / 2;
+            % Center all of the timeline-based panels on the selection.
+            obj.centerDisplayAtTime(mean(obj.selectedTime));
             
             if obj.zoom > 1
                 set(obj.zoomOutTool, 'Enable', 'on')
@@ -701,13 +709,13 @@ classdef AnalysisController < handle
         
         function handleTimeSliderChanged(obj, ~, ~)
             if get(obj.timeSlider, 'Value') ~= obj.displayedTime
-                obj.displayedTime = get(obj.timeSlider, 'Value');
+                obj.centerDisplayAtTime(get(obj.timeSlider, 'Value'));
             end
         end
         
         
         function handleTimeWindowChanged(obj, ~, ~)
-            set(obj.timeSlider, 'Value', obj.displayedTime);
+            set(obj.timeSlider, 'Value', mean(obj.displayedTime));
             
             % Adjust the step and page sizes of the time slider.
             stepSize = 1 / obj.zoom;
@@ -830,17 +838,16 @@ classdef AnalysisController < handle
             if somethingOpened
                 obj.duration = max([obj.recordings.duration cellfun(@(r) r.duration, obj.reporters)]);
                 
-                % Alter the zoom so that the same window of time is visible.
-                if obj.timeWindow == 0
-                    obj.timeWindow = obj.duration;
-                    obj.setZoom(1);
-                else
-                    obj.setZoom(obj.duration / obj.timeWindow);
-                end
-                
                 set(obj.timeSlider, 'Max', obj.duration);
                 
-                obj.displayedTime = obj.displayedTime;
+                % Alter the zoom so that the same window of time is visible.
+                if isempty(obj.displayedTime)
+                    obj.setZoom(1);
+                else
+                    obj.setZoom(obj.duration / (obj.displayedTime(2) - obj.displayedTime(1)));
+                end
+                
+                obj.centerDisplayAtTime(mean(obj.displayedTime)); % trigger a refresh of timeline-based panels
             end
         end
         
@@ -886,19 +893,6 @@ classdef AnalysisController < handle
                 obj.videoPanels{end + 1} = panel;
                 
                 obj.arrangePanels();
-            end
-        end
-        
-        
-        function range = displayedTimeRange(obj)
-            timeRangeSize = obj.duration / obj.zoom;
-            range = [obj.displayedTime - timeRangeSize / 2 obj.displayedTime + timeRangeSize / 2];
-            if range(2) - range(1) > obj.duration
-                range = [0.0 obj.duration];
-            elseif range(1) < 0.0
-                range = [0.0 timeRangeSize];
-            elseif range(2) > obj.duration
-                range = [obj.duration - timeRangeSize obj.duration];
             end
         end
         

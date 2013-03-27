@@ -29,7 +29,9 @@ classdef TimeIndicatorPanel < TimelinePanel
         
         
         function handleSelectedTimeChanged(obj, ~, ~)
-            obj.updateAxes([]);
+            if ~isempty(obj.controller.displayedTime)
+                obj.updateAxes([]);
+            end
         end
         
         
@@ -42,7 +44,7 @@ classdef TimeIndicatorPanel < TimelinePanel
             end
             
             axesPos = get(obj.axes, 'Position');
-            timePixels = obj.controller.timeWindow / axesPos(3);
+            timePixels = (obj.controller.displayedTime(2) - obj.controller.displayedTime(1)) / axesPos(3);
             charPixelWidth = 6;
             labelWidth = charPixelWidth * 8 * timePixels;
             
@@ -51,8 +53,16 @@ classdef TimeIndicatorPanel < TimelinePanel
             redColor = [0.5 0.0 0.0];
             
             % TODO: draw time ticks
-            % Use obj.controller.timeWindow to determine number of ticks
-            % If the current time is off screen then the tick closest to the center should show the full time.
+            % Use obj.controller.displayedTime(2) to determine number of ticks
+% TODO:            
+%             timeScale = fix(log10(obj.controller.displayedTime(2) - obj.controller.displayedTime(1)));
+%             if obj.controller.displayedTime(2) - obj.controller.displayedTime(1) < 1
+%                 timeScale = timeScale - 1;
+%             end
+%             tickSpacing = 10 ^ timeScale * sampleRate;
+%             set(handles.oscillogram, 'XTick', tickSpacing-mod(minSample, tickSpacing):tickSpacing:windowSampleCount);
+            
+            % TODO: If the current time is off screen then the tick closest to the center should show the full time.
             
             if obj.controller.selectedTime(1) == obj.controller.selectedTime(2)
                 % Draw current time indicator
@@ -105,7 +115,9 @@ classdef TimeIndicatorPanel < TimelinePanel
         
         
         function currentTimeChanged(obj)
-            obj.updateAxes([]);
+            if ~isempty(obj.controller.displayedTime)
+                obj.updateAxes([]);
+            end
         end
         
 	end

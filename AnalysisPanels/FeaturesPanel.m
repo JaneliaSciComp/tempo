@@ -171,7 +171,7 @@ classdef FeaturesPanel < TimelinePanel
                     obj.controller.selectedTime = [newTime newTime];
                 end
                 obj.controller.currentTime = newTime;
-                obj.controller.displayedTime = newTime;
+                obj.controller.centerDisplayAtTime(newTime);
                 
                 handled = true;
             else

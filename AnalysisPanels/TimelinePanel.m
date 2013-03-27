@@ -20,7 +20,6 @@ classdef TimelinePanel < AnalysisPanel
             
             % Add listeners so we know when the current time and selection change.
             obj.listeners{end + 1} = addlistener(obj.controller, 'displayedTime', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
-            obj.listeners{end + 1} = addlistener(obj.controller, 'timeWindow', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
             obj.listeners{end + 1} = addlistener(obj.controller, 'selectedTime', 'PostSet', @(source, event)handleSelectedTimeChanged(obj, source, event));
             
             obj.handleSelectedTimeChanged();
@@ -43,26 +42,15 @@ classdef TimelinePanel < AnalysisPanel
         
         
         function handleTimeWindowChanged(obj, ~, ~)
-            if obj.visible && obj.controller.timeWindow > 0
-                % Calculate the range of time being displayed in the axes.
-                minTime = obj.controller.displayedTime - obj.controller.timeWindow / 2;
-                if minTime < 0
-                    minTime = 0;
-                end
-                maxTime = minTime + obj.controller.timeWindow;
-                if maxTime > obj.controller.duration
-                    maxTime = obj.controller.duration;
-                    minTime = maxTime - obj.controller.timeWindow;
-                end
-                
+            if obj.visible && ~isempty(obj.controller.displayedTime)
                 % For performance only update the axes if the time range has changed.
                 % The spectogram needs to update even when the media stops playing and the range doesn't change so it's special cased.
                 curLims = get(obj.axes, 'XLim');
-                if any(curLims ~= [minTime maxTime]) || isa(obj, 'SpectrogramPanel')
-                    set(obj.axes, 'XLim', [minTime maxTime]);
+                if ~isempty(obj.controller.displayedTime) && (any(curLims ~= obj.controller.displayedTime) || isa(obj, 'SpectrogramPanel'))
+                    set(obj.axes, 'XLim', obj.controller.displayedTime);
                 
                     % Let the subclass update the axes content.
-                    obj.updateAxes([minTime maxTime])
+                    obj.updateAxes(obj.controller.displayedTime)
                 end
             end
         end
@@ -118,8 +106,7 @@ classdef TimelinePanel < AnalysisPanel
             % Command+up arrow zooms all the way out
             handled = false;
             timeChange = 0;
-            timeRange = obj.controller.displayedTimeRange();
-            pageSize = timeRange(2) - timeRange(1);
+            pageSize = obj.controller.displayedTime(2) - obj.controller.displayedTime(1);
             stepSize = pageSize / 10;
             shiftDown = any(ismember(keyEvent.Modifier, 'shift'));
             altDown = any(ismember(keyEvent.Modifier, 'alt'));
@@ -149,7 +136,7 @@ classdef TimelinePanel < AnalysisPanel
                 
                 handled = true;
             elseif strcmp(keyEvent.Key, 'downarrow')
-                % TODO: is there a maximum zoom that could be set if command was down?
+                % TODO: is there a maximum zoom that could be set if command was down?  one pixel per sample?
                 obj.controller.setZoom(obj.controller.zoom * 2);
                 
                 handled = true;
@@ -169,7 +156,7 @@ classdef TimelinePanel < AnalysisPanel
                     obj.controller.selectedTime = [newTime newTime];
                 end
                 obj.controller.currentTime = newTime;
-                obj.controller.displayedTime = newTime;
+                obj.controller.centerDisplayAtTime(newTime);
                 
                 set(obj.controller.figure, 'Pointer', 'arrow'); drawnow update
                 

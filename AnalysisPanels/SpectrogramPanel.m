@@ -35,7 +35,7 @@ classdef SpectrogramPanel < TimelinePanel
         end
         
         function handleSpectrogramParametersChanged(obj, ~, ~)
-            obj.updateAxes(obj.controller.displayedTimeRange());
+            obj.updateAxes(obj.controller.displayedTime);
         end
         
         function createControls(obj, panelSize)
@@ -160,7 +160,7 @@ classdef SpectrogramPanel < TimelinePanel
                     obj.controller.freqMin = max(0,obj.controller.freqMin - tmp);
                     obj.controller.freqMax = min(floor(obj.audio.sampleRate / 2), obj.controller.freqMax + tmp);
                 end
-                %obj.updateAxes(obj.controller.displayedTimeRange());
+                %obj.updateAxes(obj.controller.displayedTime);
                 handled = true;
             elseif strcmp(keyEvent.Key, 'rightbracket')
                 if shiftDown
@@ -177,14 +177,14 @@ classdef SpectrogramPanel < TimelinePanel
                     obj.controller.freqMin = obj.controller.freqMin + tmp;
                     obj.controller.freqMax = obj.controller.freqMax - tmp;
                 end
-                %obj.updateAxes(obj.controller.displayedTimeRange());
+                %obj.updateAxes(obj.controller.displayedTime);
                 handled = true;
             elseif keyEvent.Character == '|'
                 % Reset to the defaults.
                 obj.controller.windowSize = 0.001;
                 obj.controller.freqMin = 0;
                 obj.controller.freqMax = floor(obj.audio.sampleRate / 2);
-                %obj.updateAxes(obj.controller.displayedTimeRange());
+                %obj.updateAxes(obj.controller.displayedTime);
                 handled = true;
             else
                 handled = keyWasPressed@TimelinePanel(obj, keyEvent);

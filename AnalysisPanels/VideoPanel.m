@@ -76,7 +76,7 @@ classdef VideoPanel < AnalysisPanel
             if timeChange ~= 0
                 newTime = max([0 min([obj.controller.duration obj.controller.currentTime + timeChange])]);
                 obj.controller.currentTime = newTime;
-                obj.controller.displayedTime = newTime;
+                obj.controller.centerDisplayAtTime(newTime);
                 
                 handled = true;
             else
