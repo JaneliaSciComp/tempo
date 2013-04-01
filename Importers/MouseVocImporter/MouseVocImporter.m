@@ -24,8 +24,8 @@ classdef MouseVocImporter < FeatureImporter
             c = false;
             
             if exist(featuresFilePath, 'file')
-                [~, ~, ext] = fileparts(featuresFilePath);
-                if strncmp(ext, '.voc', 4)
+                [~, name, ext] = fileparts(featuresFilePath);
+                if strncmp(ext, '.voc', 4) || strcmp([name ext],'voc.txt')
                     voclist=load(featuresFilePath,'-ascii');
                     if size(voclist,2) == 4
                         c = true;
