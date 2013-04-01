@@ -71,6 +71,10 @@ classdef SpectrogramPanel < TimelinePanel
                 return
             end
             
+            if isempty(timeRange)
+                timeRange = get(obj.axes, 'XLim');
+            end
+            
             fullLength = floor((timeRange(2) - timeRange(1)) * obj.audio.sampleRate);
             window = 2 ^ nextpow2(obj.controller.windowSize * obj.audio.sampleRate);
             
