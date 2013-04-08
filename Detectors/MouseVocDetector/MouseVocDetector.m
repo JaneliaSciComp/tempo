@@ -92,7 +92,19 @@ classdef MouseVocDetector < FeatureDetector
               tmp=dir([fullfile(p,n) '*tmp*.ax']);
               cellfun(@(x) regexp(x,'.*tmp.\.ax'),{tmp.name});
               tmp=tmp(logical(ans));
+              hotpixels={};
               for i=1:length(tmp)
+                fid=fopen(fullfile(p,tmp(i).name),'r');
+                fread(fid,3,'uint8');
+                fread(fid,2,'uint32');
+                dT=ans(2)/ans(1)/2;
+                fread(fid,2,'uint16');
+                fread(fid,2,'double');
+                dF=ans(2);
+                foo=fread(fid,[4 inf],'double');
+                foo(1,:)=foo(1,:)*dT;
+                hotpixels{i}={foo([1 2 4],:)', dT, dF};
+                fclose(fid);
                 movefile(fullfile(p,tmp(i).name),tempdir);
               end
             else
@@ -128,8 +140,14 @@ classdef MouseVocDetector < FeatureDetector
                 %x_stop = timeRange(1) + voclist(i,2)./obj.recording.sampleRate;
                 x_start = timeRange(1) + voclist(i,1);
                 x_stop = timeRange(1) + voclist(i,2);
-                obj.addFeature(Feature('Vocalization', [x_start x_stop], ...
-                                       'FreqRange', voclist(i,3:4)));
+                if(i==1)
+                  obj.addFeature(Feature('Vocalization', [x_start x_stop], ...
+                                         'FreqRange', voclist(i,3:4), ...
+                                         'HotPixels', hotpixels));
+                else
+                  obj.addFeature(Feature('Vocalization', [x_start x_stop], ...
+                                         'FreqRange', voclist(i,3:4)));
+                end
             end
             n=size(voclist,1);
 
