@@ -267,11 +267,13 @@ classdef SpectrogramPanel < TimelinePanel
               bounding_boxes(end+1)=h;
               set(h, 'Color', reporter.featuresColor);
               if isprop(feature,'HotPixels')
+                  chan=find(cellfun(@(x) strcmp(x,obj.audio.filePath),{reporter.recording.filePath}));
                   for i=1:length(feature.HotPixels)
-                    t=repmat(feature.HotPixels{i}{1}(:,1)',5,1)+...
-                      repmat(feature.HotPixels{i}{2}*[0; 1; 1; 0; 0],1,size(feature.HotPixels{i}{1},1));
-                    f=repmat(feature.HotPixels{i}{1}(:,2)',5,1)+...
-                      repmat(feature.HotPixels{i}{3}*[0; 0; 1; 1; 0],1,size(feature.HotPixels{i}{1},1));
+                    idx=find(feature.HotPixels{i}{1}(:,3)==chan);
+                    t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
+                      repmat(feature.HotPixels{i}{2}*[-0.5; +0.5; +0.5; -0.5; -0.5],1,length(idx));
+                    f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...
+                      repmat(feature.HotPixels{i}{3}*[-0.5; -0.5; +0.5; +0.5; -0.5],1,length(idx));
                     h=patch(t+reporter.detectedTimeRanges(1),f,reporter.featuresColor);
                     set(h,'edgecolor','none');
                     bounding_boxes=[bounding_boxes h'];
