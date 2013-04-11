@@ -200,7 +200,16 @@ classdef SpectrogramPanel < TimelinePanel
           while i<=length(obj.reporter) && (obj.reporter{i}~=reporter)
               i=i+1;
           end
-          set(obj.bounding_boxes{i},'Color',reporter.featuresColor);
+          if i<=length(obj.reporter) && (obj.reporter{i}==reporter)
+            for j=1:length(obj.bounding_boxes{i})
+              switch(get(obj.bounding_boxes{i}(j),'type'))
+                case 'line'
+                  set(obj.bounding_boxes{i}(j),'Color',reporter.featuresColor);
+                case 'patch'
+                  set(obj.bounding_boxes{i}(j),'FaceColor',reporter.featuresColor);
+              end
+            end
+          end
       end
       
       function deleteAllReporters(obj)
