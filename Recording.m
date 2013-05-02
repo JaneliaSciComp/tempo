@@ -78,7 +78,7 @@ classdef Recording < handle
                                         'Name', 'Open BIN File');
                 if ok
                     fread(fid,channel,'double');  % skip over first timestamp and first channels
-                    obj.data=fread(fid,inf,'double',8*nchan);
+                    obj.data=fread(fid,inf,'double',8*(nchan-1));
                     obj.duration = length(obj.data) / obj.sampleRate;
                     obj.name = sprintf('%s (channel %d)', obj.name, channel);
                     obj.isAudio = true;
