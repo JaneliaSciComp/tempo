@@ -28,8 +28,8 @@ classdef TimeIndicatorPanel < TimelinePanel
         end
         
         
-        function handleSelectedTimeChanged(obj, ~, ~)
-            if ~isempty(obj.controller.displayedTime)
+        function handleSelectedRangeChanged(obj, ~, ~)
+            if ~isempty(obj.controller.displayRange)
                 obj.updateAxes([]);
             end
         end
@@ -44,7 +44,7 @@ classdef TimeIndicatorPanel < TimelinePanel
             end
             
             axesPos = get(obj.axes, 'Position');
-            timePixels = (obj.controller.displayedTime(2) - obj.controller.displayedTime(1)) / axesPos(3);
+            timePixels = (obj.controller.displayRange(2) - obj.controller.displayRange(1)) / axesPos(3);
             charPixelWidth = 6;
             labelWidth = charPixelWidth * 8 * timePixels;
             
@@ -53,10 +53,10 @@ classdef TimeIndicatorPanel < TimelinePanel
             redColor = [0.5 0.0 0.0];
             
             % TODO: draw time ticks
-            % Use obj.controller.displayedTime(2) to determine number of ticks
+            % Use obj.controller.displayRange(2) to determine number of ticks
 % TODO:            
-%             timeScale = fix(log10(obj.controller.displayedTime(2) - obj.controller.displayedTime(1)));
-%             if obj.controller.displayedTime(2) - obj.controller.displayedTime(1) < 1
+%             timeScale = fix(log10(obj.controller.displayRange(2) - obj.controller.displayRange(1)));
+%             if obj.controller.displayRange(2) - obj.controller.displayRange(1) < 1
 %                 timeScale = timeScale - 1;
 %             end
 %             tickSpacing = 10 ^ timeScale * sampleRate;
@@ -64,7 +64,7 @@ classdef TimeIndicatorPanel < TimelinePanel
             
             % TODO: If the current time is off screen then the tick closest to the center should show the full time.
             
-            if obj.controller.selectedTime(1) == obj.controller.selectedTime(2)
+            if obj.controller.selectedRange(1) == obj.controller.selectedRange(2)
                 % Draw current time indicator
                 if obj.controller.currentTime > timeRange(1) && obj.controller.currentTime < timeRange(2)
                     line([obj.controller.currentTime obj.controller.currentTime], [0.8 1], 'Color', 'red');
@@ -74,30 +74,30 @@ classdef TimeIndicatorPanel < TimelinePanel
                 end
             else
                 % Draw range start, range end, range size and current time indicators
-                startInRange = obj.controller.selectedTime(1) > timeRange(1) && obj.controller.selectedTime(1) < timeRange(2);
-                endInRange = obj.controller.selectedTime(2) > timeRange(1) && obj.controller.selectedTime(2) < timeRange(2);
+                startInRange = obj.controller.selectedRange(1) > timeRange(1) && obj.controller.selectedRange(1) < timeRange(2);
+                endInRange = obj.controller.selectedRange(2) > timeRange(1) && obj.controller.selectedRange(2) < timeRange(2);
                 if startInRange
-                    line([obj.controller.selectedTime(1) obj.controller.selectedTime(1)], [0.8 1], 'Color', 'red');
-                    text(obj.controller.selectedTime(1), textY, secondstr(obj.controller.selectedTime(1), obj.controller.timeLabelFormat, 2), ...
+                    line([obj.controller.selectedRange(1) obj.controller.selectedRange(1)], [0.8 1], 'Color', 'red');
+                    text(obj.controller.selectedRange(1), textY, secondstr(obj.controller.selectedRange(1), obj.controller.timeLabelFormat, 2), ...
                         'VerticalAlignment', 'baseline', 'HorizontalAlignment', 'center', ...
                         'FontName', textFont, 'Color', redColor);
                 end
                 if endInRange
-                    line([obj.controller.selectedTime(2) obj.controller.selectedTime(2)], [0.8 1], 'Color', 'red');
-                    text(obj.controller.selectedTime(2), textY, secondstr(obj.controller.selectedTime(2), obj.controller.timeLabelFormat, 2), ...
+                    line([obj.controller.selectedRange(2) obj.controller.selectedRange(2)], [0.8 1], 'Color', 'red');
+                    text(obj.controller.selectedRange(2), textY, secondstr(obj.controller.selectedRange(2), obj.controller.timeLabelFormat, 2), ...
                         'VerticalAlignment', 'baseline', 'HorizontalAlignment', 'center', ...
                         'FontName', textFont, 'Color', redColor);
                 end
-                selectionInRange = obj.controller.selectedTime(1) < timeRange(2) || obj.controller.selectedTime(2) > timeRange(1);
-                currentTimeAmidRange = obj.controller.currentTime ~= obj.controller.selectedTime(1) && obj.controller.currentTime ~= obj.controller.selectedTime(2);
+                selectionInRange = obj.controller.selectedRange(1) < timeRange(2) || obj.controller.selectedRange(2) > timeRange(1);
+                currentTimeAmidRange = obj.controller.currentTime ~= obj.controller.selectedRange(1) && obj.controller.currentTime ~= obj.controller.selectedRange(2);
                 if selectionInRange && ~currentTimeAmidRange % TODO: && there is room
-                    midPoint = sum(obj.controller.selectedTime) / 2.0;
+                    midPoint = sum(obj.controller.selectedRange(1:2)) / 2.0;
                     grayColor = [0.75 0.5 0.5];
-                    line([obj.controller.selectedTime(1) + labelWidth * 0.75, obj.controller.selectedTime(1) + labelWidth * 0.75], [0.2 0.6], 'Color', grayColor);
-                    line([obj.controller.selectedTime(1) + labelWidth * 0.75, midPoint - labelWidth * 0.5], [0.4 0.4], 'Color', grayColor);
-                    line([midPoint + labelWidth * 0.5, obj.controller.selectedTime(2) - labelWidth * 0.75], [0.4 0.4], 'Color', grayColor);
-                    line([obj.controller.selectedTime(2) - labelWidth * 0.75, obj.controller.selectedTime(2) - labelWidth * 0.75], [0.2 0.6], 'Color', grayColor);
-                    text(midPoint, textY, secondstr(obj.controller.selectedTime(2) - obj.controller.selectedTime(1), obj.controller.timeLabelFormat), ...
+                    line([obj.controller.selectedRange(1) + labelWidth * 0.75, obj.controller.selectedRange(1) + labelWidth * 0.75], [0.2 0.6], 'Color', grayColor);
+                    line([obj.controller.selectedRange(1) + labelWidth * 0.75, midPoint - labelWidth * 0.5], [0.4 0.4], 'Color', grayColor);
+                    line([midPoint + labelWidth * 0.5, obj.controller.selectedRange(2) - labelWidth * 0.75], [0.4 0.4], 'Color', grayColor);
+                    line([obj.controller.selectedRange(2) - labelWidth * 0.75, obj.controller.selectedRange(2) - labelWidth * 0.75], [0.2 0.6], 'Color', grayColor);
+                    text(midPoint, textY, secondstr(obj.controller.selectedRange(2) - obj.controller.selectedRange(1), obj.controller.timeLabelFormat), ...
                         'VerticalAlignment', 'baseline', 'HorizontalAlignment', 'center', ...
                         'FontName', textFont, 'Color', grayColor);
                 end
@@ -115,7 +115,7 @@ classdef TimeIndicatorPanel < TimelinePanel
         
         
         function currentTimeChanged(obj)
-            if ~isempty(obj.controller.displayedTime)
+            if ~isempty(obj.controller.displayRange)
                 obj.updateAxes([]);
             end
         end

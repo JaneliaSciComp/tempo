@@ -49,7 +49,7 @@ classdef WaveformPanel < TimelinePanel
                 return
             end
             
-            audioData = obj.audio.dataInTimeRange(timeRange);
+            audioData = obj.audio.dataInTimeRange(timeRange(1:2));
             
             % The audio may not span the entire time range.
             dataDuration = length(audioData) / obj.audio.sampleRate;

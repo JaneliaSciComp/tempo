@@ -80,7 +80,7 @@ classdef AnalysisPanel < handle
                     
                     % Make sure everything is in sync.
                     obj.handleCurrentTimeChanged([], []);
-                    obj.handleSelectedTimeChanged([], []);
+                    obj.handleSelectedRangeChanged([], []);
                     obj.handleTimeWindowChanged([], []);
                 else
                     set(obj.panel, 'Visible', 'off');

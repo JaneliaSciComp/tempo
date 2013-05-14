@@ -45,18 +45,16 @@ classdef AnalysisController < handle
     
     properties (SetObservable)
         % The analysis panels will listen for changes to these properties.
-        displayedTime = []      % The time that all of the non-video panels should center their display on (in seconds, [minTime maxTime]).
+        displayRange = []      % The window in time and frequency which all non-video panels should display (in seconds/Hz, [minTime maxTime minFreq maxFreq]).
         currentTime = 0         % The time point currently being played (in seconds).
-        selectedTime = [0 0]    % The range of time currently selected (in seconds).  The two values will be equal if there is a point selection.
+        selectedRange = [0 0 0 inf]    % The range of time and frequency currently selected (in seconds/Hz).  The first two values will be equal if there is a point selection.
         windowSize = 0
-        freqMin = 0
-        freqMax = 0
     end
     
     %                   On change update:                           Can be changed by:
-    % displayedTime     other panels, time slider                   time slider, toolbar icons, key press, player
+    % displayedRange    other panels, time slider                   time slider, toolbar icons, key press, player
     % currentTime       other panels, video panels, time label      axes click, key press, player
-    % selectedTime      other panels, time label                    axes click, key press
+    % selectedRange     other panels, time label                    axes click, key press
     
     methods
         
@@ -112,7 +110,7 @@ classdef AnalysisController < handle
             else
                 addlistener(obj.timeSlider, 'ContinuousValueChange', @(source, event)handleTimeSliderChanged(obj, source, event));
             end
-            addlistener(obj, 'displayedTime', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
+            addlistener(obj, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
             
             obj.arrangePanels();
             
@@ -320,12 +318,12 @@ classdef AnalysisController < handle
             set(obj.playMediaTool, 'Enable', 'off');
             set(obj.pauseMediaTool, 'Enable', 'on');
             
-            if obj.selectedTime(1) ~= obj.selectedTime(2)
+            if obj.selectedRange(1) ~= obj.selectedRange(2)
                 % Only play within the selected range.
-                if obj.currentTime >= obj.selectedTime(1) && obj.currentTime < obj.selectedTime(2) - 0.1
-                    playRange = [obj.currentTime obj.selectedTime(2)];
+                if obj.currentTime >= obj.selectedRange(1) && obj.currentTime < obj.selectedRange(2) - 0.1
+                    playRange = [obj.currentTime obj.selectedRange(2)];
                 else
-                    playRange = [obj.selectedTime(1) obj.selectedTime(2)];
+                    playRange = [obj.selectedRange(1) obj.selectedRange(2)];
                 end
             else
                 % Play the whole song, starting at the current time unless it's at the end.
@@ -373,15 +371,15 @@ classdef AnalysisController < handle
             
             if isempty(hObject)
                 % The media played to the end without the user clicking the pause button.
-                if obj.selectedTime(1) ~= obj.selectedTime(2)
-                    obj.currentTime = obj.selectedTime(2);
+                if obj.selectedRange(1) ~= obj.selectedRange(2)
+                    obj.currentTime = obj.selectedRange(2);
                 else
                     obj.currentTime = obj.duration;
                 end
                 obj.centerDisplayAtTime(obj.currentTime);
             else
                 obj.currentTime = obj.currentTime;
-                obj.centerDisplayAtTime(mean(obj.displayedTime)); % trigger a refresh of timeline-based panels
+                obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
             end
         end
         
@@ -502,8 +500,8 @@ classdef AnalysisController < handle
 
                     detector.startProgress();
                     try
-                        if obj.selectedTime(2) > obj.selectedTime(1)
-                            n = detector.detectFeatures(obj.selectedTime);
+                        if obj.selectedRange(2) > obj.selectedRange(1)
+                            n = detector.detectFeatures(obj.selectedRange);
                         else
                             n = detector.detectFeatures([0.0 obj.duration]);
                         end
@@ -551,14 +549,23 @@ classdef AnalysisController < handle
         
         
         function centerDisplayAtTime(obj, timeCenter)
+            if isempty(obj.displayRange) && ~isempty(obj.recordings)
+                obj.windowSize = 0.001;
+                newRange = [0 obj.recordings(1).duration 0 floor(obj.recordings(1).sampleRate / 2)];
+            else
+                newRange = obj.displayRange;
+            end
+
             timeWindowRadius = obj.duration / obj.zoom / 2;
             if timeCenter - timeWindowRadius < 0
-                obj.displayedTime = [0, timeWindowRadius * 2];
+                newRange(1:2) = [0, timeWindowRadius * 2];
             elseif timeCenter + timeWindowRadius > obj.duration
-                obj.displayedTime = [obj.duration - timeWindowRadius * 2, obj.duration];
+                newRange(1:2) = [obj.duration - timeWindowRadius * 2, obj.duration];
             else
-                obj.displayedTime = [timeCenter - timeWindowRadius, timeCenter + timeWindowRadius];
+                newRange(1:2) = [timeCenter - timeWindowRadius, timeCenter + timeWindowRadius];
             end
+
+            obj.displayRange = newRange;
         end
         
         
@@ -570,7 +577,7 @@ classdef AnalysisController < handle
             end
             
             % Center all of the timeline-based panels on the selection.
-            obj.centerDisplayAtTime(mean(obj.selectedTime));
+            obj.centerDisplayAtTime(mean(obj.selectedRange(1:2)));
             
             if obj.zoom > 1
                 set(obj.zoomOutTool, 'Enable', 'on')
@@ -613,14 +620,14 @@ classdef AnalysisController < handle
                     clickedPoint = get(clickedObject, 'CurrentPoint');
                     clickedTime = clickedPoint(1);
                     if strcmp(get(gcf, 'SelectionType'), 'extend')
-                        if obj.currentTime == obj.selectedTime(1) || obj.currentTime ~= obj.selectedTime(2)
-                            obj.selectedTime = sort([obj.selectedTime(1) clickedTime]);
+                        if obj.currentTime == obj.selectedRange(1) || obj.currentTime ~= obj.selectedRange(2)
+                            obj.selectedRange = [sort([obj.selectedRange(1) clickedTime]) obj.selectedRange(3:4)];
                         else
-                            obj.selectedTime = sort([clickedTime obj.selectedTime(2)]);
+                            obj.selectedRange = [sort([clickedTime obj.selectedRange(2)]) obj.selectedRange(3:4)];
                         end
                     else
                         obj.currentTime = clickedTime;
-                        obj.selectedTime = [clickedTime clickedTime];
+                        obj.selectedRange = [clickedTime clickedTime obj.selectedRange(3:4)];
                         obj.panelSelectingTime = obj.otherPanels{i};
                     end
                     
@@ -634,10 +641,10 @@ classdef AnalysisController < handle
             if ~isempty(obj.panelSelectingTime)
                 clickedPoint = get(obj.panelSelectingTime.axes, 'CurrentPoint');
                 clickedTime = clickedPoint(1);
-                if obj.currentTime == obj.selectedTime(1) || obj.currentTime ~= obj.selectedTime(2)
-                    obj.selectedTime = sort([obj.selectedTime(1) clickedTime]);
+                if obj.currentTime == obj.selectedRange(1) || obj.currentTime ~= obj.selectedRange(2)
+                    obj.selectedRange = [sort([obj.selectedRange(1) clickedTime]) obj.selectedRange(3:4)];
                 else
-                    obj.selectedTime = sort([clickedTime obj.selectedTime(2)]);
+                    obj.selectedRange = [sort([clickedTime obj.selectedRange(2)]) obj.selectedRange(3:4)];
                 end
             elseif false    %handles.showSpectrogram && isfield(handles, 'spectrogramTooltip')
 % TODO:
@@ -665,10 +672,10 @@ classdef AnalysisController < handle
             if ~isempty(obj.panelSelectingTime)
                 clickedPoint = get(obj.panelSelectingTime.axes, 'CurrentPoint');
                 clickedTime = clickedPoint(1);
-                if obj.currentTime == obj.selectedTime(1) || obj.currentTime ~= obj.selectedTime(2)
-                    obj.selectedTime = sort([obj.selectedTime(1) clickedTime]);
+                if obj.currentTime == obj.selectedRange(1) || obj.currentTime ~= obj.selectedRange(2)
+                    obj.selectedRange = [sort([obj.selectedRange(1) clickedTime]) obj.selectedRange(3:4)];
                 else
-                    obj.selectedTime = sort([clickedTime obj.selectedTime(2)]);
+                    obj.selectedRange = [sort([clickedTime obj.selectedRange(2)]) obj.selectedRange(3:4)];
                 end
                 obj.panelSelectingTime = [];
             end
@@ -708,18 +715,20 @@ classdef AnalysisController < handle
         
         
         function handleTimeSliderChanged(obj, ~, ~)
-            if get(obj.timeSlider, 'Value') ~= obj.displayedTime
+            if get(obj.timeSlider, 'Value') ~= obj.displayRange(1)
                 obj.centerDisplayAtTime(get(obj.timeSlider, 'Value'));
             end
         end
         
         
         function handleTimeWindowChanged(obj, ~, ~)
-            set(obj.timeSlider, 'Value', mean(obj.displayedTime));
-            
             % Adjust the step and page sizes of the time slider.
             stepSize = 1 / obj.zoom;
-            set(obj.timeSlider, 'SliderStep', [stepSize / 50.0 stepSize]);
+            curMax = get(obj.timeSlider, 'Max');
+            newValue = mean(obj.displayRange(1:2));
+            set(obj.timeSlider, 'SliderStep', [stepSize / 50.0 stepSize], ...
+                                'Value', newValue, ...
+                                'Max', max(curMax, newValue));
         end
         
         
@@ -841,13 +850,13 @@ classdef AnalysisController < handle
                 set(obj.timeSlider, 'Max', obj.duration);
                 
                 % Alter the zoom so that the same window of time is visible.
-                if isempty(obj.displayedTime)
+                if isempty(obj.displayRange)
                     obj.setZoom(1);
                 else
-                    obj.setZoom(obj.duration / (obj.displayedTime(2) - obj.displayedTime(1)));
+                    obj.setZoom(obj.duration / (obj.displayRange(2) - obj.displayRange(1)));
                 end
                 
-                obj.centerDisplayAtTime(mean(obj.displayedTime)); % trigger a refresh of timeline-based panels
+                obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
             end
         end
         

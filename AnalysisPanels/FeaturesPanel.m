@@ -162,13 +162,13 @@ classdef FeaturesPanel < TimelinePanel
             if timeChange ~= 0
                 newTime = max([0 min([obj.controller.maxMediaTime obj.controller.currentTime + timeChange])]);
                 if shiftDown
-                    if obj.controller.currentTime == obj.controller.selectedTime(1)
-                        obj.controller.selectedTime = sort([obj.controller.selectedTime(2) newTime]);
+                    if obj.controller.currentTime == obj.controller.selectedRange(1)
+                        obj.controller.selectedRange = [sort([obj.controller.selectedRange(2) newTime]) obj.selectedRange(3:4)];
                     else
-                        obj.controller.selectedTime = sort([newTime obj.controller.selectedTime(1)]);
+                        obj.controller.selectedRange = [sort([newTime obj.controller.selectedRange(1)]) obj.selectedRange(3:4)];
                     end
                 else
-                    obj.controller.selectedTime = [newTime newTime];
+                    obj.controller.selectedRange = [newTime newTime obj.selectedRange(3:4)];
                 end
                 obj.controller.currentTime = newTime;
                 obj.controller.centerDisplayAtTime(newTime);
@@ -185,7 +185,7 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function enableReporterMenuItems(obj, ~, ~)
-            if isa(obj.reporter, 'FeatureDetector') && (obj.controller.selectedTime(2) ~= obj.controller.selectedTime(1))
+            if isa(obj.reporter, 'FeatureDetector') && (obj.controller.selectedRange(2) ~= obj.controller.selectedRange(1))
                 set(obj.detectFeaturesInSelectionMenuItem, 'Enable', 'on');
             else
                 set(obj.detectFeaturesInSelectionMenuItem, 'Enable', 'off');
@@ -211,7 +211,7 @@ classdef FeaturesPanel < TimelinePanel
             obj.reporter.startProgress();
             obj.featureChangeListener.Enabled = false;
             try
-                n = obj.reporter.detectFeatures(obj.controller.selectedTime);
+                n = obj.reporter.detectFeatures(obj.controller.selectedRange);
                 obj.featureChangeListener.Enabled = true;
                 obj.reporter.endProgress();
                 

@@ -3,6 +3,7 @@ classdef TimelinePanel < AnalysisPanel
 	properties
         timeLine
         selectionPatch
+        showsFrequencyRange = false
 	end
 	
 	methods
@@ -19,21 +20,38 @@ classdef TimelinePanel < AnalysisPanel
             obj.selectionPatch = patch([0 1 1 0], [-100000 -100000 200000 200000], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'Visible', 'off', 'HitTest', 'off', 'HandleVisibility', 'off');
             
             % Add listeners so we know when the current time and selection change.
-            obj.listeners{end + 1} = addlistener(obj.controller, 'displayedTime', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
-            obj.listeners{end + 1} = addlistener(obj.controller, 'selectedTime', 'PostSet', @(source, event)handleSelectedTimeChanged(obj, source, event));
+            obj.listeners{end + 1} = addlistener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
+            obj.listeners{end + 1} = addlistener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
             
-            obj.handleSelectedTimeChanged();
+            obj.handleSelectedRangeChanged();
             obj.handleTimeWindowChanged();
 		end
         
         
-        function handleSelectedTimeChanged(obj, ~, ~)
+        function handleSelectedRangeChanged(obj, ~, ~)
             if obj.visible
                 % Update the position and visibility of the current selection indicator.
-                if obj.controller.selectedTime(1) ~= obj.controller.selectedTime(2)
-                    selectionStart = min(obj.controller.selectedTime);
-                    selectionEnd = max(obj.controller.selectedTime);
-                    set(obj.selectionPatch, 'XData', [selectionStart selectionEnd selectionEnd selectionStart], 'Visible', 'on');
+                if obj.controller.selectedRange(1) ~= obj.controller.selectedRange(2)
+                    minTime = obj.controller.selectedRange(1);
+                    maxTime = obj.controller.selectedRange(2);
+                    if ~obj.showsFrequencyRange
+                        set(obj.selectionPatch, 'XData', [minTime maxTime maxTime minTime], ...
+                                                'Visible', 'on');
+                    else
+                        minFreq = obj.controller.selectedRange(3);
+                        maxFreq = obj.controller.selectedRange(4);
+                        
+                        % Map the min and max freq's to the range of the axes.
+                        % (The YLim of the axes should be the same as the displayRange but it's not exact.)
+                        freqHeight = obj.controller.displayRange(4) - obj.controller.displayRange(3);
+                        yLim = get(obj.axes, 'YLim');
+                        axesHeight = yLim(2) - yLim(1);
+                        minFreq = yLim(1) + min((minFreq - obj.controller.displayRange(3)) / freqHeight, 1) * axesHeight;
+                        maxFreq = yLim(1) + min((maxFreq - obj.controller.displayRange(3)) / freqHeight, 1) * axesHeight;
+                        set(obj.selectionPatch, 'XData', [minTime maxTime maxTime minTime], ...
+                                                'YData', [minFreq minFreq maxFreq maxFreq], ...
+                                                'Visible', 'on');
+                    end
                 else
                     set(obj.selectionPatch, 'Visible', 'off');
                 end
@@ -42,15 +60,15 @@ classdef TimelinePanel < AnalysisPanel
         
         
         function handleTimeWindowChanged(obj, ~, ~)
-            if obj.visible && ~isempty(obj.controller.displayedTime)
+            if obj.visible && ~isempty(obj.controller.displayRange)
                 % For performance only update the axes if the time range has changed.
                 % The spectogram needs to update even when the media stops playing and the range doesn't change so it's special cased.
                 curLims = get(obj.axes, 'XLim');
-                if ~isempty(obj.controller.displayedTime) && (any(curLims ~= obj.controller.displayedTime) || isa(obj, 'SpectrogramPanel'))
-                    set(obj.axes, 'XLim', obj.controller.displayedTime);
+                if ~isempty(obj.controller.displayRange) && (any(curLims ~= obj.controller.displayRange(1:2)) || isa(obj, 'SpectrogramPanel'))
+                    set(obj.axes, 'XLim', obj.controller.displayRange(1:2));
                 
                     % Let the subclass update the axes content.
-                    obj.updateAxes(obj.controller.displayedTime)
+                    obj.updateAxes(obj.controller.displayRange)
                 end
             end
         end
@@ -69,7 +87,7 @@ classdef TimelinePanel < AnalysisPanel
                 % Show or hide the current time line and selected time indicators.
                 if flag
                     set(obj.timeLine, 'Visible', 'on');
-                    if obj.controller.selectedTime(1) ~= obj.controller.selectedTime(2)
+                    if obj.controller.selectedRange(1) ~= obj.controller.selectedRange(2)
                         set(obj.selectionPatch, 'Visible', 'on');
                     else
                         set(obj.selectionPatch, 'Visible', 'off');
@@ -106,7 +124,7 @@ classdef TimelinePanel < AnalysisPanel
             % Command+up arrow zooms all the way out
             handled = false;
             timeChange = 0;
-            pageSize = obj.controller.displayedTime(2) - obj.controller.displayedTime(1);
+            pageSize = obj.controller.displayRange(2) - obj.controller.displayRange(1);
             stepSize = pageSize / 10;
             shiftDown = any(ismember(keyEvent.Modifier, 'shift'));
             altDown = any(ismember(keyEvent.Modifier, 'alt'));
@@ -147,13 +165,13 @@ classdef TimelinePanel < AnalysisPanel
                 
                 newTime = max([0 min([obj.controller.duration obj.controller.currentTime + timeChange])]);
                 if shiftDown
-                    if obj.controller.currentTime == obj.controller.selectedTime(1)
-                        obj.controller.selectedTime = sort([obj.controller.selectedTime(2) newTime]);
+                    if obj.controller.currentTime == obj.controller.selectedRange(1)
+                        obj.controller.selectedRange = [sort([obj.controller.selectedRange(2) newTime]) obj.controller.selectedRange(3:4)];
                     else
-                        obj.controller.selectedTime = sort([newTime obj.controller.selectedTime(1)]);
+                        obj.controller.selectedRange = [sort([newTime obj.controller.selectedRange(1)]) obj.controller.selectedRange(3:4)];
                     end
                 else
-                    obj.controller.selectedTime = [newTime newTime];
+                    obj.controller.selectedRange = [newTime newTime obj.controller.selectedRange(3:4)];
                 end
                 obj.controller.currentTime = newTime;
                 obj.controller.centerDisplayAtTime(newTime);
