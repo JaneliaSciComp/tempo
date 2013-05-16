@@ -6,8 +6,6 @@ classdef VideoPanel < AnalysisPanel
         currentFrame
         
         imageHandle
-        
-        flipLR = false
 	end
 	
 	methods
@@ -17,8 +15,9 @@ classdef VideoPanel < AnalysisPanel
             
             obj.video = recording;
             
-            frameNum = min([floor(obj.controller.currentTime * obj.video.sampleRate + 1) obj.video.videoReader.NumberOfFrames]);
-            obj.currentFrame = read(obj.video.videoReader, frameNum);
+            %frameNum = min([floor(obj.controller.currentTime * obj.video.sampleRate + 1) obj.video.videoReader.NumberOfFrames]);
+            %obj.currentFrame = read(obj.video.videoReader, frameNum);
+            obj.currentFrame = obj.video.frameAtTime(obj.controller.currentTime);
 		end
         
         
@@ -44,9 +43,6 @@ classdef VideoPanel < AnalysisPanel
             end
             
             obj.currentFrame = obj.video.frameAtTime(obj.controller.currentTime);
-            if obj.flipLR
-                obj.currentFrame = flipdim(obj.currentFrame, 2);
-            end
             set(obj.imageHandle, 'CData', obj.currentFrame);
         end
         

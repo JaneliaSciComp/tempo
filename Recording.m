@@ -16,6 +16,8 @@ classdef Recording < handle
         isVideo = false
         
         timeOffset = 0  % in seconds.  (allows recordings to be offset in time to sync up with other recordings)
+        
+        flipLR = false
     end
     
     
@@ -134,6 +136,12 @@ classdef Recording < handle
         function d = frameAtTime(obj, time)
             frameNum = min([floor((time + obj.timeOffset) * obj.sampleRate + 1) obj.videoReader.NumberOfFrames]);
             d = read(obj.videoReader, frameNum);
+            if(ndims(d)==2)
+              d=repmat(d,[1 1 3]);
+            end
+            if obj.flipLR
+                d = flipdim(d, 2);
+            end
         end
         
         
