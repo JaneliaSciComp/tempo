@@ -75,8 +75,7 @@ classdef MouseVocImporter < FeatureImporter
             
             obj.updateProgress('Adding events...', 1/2)
             for i = 1:size(s, 1)
-                obj.addFeature(Feature('Vocalization', s(i,1:2), ...
-                                       'FreqRange', s(i,3:4)));
+                obj.addFeature(Feature('Vocalization', s(i,1:4)));
             end
             n=size(s,1);
         end

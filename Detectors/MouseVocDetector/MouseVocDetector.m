@@ -143,12 +143,10 @@ classdef MouseVocDetector < FeatureDetector
                 x_start = timeRange(1) + voclist(i,1);
                 x_stop = timeRange(1) + voclist(i,2);
                 if(i==1)
-                  obj.addFeature(Feature('Vocalization', [x_start x_stop], ...
-                                         'FreqRange', voclist(i,3:4), ...
+                  obj.addFeature(Feature('Vocalization', [x_start x_stop voclist(i,3:4)], ...
                                          'HotPixels', hotpixels));
                 else
-                  obj.addFeature(Feature('Vocalization', [x_start x_stop], ...
-                                         'FreqRange', voclist(i,3:4)));
+                  obj.addFeature(Feature('Vocalization', [x_start x_stop voclist(i,3:4)]));
                 end
             end
             n=size(voclist,1);
