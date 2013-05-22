@@ -24,6 +24,10 @@ classdef AnalysisController < handle
         timeLabelFormat = 1     % default to displaying time in minutes and seconds
         
         panelSelectingTime
+        mouseConstraintTime
+        mouseConstraintFreq
+        originalSelectedRange
+        mouseOffset
         
         isPlayingMedia = false
         playTimer
@@ -47,7 +51,7 @@ classdef AnalysisController < handle
         % The analysis panels will listen for changes to these properties.
         displayRange = []      % The window in time and frequency which all non-video panels should display (in seconds/Hz, [minTime maxTime minFreq maxFreq]).
         currentTime = 0         % The time point currently being played (in seconds).
-        selectedRange = [0 0 0 inf]    % The range of time and frequency currently selected (in seconds/Hz).  The first two values will be equal if there is a point selection.
+        selectedRange = [0 0 -inf inf]    % The range of time and frequency currently selected (in seconds/Hz).  The first two values will be equal if there is a point selection.
         windowSize = 0
     end
     
@@ -278,6 +282,7 @@ classdef AnalysisController < handle
                     
                     for i = 1:numPanels
                         set(visibleVideoPanels{i}.panel, 'Position', [1, pos(4) - i * panelHeight, videoPanelWidth, panelHeight]);
+                        visibleVideoPanels{i}.handleResize([], []);
                     end
                 else
                     % Arrange the videos in a row.
@@ -296,9 +301,11 @@ classdef AnalysisController < handle
                 panelHeight = floor(panelsHeight / numPanels);
                 for i = 1:numPanels - 1
                     set(visibleOtherPanels{i}.panel, 'Position', [videoPanelWidth + 1, pos(4) - 13 - i * panelHeight, pos(3) - videoPanelWidth, panelHeight - 2]);
+                    visibleOtherPanels{i}.handleResize([], []);
                 end
                 lastPanelHeight = panelsHeight - panelHeight * (numPanels - 1) - 4;
                 set(visibleOtherPanels{end}.panel, 'Position', [videoPanelWidth + 1, 18, pos(3) - videoPanelWidth, lastPanelHeight]);
+                visibleOtherPanels{end}.handleResize([], []);
                 
                 obj.timeIndicatorPanel.setVisible(true);
                 set(obj.timeIndicatorPanel.panel, 'Position', [videoPanelWidth + 1, pos(4) - 13, pos(3) - videoPanelWidth, 14]);
@@ -602,6 +609,40 @@ classdef AnalysisController < handle
         end
         
         
+        function pointer = resizePointer(obj, xConstraint, yConstraint)
+            % Cursor names:
+            %  topl  top   topr
+            %  left fleur  right
+            %  botl bottom botr
+            if obj.panelSelectingTime.showsFrequencyRange && strcmp(yConstraint, 'min')
+                pointer = 'bot';
+            elseif obj.panelSelectingTime.showsFrequencyRange && strcmp(yConstraint, 'max')
+                pointer = 'top';
+            else
+                pointer = '';
+            end
+            if strcmp(xConstraint, 'min')
+                if isempty(pointer)
+                    pointer = 'left';
+                else
+                    pointer = [pointer 'l'];
+                end
+            elseif strcmp(xConstraint, 'max')
+                if isempty(pointer)
+                    pointer = 'right';
+                else
+                    pointer = [pointer 'r'];
+                end
+            else
+                if isempty(pointer)
+                    pointer = 'fleur';
+                elseif strcmp(pointer, 'bot')
+                    pointer = [pointer 'tom'];
+                end
+            end
+        end
+        
+        
         function handleMouseButtonDown(obj, ~, ~)
             if strcmp(get(gcf, 'SelectionType'), 'alt')
                 return  % Don't change the curren time or selection when control/right clicking.
@@ -609,43 +650,162 @@ classdef AnalysisController < handle
             
             clickedObject = get(obj.figure, 'CurrentObject');
             
-            % TODO: allow panels to handle clicks on their objects
+            % TODO: allow panels to handle clicks on their objects?
             %
             %     handled = panel{i}.handleMouseDown(...);
             %     if ~handled
             %         ...
             
             for i = 1:length(obj.otherPanels)
-                if clickedObject == obj.otherPanels{i}.axes
+                otherPanel = obj.otherPanels{i};
+                if clickedObject == otherPanel.axes
                     clickedPoint = get(clickedObject, 'CurrentPoint');
-                    clickedTime = clickedPoint(1);
-                    if strcmp(get(gcf, 'SelectionType'), 'extend')
-                        if obj.currentTime == obj.selectedRange(1) || obj.currentTime ~= obj.selectedRange(2)
-                            obj.selectedRange = [sort([obj.selectedRange(1) clickedTime]) obj.selectedRange(3:4)];
+                    clickedTime = clickedPoint(1, 1);
+                    if otherPanel.showsFrequencyRange
+                        % Get the frequency from the clicked point.
+                        clickedFreq = clickedPoint(1, 2);
+                    else
+                        % Pick a dummy frequency at the middle of the selected range.
+                        if isinf(obj.selectedRange(3)) && isinf(obj.selectedRange(4))
+                            clickedFreq = 0;
                         else
-                            obj.selectedRange = [sort([clickedTime obj.selectedRange(2)]) obj.selectedRange(3:4)];
+                            clickedFreq = mean(obj.selectedRange(3:4));
+                        end
+                    end
+                    if strcmp(get(gcf, 'SelectionType'), 'extend')
+                        % Extend the time range.
+                        if obj.currentTime == obj.selectedRange(1) || obj.currentTime ~= obj.selectedRange(2)
+                            obj.selectedRange(1:2) = sort([obj.selectedRange(1) clickedTime]);
+                        else
+                            obj.selectedRange(1:2) = sort([clickedTime obj.selectedRange(2)]);
+                        end
+                        
+                        % Extend the frequency range.
+                        if otherPanel.showsFrequencyRange
+                            if clickedFreq < obj.selectedRange(3)
+                                obj.selectedRange(3) = clickedFreq;
+                            else
+                                obj.selectedRange(4) = clickedFreq;
+                            end
+                        else
+                            obj.selectedRange(3:4) = [-inf inf];
                         end
                     else
-                        obj.currentTime = clickedTime;
-                        obj.selectedRange = [clickedTime clickedTime obj.selectedRange(3:4)];
-                        obj.panelSelectingTime = obj.otherPanels{i};
+                        obj.originalSelectedRange = obj.selectedRange;
+                        if clickedTime > obj.selectedRange(1) && clickedTime < obj.selectedRange(2) && ...
+                           clickedFreq > obj.selectedRange(3) && clickedFreq < obj.selectedRange(4)
+                            % The user clicked inside of the existing selection, figure out which part was clicked on.
+                            
+                            if otherPanel.showsFrequencyRange && isinf(obj.selectedRange(3))
+                                obj.selectedRange(3:4) = obj.displayRange(3:4);
+                            end
+                            
+                            axesPos = get(otherPanel.axes, 'Position');
+                            timeMargin = 10 * (obj.displayRange(2) - obj.displayRange(1)) / (axesPos(3) - axesPos(1));
+                            freqMargin = 10 * (obj.displayRange(4) - obj.displayRange(3)) / (axesPos(4) - axesPos(2));
+                            if clickedTime < obj.selectedRange(1) + timeMargin
+                                obj.mouseConstraintTime = 'min';
+                            elseif clickedTime > obj.selectedRange(2) - timeMargin
+                                obj.mouseConstraintTime = 'max';
+                            else
+                                obj.mouseConstraintTime = 'mid';
+                            end
+                            if clickedFreq < obj.selectedRange(3) + freqMargin
+                                obj.mouseConstraintFreq = 'min';
+                            elseif clickedFreq > obj.selectedRange(4) - freqMargin
+                                obj.mouseConstraintFreq = 'max';
+                            else
+                                obj.mouseConstraintFreq = 'mid';
+                            end
+                        else
+                            % The user clicked outside of the existing selection.
+                            if otherPanel.showsFrequencyRange
+                                obj.selectedRange = [clickedTime clickedTime clickedFreq clickedFreq];
+                            else
+                                obj.selectedRange = [clickedTime clickedTime -inf inf];    %obj.displayRange(3:4)];
+                            end
+                            obj.originalSelectedRange = obj.selectedRange;
+                            obj.mouseConstraintTime = 'max';
+                            obj.mouseConstraintFreq = 'max';
+                            obj.currentTime = clickedTime;
+                        end
+                        obj.mouseOffset = [clickedTime - obj.selectedRange(1), clickedFreq - obj.selectedRange(3)];
+                        obj.panelSelectingTime = otherPanel;
                     end
                     
                     break
                 end
             end
         end
-
-
+        
+        
+        function updateSelectedRange(obj)
+            clickedPoint = get(obj.panelSelectingTime.axes, 'CurrentPoint');
+            clickedTime = clickedPoint(1, 1);
+            clickedFreq = clickedPoint(1, 2);
+            newRange = obj.originalSelectedRange;
+            
+            xConstraint = obj.mouseConstraintTime;
+            if strcmp(obj.mouseConstraintTime, 'min')
+                newRange(1) = clickedTime;
+            elseif strcmp(obj.mouseConstraintTime, 'mid') && strcmp(obj.mouseConstraintFreq, 'mid')
+                width = obj.originalSelectedRange(2) - obj.originalSelectedRange(1);
+                newRange(1) = clickedTime - obj.mouseOffset(1);
+                newRange(2) = newRange(1) + width;
+            elseif strcmp(obj.mouseConstraintTime, 'max')
+                newRange(2) = clickedTime;
+            end
+            
+            % Check if the drag has flipped over the y axis.
+            if newRange(2) < newRange(1)
+                newRange(1:2) = [newRange(2) newRange(1)];
+                if strcmp(obj.mouseConstraintTime, 'min')
+                    xConstraint = 'max';
+                else
+                    xConstraint = 'min';
+                end
+            end
+            
+            yConstraint = obj.mouseConstraintFreq;
+            if obj.panelSelectingTime.showsFrequencyRange
+                if strcmp(obj.mouseConstraintFreq, 'min')
+                    newRange(3) = clickedFreq;
+                elseif strcmp(obj.mouseConstraintFreq, 'mid') && strcmp(obj.mouseConstraintTime, 'mid')
+                    if ~isinf(newRange(3)) && ~isinf(newRange(3))
+                        height = obj.originalSelectedRange(4) - obj.originalSelectedRange(3);
+                        newRange(3) = clickedFreq - obj.mouseOffset(2);
+                        newRange(4) = newRange(3) + height;
+                    end
+                elseif strcmp(obj.mouseConstraintFreq, 'max')
+                    newRange(4) = clickedFreq;
+                end
+                
+                % Check if the drag has flipped over the x axis.
+                if newRange(4) < newRange(3)
+                    newRange(3:4) = [newRange(4) newRange(3)];
+                    if strcmp(obj.mouseConstraintFreq, 'min')
+                        yConstraint = 'max';
+                    else
+                        yConstraint = 'min';
+                    end
+                end
+            end
+            
+            set(gcf, 'Pointer', obj.resizePointer(xConstraint, yConstraint));
+            
+            if obj.currentTime == obj.selectedRange(1)
+                obj.currentTime = newRange(1);
+            elseif obj.currentTime == obj.selectedRange(2)
+                obj.currentTime = newRange(2);
+            end
+            
+            obj.selectedRange = newRange;
+        end
+        
+        
         function handleMouseMotion(obj, ~, ~)
             if ~isempty(obj.panelSelectingTime)
-                clickedPoint = get(obj.panelSelectingTime.axes, 'CurrentPoint');
-                clickedTime = clickedPoint(1);
-                if obj.currentTime == obj.selectedRange(1) || obj.currentTime ~= obj.selectedRange(2)
-                    obj.selectedRange = [sort([obj.selectedRange(1) clickedTime]) obj.selectedRange(3:4)];
-                else
-                    obj.selectedRange = [sort([clickedTime obj.selectedRange(2)]) obj.selectedRange(3:4)];
-                end
+                obj.updateSelectedRange();
             elseif false    %handles.showSpectrogram && isfield(handles, 'spectrogramTooltip')
 % TODO:
 %                 currentPoint = get(handles.spectrogram, 'CurrentPoint');
@@ -670,14 +830,12 @@ classdef AnalysisController < handle
 
         function handleMouseButtonUp(obj, ~, ~)
             if ~isempty(obj.panelSelectingTime)
-                clickedPoint = get(obj.panelSelectingTime.axes, 'CurrentPoint');
-                clickedTime = clickedPoint(1);
-                if obj.currentTime == obj.selectedRange(1) || obj.currentTime ~= obj.selectedRange(2)
-                    obj.selectedRange = [sort([obj.selectedRange(1) clickedTime]) obj.selectedRange(3:4)];
-                else
-                    obj.selectedRange = [sort([clickedTime obj.selectedRange(2)]) obj.selectedRange(3:4)];
+                obj.updateSelectedRange();
+                if obj.selectedRange(3) == obj.selectedRange(4)
+                    obj.selectedRange(3:4) = [-inf inf];
                 end
                 obj.panelSelectingTime = [];
+                set(gcf, 'Pointer', 'arrow');
             end
         end
         
@@ -916,7 +1074,7 @@ classdef AnalysisController < handle
         end
         
         
-        function saveFeatures(obj, reporters, fileName)
+        function saveFeatures(obj, reporters, fileName) %#ok<INUSL>
             if nargin < 4
                 fileName = 'Song';
             end

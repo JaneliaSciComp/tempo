@@ -30,6 +30,17 @@ classdef TimelinePanel < AnalysisPanel
         
         function handleSelectedRangeChanged(obj, ~, ~)
             if obj.visible
+                if obj.showsFrequencyRange
+                    % Hide the current time indicator if the user has chosen a range of frequencies.
+                    if isinf(obj.controller.selectedRange(3))
+                        set(obj.timeLine, 'Visible', 'on');
+                        set(obj.selectionPatch, 'EdgeColor', 'none');
+                    else
+                        set(obj.timeLine, 'Visible', 'off');
+                        set(obj.selectionPatch, 'EdgeColor', 'red');
+                    end
+                end
+                
                 % Update the position and visibility of the current selection indicator.
                 if obj.controller.selectedRange(1) ~= obj.controller.selectedRange(2)
                     minTime = obj.controller.selectedRange(1);
@@ -46,7 +57,7 @@ classdef TimelinePanel < AnalysisPanel
                         freqHeight = obj.controller.displayRange(4) - obj.controller.displayRange(3);
                         yLim = get(obj.axes, 'YLim');
                         axesHeight = yLim(2) - yLim(1);
-                        minFreq = yLim(1) + min((minFreq - obj.controller.displayRange(3)) / freqHeight, 1) * axesHeight;
+                        minFreq = yLim(1) + max((minFreq - obj.controller.displayRange(3)) / freqHeight, 0) * axesHeight;
                         maxFreq = yLim(1) + min((maxFreq - obj.controller.displayRange(3)) / freqHeight, 1) * axesHeight;
                         set(obj.selectionPatch, 'XData', [minTime maxTime maxTime minTime], ...
                                                 'YData', [minFreq minFreq maxFreq maxFreq], ...
@@ -86,7 +97,9 @@ classdef TimelinePanel < AnalysisPanel
             if obj.visible
                 % Show or hide the current time line and selected time indicators.
                 if flag
-                    set(obj.timeLine, 'Visible', 'on');
+                    if ~obj.showsFrequencyRange && ~isinf(obj.controller.selectedRange(3))
+                        set(obj.timeLine, 'Visible', 'on');
+                    end
                     if obj.controller.selectedRange(1) ~= obj.controller.selectedRange(2)
                         set(obj.selectionPatch, 'Visible', 'on');
                     else
@@ -108,7 +121,7 @@ classdef TimelinePanel < AnalysisPanel
         end
         
         
-        function updateAxes(obj, timeRange) %#ok<INUSD,MANU>
+        function updateAxes(obj, timeRange) %#ok<INUSD>
             % TODO: make abstract?
         end
 		
