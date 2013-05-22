@@ -2,19 +2,37 @@ classdef Feature < dynamicprops
     
     properties
         type
-        sampleRange
+        range
+    end
+    
+    properties (Hidden)
         contextualMenu
     end
     
     properties (Dependent = true)
         startTime
         endTime
+        lowFreq
+        highFreq
     end
     
     
     methods
         
-        function obj = Feature(featureType, sampleRange, varargin)
+        function obj = Feature(featureType, featureRange, varargin)
+            %% Create a new feature with the given type that exists in the given time and frequency ranges.
+            %
+            % The range can be a 1, 2 or 4 element vector:
+            %  * 1 element = the feature exists at one point in time with no frequency limit.
+            %  * 2 elements = the feature starts and ends at the given time points and has no frequency limit.
+            %  * 4 elements = elements 1 and 2 are the start and stop time, elements 3 and 4 are the low and high frequencies.
+            % Additional properties can be assigned by adding name/value pairs of arguments.
+            %
+            % Examples:
+            % >> f1 = Feature('pulse', [72.6]);
+            % >> f2 = Feature('sine song', [12.34 13.56], 'fundamentalFrequency', 264.8);
+            % >> f3 = Feature('vocalization', [12.34 13.56 218.7 342.3]);
+            
             obj = obj@dynamicprops();
             
             if mod(numel(varargin), 2) == 1
@@ -23,10 +41,14 @@ classdef Feature < dynamicprops
             
             obj.type = featureType;
             
-            if isscalar(sampleRange)
-                obj.sampleRange = [sampleRange sampleRange];
+            if isscalar(featureRange)
+                obj.range = [featureRange featureRange 0 inf];
+            elseif size(featureRange, 2) == 2
+                obj.range = [featureRange 0 inf];
+            elseif size(featureRange, 2) == 4
+                obj.range = featureRange;
             else
-                obj.sampleRange = sampleRange;
+                error('Feature ranges must have 1, 2 or 4 elements.')
             end
             
             %% Add any optional attributes.
@@ -39,12 +61,22 @@ classdef Feature < dynamicprops
         
         
         function t = get.startTime(obj)
-            t = obj.sampleRange(1);
+            t = obj.range(1);
         end
         
         
         function t = get.endTime(obj)
-            t = obj.sampleRange(2);
+            t = obj.range(2);
+        end
+        
+        
+        function t = get.lowFreq(obj)
+            t = obj.range(3);
+        end
+        
+        
+        function t = get.highFreq(obj)
+            t = obj.range(4);
         end
         
     end
