@@ -576,6 +576,17 @@ classdef AnalysisController < handle
         end
         
         
+        function selectRange(obj, range)
+            obj.selectedRange = range;
+            
+            obj.currentTime = range(1);
+            
+            % TODO: Move the selection into view if necessary
+%             newRange = ...
+%             obj.displayRange = newRange;
+        end
+        
+        
         function setZoom(obj, zoom)
             if zoom < 1
                 obj.zoom = 1;
@@ -663,6 +674,7 @@ classdef AnalysisController < handle
                     clickedTime = clickedPoint(1, 1);
                     if otherPanel.showsFrequencyRange
                         % Get the frequency from the clicked point.
+                        % TODO: this doesn't work if the spectrogram is hidden when zoomed out.  Probably just need to have YLim set.
                         clickedFreq = clickedPoint(1, 2);
                     else
                         % Pick a dummy frequency at the middle of the selected range.
@@ -695,6 +707,7 @@ classdef AnalysisController < handle
                         if clickedTime > obj.selectedRange(1) && clickedTime < obj.selectedRange(2) && ...
                            clickedFreq > obj.selectedRange(3) && clickedFreq < obj.selectedRange(4)
                             % The user clicked inside of the existing selection, figure out which part was clicked on.
+                            % TODO: only allow mid/mid if box is too small?
                             
                             if otherPanel.showsFrequencyRange && isinf(obj.selectedRange(3))
                                 obj.selectedRange(3:4) = obj.displayRange(3:4);

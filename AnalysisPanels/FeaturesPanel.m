@@ -98,7 +98,13 @@ classdef FeaturesPanel < TimelinePanel
                 end
                 yCen = (length(featureTypes) - y + 0.5) * spacing;
                 if feature.startTime == feature.endTime
-                    h=text(feature.startTime, yCen, 'x', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'UIContextMenu', feature.contextualMenu, 'Color', obj.reporter.featuresColor, 'UserData', feature);
+                    h=text(feature.startTime, yCen, 'x', ...
+                           'HorizontalAlignment', 'center', ...
+                           'VerticalAlignment', 'middle', ...
+                           'UIContextMenu', feature.contextualMenu, ...
+                           'Color', obj.reporter.featuresColor, ...
+                           'ButtonDownFcn', @(source, event)selectFeature(obj, source, event), ...
+                           'UserData', feature);
                     hh=[hh h];
                 else
                     fillColor = obj.reporter.featuresColor;
@@ -108,8 +114,11 @@ classdef FeaturesPanel < TimelinePanel
                     y0=yCen - spacing * 0.45;
                     x1=x0+feature.duration;
                     y1=y0+spacing * 0.9;
-                    h=patch([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0],fillColor);
-                    set(h, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
+                    h=patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
+                            'EdgeColor', obj.reporter.featuresColor, ...
+                            'UIContextMenu', feature.contextualMenu, ...
+                            'ButtonDownFcn', @(source, event)selectFeature(obj, source, event), ...
+                            'UserData', feature);
                     hh=[hh h];
                 end
             end
@@ -314,6 +323,13 @@ classdef FeaturesPanel < TimelinePanel
             if strcmp(answer, 'Remove')
                 obj.reporter.removeFeature(feature);
             end
+        end
+        
+        
+        function selectFeature(obj, ~, ~)
+            feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
+            
+            obj.controller.selectRange(feature.range);
         end
         
 	end
