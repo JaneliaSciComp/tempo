@@ -12,6 +12,7 @@ classdef Feature < dynamicprops
     properties (Dependent = true)
         startTime
         endTime
+        duration
         lowFreq
         highFreq
     end
@@ -67,6 +68,11 @@ classdef Feature < dynamicprops
         
         function t = get.endTime(obj)
             t = obj.range(2);
+        end
+        
+        
+        function t = get.duration(obj)
+            t = obj.range(2) - obj.range(1);
         end
         
         

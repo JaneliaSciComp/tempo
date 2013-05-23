@@ -86,10 +86,10 @@ classdef FeaturesPanel < TimelinePanel
             for feature = features
                 y = find(strcmp(featureTypes, feature.type));
                 if isempty(feature.contextualMenu)
-                    if feature.sampleRange(1) == feature.sampleRange(2)
-                        label = [feature.type ' @ ' secondstr(feature.sampleRange(1), obj.controller.timeLabelFormat)];
+                    if feature.startTime == feature.endTime
+                        label = [feature.type ' @ ' secondstr(feature.startTime, obj.controller.timeLabelFormat)];
                     else
-                        label = [feature.type ' @ ' secondstr(feature.sampleRange(1), obj.controller.timeLabelFormat) ' - ' secondstr(feature.sampleRange(2), obj.controller.timeLabelFormat)];
+                        label = [feature.type ' @ ' secondstr(feature.startTime, obj.controller.timeLabelFormat) ' - ' secondstr(feature.endTime, obj.controller.timeLabelFormat)];
                     end
                     feature.contextualMenu = uicontextmenu();
                     uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
@@ -97,16 +97,16 @@ classdef FeaturesPanel < TimelinePanel
                     uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)removeFeature(obj, source, event), 'Separator', 'off');
                 end
                 yCen = (length(featureTypes) - y + 0.5) * spacing;
-                if feature.sampleRange(1) == feature.sampleRange(2)
-                    h=text(feature.sampleRange(1), yCen, 'x', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'UIContextMenu', feature.contextualMenu, 'Color', obj.reporter.featuresColor, 'UserData', feature);
+                if feature.startTime == feature.endTime
+                    h=text(feature.startTime, yCen, 'x', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'UIContextMenu', feature.contextualMenu, 'Color', obj.reporter.featuresColor, 'UserData', feature);
                     hh=[hh h];
                 else
                     fillColor = obj.reporter.featuresColor;
                     fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
-                    %rectangle('Position', [feature.sampleRange(1), yCen - spacing * 0.45, feature.sampleRange(2) - feature.sampleRange(1), spacing * 0.9], 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
-                    x0=feature.sampleRange(1);
+                    %rectangle('Position', [feature.startTime, yCen - spacing * 0.45, feature.endTime - feature.startTime, spacing * 0.9], 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
+                    x0=feature.startTime;
                     y0=yCen - spacing * 0.45;
-                    x1=x0+feature.sampleRange(2) - feature.sampleRange(1);
+                    x1=x0+feature.duration;
                     y1=y0+spacing * 0.9;
                     h=patch([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0],fillColor);
                     set(h, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
@@ -259,7 +259,7 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function handleBoundingBoxes(obj, ~, ~) %#ok<INUSD>
+        function handleBoundingBoxes(obj, ~, ~)
 %TODO:  make this work for drosophila
           for i = 1:length(obj.controller.otherPanels)
               panel = obj.controller.otherPanels{i};
@@ -273,22 +273,36 @@ classdef FeaturesPanel < TimelinePanel
         function showFeatureProperties(obj, ~, ~) %#ok<INUSD>
             feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
             
-            msg = '';
+            msg = ['Type: ' feature.type char(10) char(10)];
+            if feature.startTime == feature.endTime
+                msg = [msg 'Time: ' secondstr(feature.startTime, 1) char(10)];
+            else
+                msg = [msg 'Time: ' secondstr(feature.startTime, 1) ' - ' secondstr(feature.endTime, 1) '  (' secondstr(feature.duration, 0) ')' char(10)];
+            end
+            if ~isinf(feature.lowFreq) && ~isinf(feature.highFreq)
+                msg = sprintf('%sFrequency: %.0f - %.0f Hz\n', msg, feature.lowFreq, feature.highFreq);
+            end
             props = sort(properties(feature));
-            ignoreProps = {'type', 'sampleRange', 'contextualMenu'};
+            ignoreProps = {'type', 'range', 'startTime', 'endTime', 'duration', 'highFreq', 'lowFreq', 'contextualMenu'};
+            addedSeparator = false;
             for i = 1:length(props)
                 if ~ismember(props{i}, ignoreProps)
                     value = feature.(props{i});
-                    if isnumeric(value)
-                        value = num2str(value);
+                    if ~iscell(value)
+                        if ~addedSeparator
+                            msg = [msg char(10) 'Other Properties:' char(10)]; %#ok<AGROW>
+                            addedSeparator = true;
+                        end
+                        if isnumeric(value)
+                            value = num2str(value);
+                        end
+                        msg = [msg props{i} ' = ' value char(10)]; %#ok<AGROW>
                     end
-                    msg = [msg props{i} ' = ' value char(10)]; %#ok<AGROW>
                 end
             end
             if isempty(msg)
                 msg = 'This feature has no properties.';
             end
-            msg = ['Properties:' char(10) char(10) msg];
             msgbox(msg, 'Feature Properties', 'modal');
         end
         
