@@ -1089,7 +1089,7 @@ classdef AnalysisController < handle
         
         function saveFeatures(obj, reporters, fileName) %#ok<INUSL>
             if nargin < 4
-                fileName = 'Song';
+                fileName = 'Audio';
             end
             
             [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', [fileName ' features.mat']);
@@ -1099,22 +1099,32 @@ classdef AnalysisController < handle
                 for i = 1:length(reporters)
                     features = horzcat(features, reporters{i}.features()); %#ok<AGROW>
                 end
-
+                
+                lowFreqs = arrayfun(@(a) a.lowFreq, features);
+                highFreqs = arrayfun(@(a) a.highFreq, features);
+                haveFreqRanges = any(~isinf(lowFreqs)) || any(~isinf(highFreqs));
+                
                 if filterIndex == 1
                     % Save as a MATLAB file
-                    featureTypes = {features.type}; %#ok<NASGU>
-                    startTimes = arrayfun(@(a) a.startTime, features); %#ok<NASGU>
-                    stopTimes = arrayfun(@(a) a.endTime, features); %#ok<NASGU>
-
+                    s.features = features;
+                    s.featureTypes = {features.type};
+                    s.startTimes = arrayfun(@(a) a.startTime, features);
+                    s.stopTimes = arrayfun(@(a) a.endTime, features);
+                    
+                    if haveFreqRanges
+                        s.lowFreqs = lowFreqs;
+                        s.highFreqs = highFreqs;
+                    end
+                    
                     % TODO: also save audio recording path, reporter properties, ???
-                    save(fullfile(pathName, fileName), 'features', 'featureTypes', 'startTimes', 'stopTimes');
+                    save(fullfile(pathName, fileName), '-struct', 's');
                 else
                     % Save as an Excel tsv file
                     fid = fopen(fullfile(pathName, fileName), 'w');
-
+                    
                     propNames = {};
-                    ignoreProps = {'type', 'sampleRange', 'contextualMenu', 'startTime', 'endTime'};
-
+                    ignoreProps = {'type', 'range', 'contextualMenu', 'startTime', 'endTime', 'lowFreq', 'highFreq', 'duration'};
+                    
                     % Find all of the feature properties so we know how many columns there will be.
                     for f = 1:length(features)
                         feature = features(f);
@@ -1129,18 +1139,33 @@ classdef AnalysisController < handle
                         end
                     end
                     propNames = sort(propNames);
-
+                    
                     % Save a header row.
                     fprintf(fid, 'Type\tStart Time\tEnd Time');
+                    if haveFreqRanges
+                        fprintf(fid, '\tLow Freq\tHigh Freq');
+                    end
                     for p = 1:length(propNames)
                         fprintf(fid, '\t%s', propNames{p});
                     end
                     fprintf(fid, '\n');
-
+                    
                     for i = 1:length(features)
                         feature = features(i);
                         fprintf(fid, '%s\t%f\t%f', feature.type, feature.startTime, feature.endTime);
-
+                        if haveFreqRanges
+                            if isinf(feature.lowFreq)
+                                fprintf(fid, '\t');
+                            else
+                                fprintf(fid, '\t%f', feature.lowFreq);
+                            end
+                            if isinf(feature.highFreq)
+                                fprintf(fid, '\t');
+                            else
+                                fprintf(fid, '\t%f', feature.highFreq);
+                            end
+                        end
+                        
                         propValues = cell(1, length(propNames));
                         props = sort(properties(feature));
                         for j = 1:length(props)
@@ -1159,7 +1184,7 @@ classdef AnalysisController < handle
                         end
                         fprintf(fid, '\n');
                     end
-
+                    
                     fclose(fid);
                 end
             end
@@ -1171,10 +1196,10 @@ classdef AnalysisController < handle
                 stop(obj.mediaTimer);
             end
             delete(obj.mediaTimer);
-
+            
             % Remember the window position.
             setpref('SongAnalysis', 'MainWindowPosition', get(obj.figure, 'Position'));
-
+            
 % TODO:
 %             if (handles.close_matlabpool)
 %               matlabpool close
