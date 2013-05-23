@@ -78,7 +78,11 @@ classdef FeatureReporter < handle
             % Return the list of feature types that are being reported.  (a subset of the list returned by possibleFeatureTypes)
             % The list of types could be cached but this code is pretty fast.
             f = [obj.featureList{1:obj.featureCount}];
-            ft = unique({f.type});
+            if isempty(f)
+                ft = {};
+            else
+                ft = unique({f.type});
+            end
         end
         
         
