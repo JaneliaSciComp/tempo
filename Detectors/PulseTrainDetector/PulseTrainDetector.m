@@ -38,7 +38,7 @@ classdef PulseTrainDetector < FeatureDetector
             n = 0;
             
             pulses = obj.baseReporter.features(obj.pulseFeatureType);
-            pulseTimes = arrayfun(@(x) x.sampleRange(1), pulses);
+            pulseTimes = sort(arrayfun(@(x) x.startTime, pulses));
             
             obj.updateProgress('Looking for pulse trains...');
             startPulse = 1;
@@ -50,7 +50,6 @@ classdef PulseTrainDetector < FeatureDetector
                         ipiStd = std(ipis);
                         obj.addFeature(Feature('Pulse Train', [pulseTimes(startPulse) - ipiMean / 2 pulseTimes(i - 1) + ipiMean / 2], ...
                                                'pulseCount', i - startPulse, ...
-                                               'duration', pulseTimes(i - 1) - pulseTimes(startPulse), ...
                                                'ipiMean', ipiMean, ...
                                                'ipiStd', ipiStd, ...
                                                'ipiStdErr', ipiStd / sqrt(length(ipis))));
