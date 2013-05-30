@@ -10,11 +10,11 @@ classdef ManualDetector < FeatureDetector
     methods(Static)
         
         function n = typeName()
-            n = 'Manual Detector';
+            n = 'Manual Annotation';
         end
         
         function ft = possibleFeatureTypes()
-            ft = {'Manual Detector'};
+            ft = {'Manual Annotation'};
         end
         
     end
@@ -24,7 +24,11 @@ classdef ManualDetector < FeatureDetector
         
         function obj = ManualDetector(controller)
             obj = obj@FeatureDetector(controller);
-            obj.name = 'Manual Detector';
+            obj.name = 'Manual Annotation';
+            
+            % TODO: Is there some way to set this based off of what the user has seen?  Add (or extend to) the displayRange every time a feature is added?
+            %       If so then it would be a way for users to keep track of what they have worked on.
+            obj.timeRangeDetected([0 controller.duration]);
         end
         
         
