@@ -656,7 +656,7 @@ classdef AnalysisController < handle
         
         function handleMouseButtonDown(obj, ~, ~)
             if strcmp(get(gcf, 'SelectionType'), 'alt')
-                return  % Don't change the curren time or selection when control/right clicking.
+                return  % Don't change the current time or selection when control/right clicking.
             end
             
             clickedObject = get(obj.figure, 'CurrentObject');
@@ -703,6 +703,7 @@ classdef AnalysisController < handle
                             obj.selectedRange(3:4) = [-inf inf];
                         end
                     else
+                        obj.panelSelectingTime = otherPanel;
                         obj.originalSelectedRange = obj.selectedRange;
                         if clickedTime > obj.selectedRange(1) && clickedTime < obj.selectedRange(2) && ...
                            clickedFreq > obj.selectedRange(3) && clickedFreq < obj.selectedRange(4)
@@ -718,7 +719,7 @@ classdef AnalysisController < handle
                             freqMargin = 10 * (obj.displayRange(4) - obj.displayRange(3)) / (axesPos(4) - axesPos(2));
                             if clickedTime < obj.selectedRange(1) + timeMargin && clickedTime < obj.selectedRange(2) - timeMargin
                                 obj.mouseConstraintTime = 'min';
-                            elseif clickedTime > obj.selectedRange(2) - timeMargin && clickedTime < obj.selectedRange(1) + timeMargin
+                            elseif clickedTime > obj.selectedRange(2) - timeMargin && clickedTime > obj.selectedRange(1) + timeMargin
                                 obj.mouseConstraintTime = 'max';
                             else
                                 obj.mouseConstraintTime = 'mid';
@@ -743,7 +744,6 @@ classdef AnalysisController < handle
                             obj.currentTime = clickedTime;
                         end
                         obj.mouseOffset = [clickedTime - obj.selectedRange(1), clickedFreq - obj.selectedRange(3)];
-                        obj.panelSelectingTime = otherPanel;
                     end
                     
                     break
@@ -806,6 +806,7 @@ classdef AnalysisController < handle
             
             set(gcf, 'Pointer', obj.resizePointer(xConstraint, yConstraint));
             
+            % If the current time was at the beginning or end of the selection then keep it there.
             if obj.currentTime == obj.selectedRange(1)
                 obj.currentTime = newRange(1);
             elseif obj.currentTime == obj.selectedRange(2)

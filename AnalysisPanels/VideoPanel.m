@@ -4,6 +4,7 @@ classdef VideoPanel < AnalysisPanel
         video
         
         currentFrame
+        currentTime
         
         imageHandle
 	end
@@ -18,6 +19,7 @@ classdef VideoPanel < AnalysisPanel
             %frameNum = min([floor(obj.controller.currentTime * obj.video.sampleRate + 1) obj.video.videoReader.NumberOfFrames]);
             %obj.currentFrame = read(obj.video.videoReader, frameNum);
             obj.currentFrame = obj.video.frameAtTime(obj.controller.currentTime);
+            obj.currentTime = obj.controller.currentTime;
 		end
         
         
@@ -42,8 +44,11 @@ classdef VideoPanel < AnalysisPanel
                 return
             end
             
-            obj.currentFrame = obj.video.frameAtTime(obj.controller.currentTime);
-            set(obj.imageHandle, 'CData', obj.currentFrame);
+            if obj.controller.currentTime ~= obj.currentTime
+                obj.currentFrame = obj.video.frameAtTime(obj.controller.currentTime);
+                set(obj.imageHandle, 'CData', obj.currentFrame);
+                obj.currentTime = obj.controller.currentTime;
+            end
         end
         
         
