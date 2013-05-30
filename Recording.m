@@ -1,12 +1,17 @@
 classdef Recording < handle
     
     properties
+        controller
+        
         name
         filePath
+        
         data
         sampleRate
+        sampleCount
+        
+        channel
         beginning
-        duration
         maxAmp
         
         videoReader
@@ -16,104 +21,170 @@ classdef Recording < handle
         isVideo = false
         
         timeOffset = 0  % in seconds.  (allows recordings to be offset in time to sync up with other recordings)
-        
-        flipLR = false
     end
     
-    
-    properties (Access = private)
-        reporterList = {};
+    properties (Dependent = true)
+        duration
     end
     
     
     methods
         
-        function obj = Recording(filePath, objrecs, varargin)
+        function obj = Recording(controller, varargin)
             obj = obj@handle();
             
-            obj.filePath = filePath;
-            [~, obj.name, ext] = fileparts(filePath);
+            p = inputParser;
+            addRequired(p, 'controller', @(x) isa(x, 'AnalysisController'));
+            addOptional(p, 'FilePath', '', @(x) ischar(x) && exist(x, 'file'));
+            addParamValue(p, 'Name', '', @(x) ischar(x));
+            addParamValue(p, 'SampleRate', [], @(x) isnumeric(x) && isscalar(x));
+            addParamValue(p, 'Channel', [], @(x) isnumeric(x) && isscalar(x));
+            addParamValue(p, 'TimeOffset', 0, @(x) isnumeric(x) && isscalar(x));
+            parse(p, controller, varargin{:});
             
-            if strcmp(ext, '.wav')
+            obj.controller = controller;
+            
+            obj.filePath = p.Results.FilePath;
+            [~, fileName, fileExt] = fileparts(obj.filePath);
+            
+            if ~isempty(p.Results.Name)
+                obj.name = p.Results.Name;
+            elseif ~isempty(obj.filePath)
+                obj.name = fileName;
+            end
+            
+            obj.sampleRate = p.Results.SampleRate;
+            obj.channel = p.Results.Channel;
+            obj.timeOffset = p.Results.TimeOffset;
+            
+            if strcmp(fileExt, '.wav')
+                % Open a WAVE file.
+                
                 obj.isAudio = true;
-                [obj.data, obj.sampleRate] = wavread(filePath, 'native');
-                obj.data = double(obj.data);
-                obj.duration = length(obj.data) / obj.sampleRate;
-            elseif strcmp(ext, '.avi') ||  strcmp(ext, '.mov')
+                [obj.data, obj.sampleRate] = audioread(obj.filePath, 'native');
+                obj.data = double(obj.data);    % TODO: why not just use 'double' above instead?
+                obj.sampleCount = length(obj.data);
+            elseif strcmp(fileExt, '.avi') ||  strcmp(fileExt, '.mov')
+                % Open a video file.
+                
                 obj.isVideo = true;
-                obj.videoReader = VideoReader(filePath);
+                obj.videoReader = VideoReader(obj.filePath);
                 obj.data = [];
                 obj.sampleRate = get(obj.videoReader, 'FrameRate');
-                obj.duration = get(obj.videoReader, 'Duration');
+                obj.sampleCount = get(obj.videoReader, 'NumberOfFrames');
                 obj.videoSize = [get(obj.videoReader, 'Height') get(obj.videoReader, 'Width')];
-            elseif strcmp(ext, '.daq')
-                info = daqread(filePath, 'info');
+            elseif strcmp(fileExt, '.daq')
+                % Open a channel from a DAQ file.
+                % TODO: allow opening more than one channel?
                 
-                if nargin > 1 && ~isempty(varargin{1})
-                    channel = varargin{1};
+                info = daqread(obj.filePath, 'info');
+                
+                if ~isempty(obj.channel)
                     ok = true;
                 else
                     % Ask the user which channel to open.
-                    [channel, ok] = listdlg('ListString', cellfun(@(x)num2str(x), {info.ObjInfo.Channel.Index}'), ...
-                                            'PromptString', {'Choose the channel to open:', '(1-8: optical, 9: acoustic)'}, ...
-                                            'SelectionMode', 'single', ...
-                                            'Name', 'Open DAQ File');
+                    [obj.channel, ok] = listdlg('ListString', cellfun(@(x)num2str(x), {info.ObjInfo.Channel.Index}'), ...
+                                                'PromptString', {'Choose the channel to open:', '(1-8: optical, 9: acoustic)'}, ...
+                                                'SelectionMode', 'single', ...
+                                                'Name', 'Open DAQ File');
                 end
                 if ok
                     obj.isAudio = true;
                     obj.sampleRate = info.ObjInfo.SampleRate;
-                    obj.data = daqread(filePath, 'Channels', channel);
-                    obj.duration = length(obj.data) / obj.sampleRate;
-                    obj.name = sprintf('%s (channel %d)', obj.name, channel);
+                    obj.data = daqread(obj.filePath, 'Channels', obj.channel);
+                    obj.sampleCount = length(obj.data);
+                    obj.name = sprintf('%s (channel %d)', obj.name, obj.channel);
                 else
                     obj = Recording.empty();
                 end
-            elseif strcmp(ext, '.bin')  % stern's .bin files
-                fid=fopen(filePath,'r');
-                version=fread(fid,1,'double');
-                if(version~=1)  error('not a valid .bin file');  end
-                obj.sampleRate=fread(fid,1,'double');
-                nchan=fread(fid,1,'double');
-                [channel, ok] = listdlg('ListString', cellstr(num2str([1:nchan]')), ...
-                                        'PromptString', {'Choose the channel to open:'}, ...
-                                        'SelectionMode', 'single', ...
-                                        'Name', 'Open BIN File');
-                if ok
-                    fread(fid,channel,'double');  % skip over first timestamp and first channels
-                    obj.data=fread(fid,inf,'double',8*(nchan-1));
-                    obj.duration = length(obj.data) / obj.sampleRate;
-                    obj.name = sprintf('%s (channel %d)', obj.name, channel);
-                    obj.isAudio = true;
+            elseif strcmp(fileExt, '.bin')
+                % Open one of the Stern lab's .bin files.
+                
+                fid = fopen(obj.filePath, 'r');
+                try
+                    version = fread(fid, 1, 'double');
+                    if version ~= 1
+                        error('not a valid .bin file');
+                    end
+                    obj.sampleRate = fread(fid, 1, 'double');
+                    nchan = fread(fid, 1, 'double');
+                    if ~isempty(obj.channel)
+                        ok = true;
+                    else
+                        [obj.channel, ok] = listdlg('ListString', cellstr(num2str((1:nchan)')), ...
+                                                    'PromptString', {'Choose the channel to open:'}, ...
+                                                    'SelectionMode', 'single', ...
+                                                    'Name', 'Open BIN File');
+                    end
+                    if ok
+                        fread(fid, obj.channel, 'double');  % skip over first timestamp and first channels
+                        obj.data = fread(fid, inf, 'double', 8*(nchan-1));
+                        obj.name = sprintf('%s (channel %d)', obj.name, obj.channel);
+                        obj.isAudio = true;
+                    else
+                        obj = Recording.empty();
+                    end
                     fclose(fid);
-                else
-                    obj = Recording.empty();
+                catch ME
+                    % Make sure the file gets closed.
+                    fclose(fid);
+                    rethrow(ME);
                 end
-            elseif strncmp(ext, '.ch', 2)  % egnor's .ch? files
-                idx=find([objrecs.isAudio],1,'first');
-                fid=fopen(filePath,'r');
-                if(isempty(idx))
-                  inputdlg('sample rate: ','',1,{'450450'});
-                  obj.sampleRate=str2num(char(ans));
-                  fseek(fid,0,'eof');
-                  len=ftell(fid)/4/obj.sampleRate/60;
-                  fseek(fid,0,'bof');
-                  obj.beginning=1;
-                  if(len>2)
-                    inputdlg(['recording is ' num2str(len,3) ' min long.  starting at which minute should i read a 1-min block of data? '],'',1,{'1'});
-                    obj.beginning=str2num(char(ans));
-                  end
+            elseif strncmp(fileExt, '.ch', 3)
+                % Open one of the Egnor lab's .ch files
+                
+                info = dir(obj.filePath);
+                obj.sampleCount = info.bytes / 4;
+                
+                audioInd = find([obj.controller.recordings.isAudio], 1, 'first');    % TODO: make sure it's a .ch?
+                if isempty(audioInd)
+                    % Ask the user for the sample rate.
+                    rate = inputdlg('Enter the sample rate:', '', 1, {'450450'});
+                    if isempty(rate)
+                        obj = Recording.empty();    % The user cancelled.
+                    else
+                        obj.sampleRate = str2double(rate{1});
+                        
+                        % Get the time window to load.
+                        chLen = obj.duration / 60;
+                        obj.beginning=1;
+                        if chLen > 2
+                            % Also ask the user which chunk of the file to load.
+                            begin = inputdlg(['Recording is ' num2str(chLen,3) ' min long.  starting at which minute should i read a 1-min block of data? '],'',1,{'1'});
+                            if isempty(begin)
+                                obj = Recording.empty();    % The user cancelled.
+                            else
+                                obj.beginning = str2double(begin{1});
+                            end
+                        end
+                    end
                 else
-                  obj.sampleRate=objrecs(idx).sampleRate;
-                  obj.beginning=objrecs(idx).beginning;
+                    % Use the sample rate and time window from a previously opened recording.
+                    obj.sampleRate = obj.controller.recordings(audioInd).sampleRate;
+                    obj.beginning = obj.controller.recordings(audioInd).beginning;
                 end
-                %set(handles.figure1,'pointer','watch');
-                fseek(fid,60*(obj.beginning-1)*obj.sampleRate*4,'bof');
-                obj.data=fread(fid,1*60*obj.sampleRate,'single');
-                fclose(fid);
-                obj.duration = length(obj.data) / obj.sampleRate;
-                obj.isAudio = true;
-                %set(handles.figure1,'pointer','arrow');
+                
+                if ~isempty(obj)
+                    fid = fopen(obj.filePath, 'r');
+                    try
+                        %set(handles.figure1,'pointer','watch');
+                        fseek(fid, 60 * (obj.beginning - 1) * obj.sampleRate * 4, 'bof');
+                        obj.data = fread(fid, 1 * 60 * obj.sampleRate, 'single');
+                    catch ME
+                        fclose(fid);
+                        %set(handles.figure1,'pointer','arrow');
+                        rethrow(ME);
+                    end
+                    fclose(fid);
+                    obj.isAudio = true;
+                    %set(handles.figure1,'pointer','arrow');
+                end
             end
+        end
+        
+        
+        function d = get.duration(obj)
+            d = obj.sampleCount / obj.sampleRate;
         end
         
         
@@ -134,13 +205,12 @@ classdef Recording < handle
         
         
         function d = frameAtTime(obj, time)
-            frameNum = min([floor((time + obj.timeOffset) * obj.sampleRate + 1) obj.videoReader.NumberOfFrames]);
+            frameNum = min([floor((time + obj.timeOffset) * obj.sampleRate + 1) obj.sampleCount]);
             d = read(obj.videoReader, frameNum);
-            if(ndims(d)==2)
-              d=repmat(d,[1 1 3]);
-            end
-            if obj.flipLR
-                d = flipdim(d, 2);
+            
+            if ndims(d) == 2 %#ok<ISMAT>
+                % Convert monochrome to grayscale.
+                d=repmat(d,[1 1 3]);
             end
         end
         
@@ -154,24 +224,6 @@ classdef Recording < handle
             else
                 m = 0;
             end
-        end
-        
-
-        function addReporter(obj, reporter)
-            obj.reporterList{end + 1} = reporter;
-        end
-        
-        
-        function removeReporter(obj, reporter)
-            index = find(obj.reporterList == reporter);
-            obj.reporterList{index} = []; %#ok<FNDSB>
-        end
-        
-        
-        function d = reporters(obj)
-            % This function allows one detector to use the results of another, e.g. detecting pulse trains from a list of pulses.
-            
-            d = obj.reporterList;
         end
         
     end

@@ -95,12 +95,11 @@ classdef FlySongDetector < FeatureDetector
             
             if isempty(obj.backgroundNoise)
                 obj.updateProgress('Calculating noise from the signal...', 1/9);
-                obj.backgroundNoise = Recording('',[]);
+                obj.backgroundNoise = Recording(obj.controller, 'SampleRate', obj.recording.sampleRate);
                 obj.backgroundNoise.isAudio = true;
                 warning('off', 'stats:gmdistribution:FailedToConverge');
                 obj.backgroundNoise.data = segnspp(audioData, songSSF, obj.noiseCutoffSD);
                 warning('on', 'stats:gmdistribution:FailedToConverge');
-                obj.backgroundNoise.sampleRate = obj.recording.sampleRate;
                 obj.backgroundNoise.duration = length(obj.backgroundNoise.data) / obj.backgroundNoise.sampleRate;
                 
                 obj.updateProgress('Running multitaper analysis on background noise...', 2/9)

@@ -996,17 +996,13 @@ classdef AnalysisController < handle
                 % Next check if it's an audio or video file.
                 try
                     set(obj.figure, 'Pointer', 'watch'); drawnow
-                    recs = Recording(fullPath,obj.recordings);
-                    
-                    for j = 1:length(recs)
-                        rec = recs(j);
-                        if rec.isAudio
-                            obj.addAudioRecording(rec);
-                            somethingOpened = true;
-                        elseif rec.isVideo
-                            obj.addVideoRecording(rec);
-                            somethingOpened = true;
-                        end
+                    rec = Recording(obj, fullPath);
+                    if rec.isAudio
+                        obj.addAudioRecording(rec);
+                        somethingOpened = true;
+                    elseif rec.isVideo
+                        obj.addVideoRecording(rec);
+                        somethingOpened = true;
                     end
                     set(obj.figure, 'Pointer', 'arrow'); drawnow
                 catch ME
