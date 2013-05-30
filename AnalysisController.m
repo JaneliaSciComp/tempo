@@ -716,16 +716,16 @@ classdef AnalysisController < handle
                             axesPos = get(otherPanel.axes, 'Position');
                             timeMargin = 10 * (obj.displayRange(2) - obj.displayRange(1)) / (axesPos(3) - axesPos(1));
                             freqMargin = 10 * (obj.displayRange(4) - obj.displayRange(3)) / (axesPos(4) - axesPos(2));
-                            if clickedTime < obj.selectedRange(1) + timeMargin
+                            if clickedTime < obj.selectedRange(1) + timeMargin && clickedTime < obj.selectedRange(2) - timeMargin
                                 obj.mouseConstraintTime = 'min';
-                            elseif clickedTime > obj.selectedRange(2) - timeMargin
+                            elseif clickedTime > obj.selectedRange(2) - timeMargin && clickedTime < obj.selectedRange(1) + timeMargin
                                 obj.mouseConstraintTime = 'max';
                             else
                                 obj.mouseConstraintTime = 'mid';
                             end
-                            if clickedFreq < obj.selectedRange(3) + freqMargin
+                            if clickedFreq < obj.selectedRange(3) + freqMargin && clickedFreq < obj.selectedRange(4) - freqMargin
                                 obj.mouseConstraintFreq = 'min';
-                            elseif clickedFreq > obj.selectedRange(4) - freqMargin
+                            elseif clickedFreq > obj.selectedRange(4) - freqMargin && clickedFreq > obj.selectedRange(3) + freqMargin
                                 obj.mouseConstraintFreq = 'max';
                             else
                                 obj.mouseConstraintFreq = 'mid';
