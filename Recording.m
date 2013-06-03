@@ -14,6 +14,8 @@ classdef Recording < handle
         beginning
         maxAmp
         
+        audioPlayer
+        
         videoReader
         videoSize = [0 0]
         
@@ -68,11 +70,6 @@ classdef Recording < handle
                 % Open a video file.
                 
                 obj.isVideo = true;
-                obj.videoReader = VideoReader(obj.filePath);
-                obj.data = [];
-                obj.sampleRate = get(obj.videoReader, 'FrameRate');
-                obj.sampleCount = get(obj.videoReader, 'NumberOfFrames');
-                obj.videoSize = [get(obj.videoReader, 'Height') get(obj.videoReader, 'Width')];
             elseif strcmp(fileExt, '.daq')
                 % Open a channel from a DAQ file.
                 % TODO: allow opening more than one channel?
@@ -180,6 +177,17 @@ classdef Recording < handle
                     %set(handles.figure1,'pointer','arrow');
                 end
             end
+            
+            if obj.isAudio
+                obj.audioPlayer = audioplayer(obj.data, obj.sampleRate);
+                obj.audioPlayer.TimerPeriod = 1.0 / 15.0;
+                %obj.audioMax = max(abs(obj.data));
+            elseif obj.isVideo
+                obj.videoReader = VideoReader(obj.filePath);
+                obj.sampleRate = get(obj.videoReader, 'FrameRate');
+                obj.sampleCount = get(obj.videoReader, 'NumberOfFrames');
+                obj.videoSize = [get(obj.videoReader, 'Height') get(obj.videoReader, 'Width')];
+            end
         end
         
         
@@ -213,6 +221,25 @@ classdef Recording < handle
                 d=repmat(d,[1 1 3]);
             end
         end
+        
+        
+% Previous frame buffering code in case it's ever useful again:
+%         function newHandles = updateVideo(handles)
+%             % Display the current frame of video.
+%             frameNum = min([floor(handles.currentTime * handles.video.sampleRate + 1) handles.video.videoReader.NumberOfFrames]);
+%             if isfield(handles, 'videoBuffer')
+%                 if frameNum >= handles.videoBufferStartFrame && frameNum < handles.videoBufferStartFrame + handles.videoBufferSize
+%                     % TODO: is it worth optimizing the overlap case?
+%                     %['Grabbing ' num2str(handles.videoBufferSize) ' more frames']
+%                     handles.videoBuffer = read(handles.video.videoReader, [frameNum frameNum + handles.videoBufferSize - 1]);
+%                     handles.videoBufferStartFrame = frameNum;
+%                     guidata(get(handles.videoFrame, 'Parent'), handles);    % TODO: necessary with newFeatures?
+%                 end
+%                 frame = handles.videoBuffer(:, :, :, frameNum - handles.videoBufferStartFrame + 1);
+%             else
+%                 frame = read(handles.video.videoReader, frameNum);
+%             end
+%         end
         
         
         function m = maxAmplitude(obj)
