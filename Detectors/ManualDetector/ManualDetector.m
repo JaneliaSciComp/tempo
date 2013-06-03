@@ -33,7 +33,7 @@ classdef ManualDetector < FeatureDetector
         
         
         function s = settingNames(~)
-            s = {};
+            s = {'hotKey', 'featureType'};
         end
         
         

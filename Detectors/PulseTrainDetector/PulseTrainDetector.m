@@ -30,7 +30,7 @@ classdef PulseTrainDetector < FeatureDetector
         
         
         function s = settingNames(~)
-            s = {};
+            s = {'baseReporter', 'pulseFeatureType', 'maxIPI', 'minPulses'};
         end
         
         
