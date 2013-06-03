@@ -74,6 +74,15 @@ classdef FeatureReporter < handle
         end
         
         
+        function setFeatures(obj, featureList)
+            obj.featureList = num2cell(featureList);
+            obj.featureListSize = length(featureList);
+            obj.featureCount = obj.featureListSize;
+            
+            notify(obj, 'FeaturesDidChange');
+        end
+        
+        
         function ft = featureTypes(obj)
             % Return the list of feature types that are being reported.  (a subset of the list returned by possibleFeatureTypes)
             % The list of types could be cached but this code is pretty fast.
