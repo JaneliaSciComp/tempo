@@ -101,7 +101,6 @@ classdef FlySongDetector < FeatureDetector
                 warning('off', 'stats:gmdistribution:FailedToConverge');
                 obj.backgroundNoise.data = segnspp(audioData, songSSF, obj.noiseCutoffSD);
                 warning('on', 'stats:gmdistribution:FailedToConverge');
-                obj.backgroundNoise.duration = length(obj.backgroundNoise.data) / obj.backgroundNoise.sampleRate;
                 
                 obj.updateProgress('Running multitaper analysis on background noise...', 2/9)
                 [obj.backgroundSSF] = sinesongfinder(obj.backgroundNoise.data, obj.backgroundNoise.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue, obj.lowFreqCutoff, obj.highFreqCutoff);
@@ -186,7 +185,7 @@ classdef FlySongDetector < FeatureDetector
             obj.updateProgress('Removing overlapping sine song...', 8/9)
             % TBD: expose this as a user-definable setting?
             max_pulse_pause = 0.200; %max_pulse_pause in seconds, used to winnow apparent sine between pulses        
-            if maskedSine.num_events == 0 || numel(pulses.w0) == 0 || ...
+            if maskedSine.num_events == 0 || isempty(pulses) || numel(pulses.w0) == 0 || ~isfield(pulses, 'w1') || ...
                 (numel(pulses.w0) > 1000 && strcmp(questdlg(['More than 1000 pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Fly Song Analysis', 'No', 'Yes', 'Yes'), 'No'))
                 winnowedSine = maskedSine;
             else
@@ -198,10 +197,13 @@ classdef FlySongDetector < FeatureDetector
                 for i = 1:size(winnowedSine.start, 1)
                     x_start = timeRange(1) + winnowedSine.start(i);
                     x_stop = timeRange(1) + winnowedSine.stop(i);
-                    obj.addFeature(Feature('Sine Song', [x_start x_stop], ...
-                                           'duration', winnowedSine.length(i), ...
-                                           'meanFundFreq', winnowedSine.MeanFundFreq(i), ...
-                                           'medianFundFreq', winnowedSine.MedianFundFreq(i)));
+                    if isfield(winnowedSine, 'MeanFundFreq')
+                        obj.addFeature(Feature('Sine Song', [x_start x_stop], ...
+                                               'meanFundFreq', winnowedSine.MeanFundFreq(i), ...
+                                               'medianFundFreq', winnowedSine.MedianFundFreq(i)));
+                    else
+                        obj.addFeature(Feature('Sine Song', [x_start x_stop]));
+                    end
                 end
                 n = n + size(winnowedSine.start, 1);
             end
