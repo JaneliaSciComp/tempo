@@ -5,7 +5,7 @@ classdef Feature < dynamicprops
         range
     end
     
-    properties (Hidden)
+    properties (Hidden, Transient)
         contextualMenu
     end
     
@@ -83,6 +83,11 @@ classdef Feature < dynamicprops
         
         function t = get.highFreq(obj)
             t = obj.range(4);
+        end
+        
+        function [obj, idx] = sort(obj, varargin)
+            [~, idx] = sort([obj.startTime], varargin{:});
+            obj = obj(idx);
         end
         
     end

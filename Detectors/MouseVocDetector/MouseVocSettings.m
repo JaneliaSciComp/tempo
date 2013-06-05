@@ -81,11 +81,11 @@ end
 
 % Populate the recordings pop-up.
 %recNames = {};
-handles.recordings = Recording.empty();
+handles.recordings = {};
 for rec = handles.detector.controller.recordings
-    if rec.isAudio
+    if isa(rec{1}, 'AudioRecording')
 %        recNames{end + 1} = rec.name; %#ok<AGROW>
-        handles.recordings(end + 1) = rec;
+        handles.recordings{end + 1} = rec{1};
     end
 end
 %if isempty(recNames)

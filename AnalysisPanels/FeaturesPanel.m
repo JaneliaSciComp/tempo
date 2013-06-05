@@ -44,8 +44,10 @@ classdef FeaturesPanel < TimelinePanel
                 obj.contextualMenu = uicontextmenu('Callback', @(source, event)enableReporterMenuItems(obj, source, event));
                 uimenu(obj.contextualMenu, 'Label', obj.reporter.name, 'Enable', 'off');
                 obj.showReporterSettingsMenuItem = uimenu(obj.contextualMenu, 'Label', 'Show Reporter Settings', 'Callback', @(source, event)showReporterSettings(obj, source, event), 'Separator', 'on');
-                obj.detectFeaturesInSelectionMenuItem = uimenu(obj.contextualMenu, 'Label', 'Detect Features in Selection', 'Callback', @(source, event)detectFeaturesInSelection(obj, source, event));
-                uimenu(obj.contextualMenu, 'Label', 'Save Detected Features...', 'Callback', @(source, event)saveFeatures(obj, source, event));
+                if isa(obj.reporter, 'FeatureDetector')
+                    obj.detectFeaturesInSelectionMenuItem = uimenu(obj.contextualMenu, 'Label', 'Detect Features in Selection', 'Callback', @(source, event)detectFeaturesInSelection(obj, source, event));
+                end
+                uimenu(obj.contextualMenu, 'Label', 'Export Features...', 'Callback', @(source, event)exportFeatures(obj.reporter));
                 uimenu(obj.contextualMenu, 'Label', 'Set Features Color...', 'Callback', @(source, event)setFeaturesColor(obj, source, event));
                 uimenu(obj.contextualMenu, 'Label', 'Draw/Clear Bounding Boxes', 'Callback', @(source, event)handleBoundingBoxes(obj, source, event), 'Separator', 'off');
                 uimenu(obj.contextualMenu, 'Label', 'Remove Reporter...', 'Callback', @(source, event)removeReporter(obj, source, event), 'Separator', 'on');
@@ -97,6 +99,8 @@ classdef FeaturesPanel < TimelinePanel
                     uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)removeFeature(obj, source, event), 'Separator', 'off');
                 end
                 yCen = (length(featureTypes) - y + 0.5) * spacing;
+                % TODO: Should yCen be further tweaked (and a yHeight added) to indicate the frequency range?
+                %       The min and max frequency of all features would need to be determined to scale properly.
                 if feature.startTime == feature.endTime
                     h=text(feature.startTime, yCen, 'x', ...
                            'HorizontalAlignment', 'center', ...
@@ -112,7 +116,7 @@ classdef FeaturesPanel < TimelinePanel
                     %rectangle('Position', [feature.startTime, yCen - spacing * 0.45, feature.endTime - feature.startTime, spacing * 0.9], 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
                     x0=feature.startTime;
                     y0=yCen - spacing * 0.45;
-                    x1=x0+feature.duration;
+                    x1=feature.endTime;
                     y1=y0+spacing * 0.9;
                     h=patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
                             'EdgeColor', obj.reporter.featuresColor, ...
@@ -259,12 +263,6 @@ classdef FeaturesPanel < TimelinePanel
         
         function removeReporter(obj, ~, ~)
             obj.controller.removeFeaturePanel(obj);
-        end
-        
-        
-        function saveFeatures(obj, ~, ~)
-            % TODO: default name to recording used by detector
-            obj.controller.saveFeatures({obj.reporter});
         end
         
         

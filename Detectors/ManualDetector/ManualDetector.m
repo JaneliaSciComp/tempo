@@ -47,6 +47,8 @@ classdef ManualDetector < FeatureDetector
             if keyEvent.Character == obj.hotKey     % or .Key?
                 obj.addFeature(Feature(obj.featureType, obj.controller.selectedRange));
                 
+                obj.controller.needsSave = true;
+                
                 handled = true;
             else
                 handled = false;

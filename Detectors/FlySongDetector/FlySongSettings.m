@@ -77,11 +77,11 @@ function FlySongSettings_OpeningFcn(hObject, eventdata, handles, varargin)
     
     % Populate the recordings pop-up.
     recNames = {};
-    handles.recordings = Recording.empty();
+    handles.recordings = {};
     for rec = handles.detector.controller.recordings
-        if rec.isAudio
-            recNames{end + 1} = rec.name; %#ok<AGROW>
-            handles.recordings(end + 1) = rec;
+        if isa(rec{1}, 'AudioRecording')
+            recNames{end + 1} = rec{1}.name; %#ok<AGROW>
+            handles.recordings{end + 1} = rec{1};
         end
     end
     if isempty(recNames)
@@ -119,7 +119,7 @@ function okButton_Callback(hObject, eventdata, handles)
             handles.detector.(field{1}) = str2num(value); %#ok<ST2NM>
         end
         
-        handles.detector.recording = handles.recordings(get(handles.recordingPopUp, 'Value'));
+        handles.detector.recording = handles.recordings{get(handles.recordingPopUp, 'Value')};
         
         % Indicate that the user accepted the settings and trigger the close of
         % the dialog.

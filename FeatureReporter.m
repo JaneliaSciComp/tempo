@@ -1,11 +1,15 @@
 classdef FeatureReporter < handle
     
     properties
-        controller
         name;
+        featuresColor = [0 0 1];
+    end
+    
+    
+    properties (Transient)
+        controller
         waitBarHandle;
         contextualMenu;
-        featuresColor = [0 0 1];
     end
     
     
@@ -119,6 +123,103 @@ classdef FeatureReporter < handle
         
         function handled = keyWasPressed(obj, keyEvent) %#ok<INUSD>
             handled = false;
+        end
+        
+        
+        function exportFeatures(obj)
+            [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', 'features.mat');
+            
+            if ischar(fileName)
+                features = sort(obj.features());
+                
+                lowFreqs = arrayfun(@(a) a.lowFreq, features);
+                highFreqs = arrayfun(@(a) a.highFreq, features);
+                haveFreqRanges = any(~isinf(lowFreqs)) || any(~isinf(highFreqs));
+                
+                if filterIndex == 1
+                    % Export as a MATLAB file
+                    s.features = features;
+                    s.featureTypes = {features.type};
+                    s.startTimes = arrayfun(@(a) a.startTime, features);
+                    s.stopTimes = arrayfun(@(a) a.endTime, features);
+                    
+                    if haveFreqRanges
+                        s.lowFreqs = lowFreqs;
+                        s.highFreqs = highFreqs;
+                    end
+                    
+                    save(fullfile(pathName, fileName), '-struct', 's');
+                else
+                    % Export as an Excel tsv file
+                    fid = fopen(fullfile(pathName, fileName), 'w');
+                    
+                    propNames = {};
+                    ignoreProps = {'type', 'range', 'contextualMenu', 'startTime', 'endTime', 'lowFreq', 'highFreq', 'duration'};
+                    
+                    % Find all of the feature properties so we know how many columns there will be.
+                    for f = 1:length(features)
+                        feature = features(f);
+                        props = properties(feature);
+                        for p = 1:length(props)
+                            if ~ismember(props{p}, ignoreProps)
+                                propName = [feature.type ':' props{p}];
+                                if ~ismember(propName, propNames)
+                                    propNames{end + 1} = propName; %#ok<AGROW>
+                                end
+                            end
+                        end
+                    end
+                    propNames = sort(propNames);
+                    
+                    % Export a header row.
+                    fprintf(fid, 'Type\tStart Time\tEnd Time');
+                    if haveFreqRanges
+                        fprintf(fid, '\tLow Freq\tHigh Freq');
+                    end
+                    for p = 1:length(propNames)
+                        fprintf(fid, '\t%s', propNames{p});
+                    end
+                    fprintf(fid, '\n');
+                    
+                    % Export the features.
+                    for i = 1:length(features)
+                        feature = features(i);
+                        fprintf(fid, '%s\t%f\t%f', feature.type, feature.startTime, feature.endTime);
+                        if haveFreqRanges
+                            if isinf(feature.lowFreq)
+                                fprintf(fid, '\t');
+                            else
+                                fprintf(fid, '\t%f', feature.lowFreq);
+                            end
+                            if isinf(feature.highFreq)
+                                fprintf(fid, '\t');
+                            else
+                                fprintf(fid, '\t%f', feature.highFreq);
+                            end
+                        end
+                        
+                        propValues = cell(1, length(propNames));
+                        props = sort(properties(feature));
+                        for j = 1:length(props)
+                            if ~ismember(props{j}, ignoreProps)
+                                propName = [feature.type ':' props{j}];
+                                index = strcmp(propNames, propName);
+                                value = feature.(props{j});
+                                if isnumeric(value)
+                                    value = num2str(value);
+                                end
+                                propValues{index} = value;
+                            end
+                        end
+                        for p = 1:length(propNames)
+                            fprintf(fid, '\t%s', propValues{p});
+                        end
+                        fprintf(fid, '\n');
+                    end
+                    
+                    fclose(fid);
+                end
+            end
         end
         
     end

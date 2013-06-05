@@ -27,9 +27,12 @@ classdef FlySongDetector < FeatureDetector
         pulseMinDist = 200;         % Fs/50, if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
         pulseMinHeight = 10;
         
+        noiseCutoffSD = 3;
+    end
+    
+    properties (Transient)
         backgroundNoise;
         backgroundSSF;
-        noiseCutoffSD = 3;
     end
     
     
@@ -96,8 +99,7 @@ classdef FlySongDetector < FeatureDetector
             
             if isempty(obj.backgroundNoise)
                 obj.updateProgress('Calculating noise from the signal...', 1/9);
-                obj.backgroundNoise = Recording(obj.controller, 'SampleRate', obj.recording.sampleRate);
-                obj.backgroundNoise.isAudio = true;
+                obj.backgroundNoise = AudioRecording(obj.controller, 'SampleRate', obj.recording.sampleRate);
                 warning('off', 'stats:gmdistribution:FailedToConverge');
                 obj.backgroundNoise.data = segnspp(audioData, songSSF, obj.noiseCutoffSD);
                 warning('on', 'stats:gmdistribution:FailedToConverge');

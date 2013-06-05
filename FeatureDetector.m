@@ -95,7 +95,7 @@ classdef FeatureDetector < FeatureReporter
             
             s = struct();
             for setting = obj.settingNames()
-                s.(setting) = obj.(setting{1});
+                s.(setting{1}) = obj.(setting{1});
             end
         end
         
@@ -103,6 +103,8 @@ classdef FeatureDetector < FeatureReporter
         function timeRangeDetected(obj, timeRange)
             % Merge the new time range with the existing time ranges.
             % The new range can intersect or completely replace existing ranges.
+            
+            % TODO: this breaks if timeRange is entirely within obj.detectedTimeRanges
             
             if isempty(obj.detectedTimeRanges)
                 obj.detectedTimeRanges = timeRange;

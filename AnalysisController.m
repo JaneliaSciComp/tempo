@@ -3,7 +3,7 @@ classdef AnalysisController < handle
     properties
         figure
         
-        recordings = Recording.empty()
+        recordings = {}
         reporters = {}
         
         duration = 300
@@ -20,6 +20,10 @@ classdef AnalysisController < handle
         playMediaTool
         pauseMediaTool
         detectPopUpTool
+        showWaveformsTool
+        showSpectrogramsTool
+        showFeaturesTool
+        toolStates = {'off', 'on'}
         
         timeLabelFormat = 1     % default to displaying time in minutes and seconds
         
@@ -34,18 +38,24 @@ classdef AnalysisController < handle
         mediaTimer
         mediaTimeSync
         
+        recordingClassNames
+        recordingTypeNames
         detectorClassNames
         detectorTypeNames
         importerClassNames
         importerTypeNames
         
         importing = false
-        recordingsToAdd = Recording.empty()
+        recordingsToAdd = {}
         
         showWaveforms
         showSpectrograms
         showFeatures
+        
+        needsSave = false
+        savePath
     end
+    
     
     properties (SetObservable)
         % The analysis panels will listen for changes to these properties.
@@ -55,10 +65,6 @@ classdef AnalysisController < handle
         windowSize = 0
     end
     
-    %                   On change update:                           Can be changed by:
-    % displayedRange    other panels, time slider                   time slider, toolbar icons, key press, player
-    % currentTime       other panels, video panels, time label      axes click, key press, player
-    % selectedRange     other panels, time label                    axes click, key press
     
     methods
         
@@ -91,6 +97,9 @@ classdef AnalysisController < handle
                 parentDir = fileparts(analysisPath);
             end
             
+            addpath(fullfile(parentDir, 'Recordings'));
+            
+            [obj.recordingClassNames, obj.recordingTypeNames] = findPlugIns(fullfile(parentDir, 'Recordings'));
             [obj.detectorClassNames, obj.detectorTypeNames] = findPlugIns(fullfile(parentDir, 'Detectors'));
             [obj.importerClassNames, obj.importerTypeNames] = findPlugIns(fullfile(parentDir, 'Importers'));
             
@@ -127,16 +136,23 @@ classdef AnalysisController < handle
             % Open | Zoom in Zoom out | Play Pause | Find features | Save features Save screenshot | Show/hide waveforms Show/hide features Toggle time format
             obj.toolbar = uitoolbar(obj.figure);
             
-            iconRoot = 'Icons';
+            [tempoRoot, ~, ~] = fileparts(mfilename('fullpath'));
+            iconRoot = fullfile(tempoRoot, 'Icons');
             defaultBackground = get(0, 'defaultUicontrolBackgroundColor');
             
             iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'file_open.png'), 'BackgroundColor', defaultBackground)) / 65535;
             uipushtool(obj.toolbar, ...
                 'Tag', 'openFile', ...
                 'CData', iconData, ...
-                'TooltipString', 'Open audio/video files or import features',... 
+                'TooltipString', 'Open a saved workspace, open audio/video files or import features',... 
                 'Separator', 'on', ...
                 'ClickedCallback', @(hObject, eventdata)handleOpenFile(obj, hObject, eventdata));
+            iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'file_save.png'),'BackgroundColor', defaultBackground)) / 65535;
+            uipushtool(obj.toolbar, ...
+                'Tag', 'saveFeatures', ...
+                'CData', iconData, ...
+                'TooltipString', 'Save the workspace',...
+                'ClickedCallback', @(hObject, eventdata)handleSaveWorkspace(obj, hObject, eventdata));
             
             iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'tool_zoom_in.png'), 'BackgroundColor', defaultBackground)) / 65535;
             uipushtool(obj.toolbar, ...
@@ -174,13 +190,6 @@ classdef AnalysisController < handle
                 'Separator', 'on', ...
                 'ClickedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata));
             
-            iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'file_save.png'),'BackgroundColor', defaultBackground)) / 65535;
-            uipushtool(obj.toolbar, ...
-                'Tag', 'saveFeatures', ...
-                'CData', iconData, ...
-                'TooltipString', 'Save all features',...
-                'Separator', 'on', ...
-                'ClickedCallback', @(hObject, eventdata)handleSaveAllFeatures(obj, hObject, eventdata));
             iconData = double(imread(fullfile(iconRoot, 'screenshot.png'), 'BackgroundColor', defaultBackground)) / 255;
             uipushtool(obj.toolbar, ...
                 'Tag', 'saveScreenshot', ...
@@ -188,29 +197,28 @@ classdef AnalysisController < handle
                 'TooltipString', 'Save a screenshot',...
                 'ClickedCallback', @(hObject, eventdata)handleSaveScreenshot(obj, hObject, eventdata));
             
-            states = {'off', 'on'};
             iconData = double(imread(fullfile(iconRoot, 'waveform.png'), 'BackgroundColor', defaultBackground)) / 255;
-            uitoggletool(obj.toolbar, ...
+            obj.showWaveformsTool = uitoggletool(obj.toolbar, ...
                 'Tag', 'showHideWaveforms', ...
                 'CData', iconData, ...
-                'State', states{obj.showWaveforms + 1}, ...
+                'State', obj.toolStates{obj.showWaveforms + 1}, ...
                 'TooltipString', 'Show/hide the waveform(s)',... 
                 'Separator', 'on', ...
                 'OnCallback', @(hObject, eventdata)handleToggleWaveforms(obj, hObject, eventdata), ...
                 'OffCallback', @(hObject, eventdata)handleToggleWaveforms(obj, hObject, eventdata));
             iconData = double(imread(fullfile(iconRoot, 'spectrogram.png'), 'BackgroundColor', defaultBackground)) / 255;
-            uitoggletool(obj.toolbar, ...
+            obj.showSpectrogramsTool = uitoggletool(obj.toolbar, ...
                 'Tag', 'showHideSpectrograms', ...
                 'CData', iconData, ...
-                'State', states{obj.showSpectrograms + 1}, ...
+                'State', obj.toolStates{obj.showSpectrograms + 1}, ...
                 'TooltipString', 'Show/hide the spectrogram(s)',... 
                 'OnCallback', @(hObject, eventdata)handleToggleSpectrograms(obj, hObject, eventdata), ...
                 'OffCallback', @(hObject, eventdata)handleToggleSpectrograms(obj, hObject, eventdata));
             iconData = double(imread(fullfile(iconRoot, 'features.png'), 'BackgroundColor', defaultBackground)) / 255;
-            uitoggletool(obj.toolbar, ...
+            obj.showFeaturesTool = uitoggletool(obj.toolbar, ...
                 'Tag', 'showHideFeatures', ...
                 'CData', iconData, ...
-                'State', states{obj.showFeatures + 1}, ...
+                'State', obj.toolStates{obj.showFeatures + 1}, ...
                 'TooltipString', 'Show/hide the features',... 
                 'OnCallback', @(hObject, eventdata)handleToggleFeatures(obj, hObject, eventdata), ...
                 'OffCallback', @(hObject, eventdata)handleToggleFeatures(obj, hObject, eventdata));
@@ -368,25 +376,27 @@ classdef AnalysisController < handle
         
         
         function handlePauseMedia(obj, hObject, ~)
-            set(obj.playMediaTool, 'Enable', 'on');
-            set(obj.pauseMediaTool, 'Enable', 'off');
+            if obj.isPlayingMedia
+                set(obj.playMediaTool, 'Enable', 'on');
+                set(obj.pauseMediaTool, 'Enable', 'off');
 
-%            stop(obj.audioPlayer);
-            stop(obj.mediaTimer);
-            
-            obj.isPlayingMedia = false;
-            
-            if isempty(hObject)
-                % The media played to the end without the user clicking the pause button.
-                if obj.selectedRange(1) ~= obj.selectedRange(2)
-                    obj.currentTime = obj.selectedRange(2);
+%                stop(obj.audioPlayer);
+                stop(obj.mediaTimer);
+
+                obj.isPlayingMedia = false;
+
+                if isempty(hObject)
+                    % The media played to the end without the user clicking the pause button.
+                    if obj.selectedRange(1) ~= obj.selectedRange(2)
+                        obj.currentTime = obj.selectedRange(2);
+                    else
+                        obj.currentTime = obj.duration;
+                    end
+                    obj.centerDisplayAtTime(obj.currentTime);
                 else
-                    obj.currentTime = obj.duration;
+                    obj.currentTime = obj.currentTime;
+                    obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
                 end
-                obj.centerDisplayAtTime(obj.currentTime);
-            else
-                obj.currentTime = obj.currentTime;
-                obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
             end
         end
         
@@ -397,7 +407,7 @@ classdef AnalysisController < handle
                 defaultPath = '';
                 defaultName = 'Screenshot';
             else
-                [defaultPath, defaultName, ~] = fileparts(obj.recordings(1).filePath);
+                [defaultPath, defaultName, ~] = fileparts(obj.recordings{1}.filePath);
             end
             [fileName, pathName] = uiputfile({'*.pdf','Portable Document Format (*.pdf)'; ...
                                               '*.png','PNG format (*.png)'; ...
@@ -439,7 +449,7 @@ classdef AnalysisController < handle
         end
         
         
-        function handleToggleWaveforms(obj, ~, ~)
+        function handleToggleWaveforms(obj, hObject, ~)
             obj.showWaveforms = ~obj.showWaveforms;
             for i = 1:length(obj.otherPanels)
                 panel = obj.otherPanels{i};
@@ -450,11 +460,15 @@ classdef AnalysisController < handle
             
             obj.arrangePanels();
             
-            setpref('SongAnalysis', 'ShowWaveforms', obj.showWaveforms);
+            if isempty(hObject)
+                set(obj.showWaveformsTool, 'State', obj.toolStates{obj.showWaveforms + 1});
+            else
+                setpref('SongAnalysis', 'ShowWaveforms', obj.showWaveforms);
+            end
         end
         
         
-        function handleToggleSpectrograms(obj, ~, ~)
+        function handleToggleSpectrograms(obj, hObject, ~)
             obj.showSpectrograms = ~obj.showSpectrograms;
             for i = 1:length(obj.otherPanels)
                 panel = obj.otherPanels{i};
@@ -465,11 +479,15 @@ classdef AnalysisController < handle
             
             obj.arrangePanels();
             
-            setpref('SongAnalysis', 'ShowSpectrograms', obj.showSpectrograms);
+            if isempty(hObject)
+                set(obj.showSpectrogramsTool, 'State', obj.toolStates{obj.showSpectrograms + 1});
+            else
+                setpref('SongAnalysis', 'ShowSpectrograms', obj.showSpectrograms);
+            end
         end
         
         
-        function handleToggleFeatures(obj, ~, ~)
+        function handleToggleFeatures(obj, hObject, ~)
             obj.showFeatures = ~obj.showFeatures;
             for i = 1:length(obj.otherPanels)
                 panel = obj.otherPanels{i};
@@ -480,7 +498,11 @@ classdef AnalysisController < handle
             
             obj.arrangePanels();
             
-            setpref('SongAnalysis', 'ShowFeatures', obj.showFeatures);
+            if isempty(hObject)
+                set(obj.showFeaturesTool, 'State', obj.toolStates{obj.showFeatures + 1});
+            else
+                setpref('SongAnalysis', 'ShowFeatures', obj.showFeatures);
+            end
         end
         
         
@@ -501,10 +523,10 @@ classdef AnalysisController < handle
                 
                 constructor = str2func(detectorClassName);
                 detector = constructor(obj);
-
+                
                 if detector.editSettings()
 %TODO               addContextualMenu(detector);
-
+                    
                     detector.startProgress();
                     try
                         if obj.selectedRange(2) > obj.selectedRange(1)
@@ -513,7 +535,7 @@ classdef AnalysisController < handle
                             n = detector.detectFeatures([0.0 obj.duration]);
                         end
                         detector.endProgress();
-
+                        
                         if n == 0
                             waitfor(msgbox('No features were detected.', detectorClassName, 'warn', 'modal'));
                         else
@@ -521,9 +543,10 @@ classdef AnalysisController < handle
                             obj.otherPanels{end + 1} = FeaturesPanel(detector);
 
                             obj.arrangePanels();
-
+                            
+                            obj.needsSave = true;
                         end
-
+                        
 %TODO                   handles = updateFeatureTimes(handles);
                     catch ME
                         waitfor(msgbox(['An error occurred while detecting features:' char(10) char(10) ME.message char(10) char(10) '(See the command window for details.)'], ...
@@ -551,6 +574,8 @@ classdef AnalysisController < handle
                         panel.deleteAllReporters();
                     end
                 end
+                
+                obj.needsSave = true;
             end
         end
         
@@ -558,7 +583,7 @@ classdef AnalysisController < handle
         function centerDisplayAtTime(obj, timeCenter)
             if isempty(obj.displayRange) && ~isempty(obj.recordings)
                 obj.windowSize = 0.001;
-                newRange = [0 obj.recordings(1).duration 0 floor(obj.recordings(1).sampleRate / 2)];
+                newRange = [0 obj.recordings{1}.duration 0 floor(obj.recordings{1}.sampleRate / 2)];
             else
                 newRange = obj.displayRange;
             end
@@ -927,7 +952,20 @@ classdef AnalysisController < handle
                 bs = single(sc.getBytes(UTF8)');
                 bs(bs < 0) = 256 + (bs(bs < 0));
                 fullPath = char(bs);
-
+                
+                [~, ~, ext] = fileparts(fileName);
+                if strcmp(ext, '.tempo')
+                    if isempty(obj.recordings) && isempty(obj.reporters)
+                        % Nothing has been done in this controller so load the workspace here.
+                        target = obj;
+                    else
+                        % Open the workspace in a new controller.
+                        target = AnalysisController();
+                    end
+                    target.openWorkspace(fullPath);
+                    continue
+                end
+                
                 % First check if the file can be imported by one of the feature importers.
                 try
                     possibleImporters = [];
@@ -959,14 +997,15 @@ classdef AnalysisController < handle
                                 importer.endProgress();
                                 obj.importing = false;
                                 
-                                for rec = obj.recordingsToAdd
-                                    if rec.isAudio
-                                        obj.addAudioRecording(rec);
-                                    elseif rec.isVideo
-                                        obj.addVideoRecording(rec);
+                                % Open any recordings that the importer queued up.
+                                for recording = obj.recordingsToAdd
+                                    if isa(recording, 'AudioRecording')
+                                        obj.addAudioRecording(recording);
+                                    elseif isa(recording, 'VideoRecording')
+                                        obj.addVideoRecording(recording);
                                     end
                                 end
-                                obj.recordingsToAdd = Recording.empty();
+                                obj.recordingsToAdd = {};
                                 
                                 if n == 0
                                     waitfor(msgbox('No features were imported.', obj.importerTypeNames{index}, 'warn', 'modal'));
@@ -981,7 +1020,7 @@ classdef AnalysisController < handle
                             catch ME
                                 importer.endProgress();
                                 obj.importing = false;
-                                obj.recordingsToAdd = Recording.empty();
+                                obj.recordingsToAdd = {};
                                 waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', obj.importerTypeNames{index}, 'error', 'modal'));
                                 rethrow(ME);
                             end
@@ -995,16 +1034,22 @@ classdef AnalysisController < handle
 
                 % Next check if it's an audio or video file.
                 try
-                    set(obj.figure, 'Pointer', 'watch'); drawnow
-                    rec = Recording(obj, fullPath);
-                    if rec.isAudio
-                        obj.addAudioRecording(rec);
-                        somethingOpened = true;
-                    elseif rec.isVideo
-                        obj.addVideoRecording(rec);
-                        somethingOpened = true;
+                    for j = 1:length(obj.recordingClassNames)
+                        if eval([obj.recordingClassNames{j} '.canLoadFromPath(''' strrep(fullPath, '''', '''''') ''')'])
+                            set(obj.figure, 'Pointer', 'watch'); drawnow
+                            constructor = str2func(obj.recordingClassNames{j});
+                            recording = constructor(obj, fullPath);
+                            if isa(recording, 'AudioRecording')
+                                obj.addAudioRecording(recording);
+                                somethingOpened = true;
+                            elseif isa(recording, 'VideoRecording')
+                                obj.addVideoRecording(recording);
+                                somethingOpened = true;
+                            end
+                            set(obj.figure, 'Pointer', 'arrow'); drawnow
+                            break
+                        end
                     end
-                    set(obj.figure, 'Pointer', 'arrow'); drawnow
                 catch ME
                     set(obj.figure, 'Pointer', 'arrow'); drawnow
                     warndlg(sprintf('Error opening media file:\n\n%s', ME.message));
@@ -1013,7 +1058,7 @@ classdef AnalysisController < handle
             end
             
             if somethingOpened
-                obj.duration = max([obj.recordings.duration cellfun(@(r) r.duration, obj.reporters)]);
+                obj.duration = max([cellfun(@(r) r.duration, obj.recordings) cellfun(@(r) r.duration, obj.reporters)]);
                 
                 set(obj.timeSlider, 'Max', obj.duration);
                 
@@ -1025,6 +1070,8 @@ classdef AnalysisController < handle
                 end
                 
                 obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
+                
+                obj.needsSave = true;
             end
         end
         
@@ -1033,13 +1080,13 @@ classdef AnalysisController < handle
             if obj.importing
                 % There seems to be a bug in MATLAB where you can't create new axes while a waitbar is open.
                 % Queue the recording to be added after the waitbar has gone away.
-                obj.recordingsToAdd(end + 1) = recording;
+                obj.recordingsToAdd{end + 1} = recording;
             else
-                if isempty(obj.recordings)
+                if isempty(obj.recordings) && isempty(obj.savePath)
                     set(obj.figure, 'Name', ['Song Analysis: ' recording.name]);
                 end
                 
-                obj.recordings(end + 1) = recording;
+                obj.recordings{end + 1} = recording;
                 
                 panel = WaveformPanel(obj, recording);
                 obj.otherPanels{end + 1} = panel;
@@ -1058,13 +1105,13 @@ classdef AnalysisController < handle
             if obj.importing
                 % There seems to be a bug in MATLAB where you can't create new axes while a waitbar is open.
                 % Queue the recording to be added after the waitbar has gone away.
-                obj.recordingsToAdd(end + 1) = recording;
+                obj.recordingsToAdd{end + 1} = recording;
             else
                 if isempty(obj.recordings)
                     set(obj.figure, 'Name', ['Song Analysis: ' recording.name]);
                 end
                 
-                obj.recordings(end + 1) = recording;
+                obj.recordings{end + 1} = recording;
                 
                 panel = VideoPanel(obj, recording);
                 obj.videoPanels{end + 1} = panel;
@@ -1074,124 +1121,194 @@ classdef AnalysisController < handle
         end
         
         
-        function handleSaveAllFeatures(obj, ~, ~)
-            % Save the features from all of the reporters.
-            if length(obj.recordings) == 1
-                obj.saveFeatures(obj.reporters, obj.recordings(1).name);
-            else
-                obj.saveFeatures(obj.reporters);
+        function saved = handleSaveWorkspace(obj, ~, ~)
+            saved = false;
+            
+            if isempty(obj.savePath)
+                % Figure out a default save location and name.
+                if isempty(obj.recordings)
+                    filePath = '';
+                    fileName = 'Workspace';
+                else
+                    [filePath, fileName, ~] = fileparts(obj.recordings{1}.filePath);
+                end
+                [fileName, filePath] = uiputfile({'*.tempo', 'Tempo Workspace'}, 'Save Tempo Workspace', fullfile(filePath, fileName));
+                if ~eq(fileName, 0)
+                    obj.savePath = fullfile(filePath, fileName);
+                    [~, fileName, ~] = fileparts(fileName); % strip off the extension
+                    set(obj.figure, 'Name', ['Tempo: ' fileName]);
+                end
+            end
+            
+            if ~isempty(obj.savePath)
+                try
+                    obj.saveWorkspace(obj.savePath);
+                    obj.needsSave = false;
+                    saved = true;
+                catch ME
+                    waitfor(warndlg(['Could not save the workspace. (' ME.message ')'], 'Tempo', 'modal'));
+                end
             end
         end
         
         
-        function saveFeatures(obj, reporters, fileName) %#ok<INUSL>
-            if nargin < 4
-                fileName = 'Audio';
+        function saveWorkspace(obj, filePath)
+            s.displayRange = obj.displayRange;
+            s.selectedRange = obj.selectedRange;
+            s.currentTime = obj.currentTime;
+            s.windowSize = obj.windowSize;
+            
+            s.recordings = obj.recordings;
+%             for i = 1:length(obj.recordings)
+%                 s.recordings(i).filePath = obj.recordings(i).filePath;
+%                 s.recordings(i).sampleRate = obj.recordings(i).sampleRate;
+%                 s.recordings(i).timeOffset = obj.recordings(i).timeOffset;
+%                 s.recordings(i).channel = obj.recordings(i).channel;
+%             end
+
+            s.reporters = obj.reporters;
+%             for i = 1:length(obj.reporters)
+%                 s.reporters(i).className = class(obj.reporters{i});
+%                 if isa(obj.reporters{i}, 'FeatureDetector')
+%                     s.reporters(i).settings = obj.reporters{i}.settings();
+%                 elseif isa(obj.reporters{i}, 'FeatureImporter')
+%                     s.reporters(i).filePath = obj.reporters{i}.featuresFilePath;
+%                 end
+%                 % TODO: are dynamic properties being saved?
+%                 s.reporters(i).features = obj.reporters{i}.features();
+%             end
+
+            s.windowPosition = get(obj.figure, 'Position');
+            s.showWaveforms = obj.showWaveforms;
+            s.showSpectrograms = obj.showSpectrograms;
+            s.showFeatures = obj.showFeatures;
+
+            save(filePath, '-struct', 's');
+        end
+        
+        
+        function openWorkspace(obj, filePath)
+            % TODO: Create a new controller if the current one has recordings open?
+            %       Allow "importing" a workspace to add it to the current one?
+            
+            set(obj.figure, 'Pointer', 'watch'); drawnow
+            
+            obj.savePath = filePath;
+            [~, fileName, ~] = fileparts(filePath);
+            set(obj.figure, 'Name', ['Tempo: ' fileName]);
+            
+            s = load(filePath, '-mat');
+            
+            set(obj.figure, 'Position', s.windowPosition);
+            if obj.showWaveforms ~= s.showWaveforms
+                obj.handleToggleWaveforms([])
+            end
+            if obj.showSpectrograms ~= s.showSpectrograms
+                obj.handleToggleSpectrograms([])
+            end
+            if obj.showFeatures ~= s.showFeatures
+                obj.handleToggleFeatures([])
             end
             
-            [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', [fileName ' features.mat']);
-            
-            if ischar(fileName)
-                features = {};
-                for i = 1:length(reporters)
-                    features = horzcat(features, reporters{i}.features()); %#ok<AGROW>
+            % Load the recordings.
+            obj.recordings = s.recordings;
+            for i = 1:length(s.recordings)
+                recording = obj.recordings{i};
+                recording.controller = obj;
+                recording.loadData();
+                if isa(recording, 'AudioRecording')
+                    panel = WaveformPanel(obj, recording);
+                    obj.otherPanels{end + 1} = panel;
+                    panel.setVisible(obj.showWaveforms);
+
+                    panel = SpectrogramPanel(obj, recording);
+                    obj.otherPanels{end + 1} = panel;
+                    panel.setVisible(obj.showSpectrograms);
+                elseif isa(recording, 'VideoRecording')
+                    panel = VideoPanel(obj, recording);
+                    obj.videoPanels{end + 1} = panel;
                 end
-                
-                lowFreqs = arrayfun(@(a) a.lowFreq, features);
-                highFreqs = arrayfun(@(a) a.highFreq, features);
-                haveFreqRanges = any(~isinf(lowFreqs)) || any(~isinf(highFreqs));
-                
-                if filterIndex == 1
-                    % Save as a MATLAB file
-                    s.features = features;
-                    s.featureTypes = {features.type};
-                    s.startTimes = arrayfun(@(a) a.startTime, features);
-                    s.stopTimes = arrayfun(@(a) a.endTime, features);
-                    
-                    if haveFreqRanges
-                        s.lowFreqs = lowFreqs;
-                        s.highFreqs = highFreqs;
-                    end
-                    
-                    % TODO: also save audio recording path, reporter properties, ???
-                    save(fullfile(pathName, fileName), '-struct', 's');
-                else
-                    % Save as an Excel tsv file
-                    fid = fopen(fullfile(pathName, fileName), 'w');
-                    
-                    propNames = {};
-                    ignoreProps = {'type', 'range', 'contextualMenu', 'startTime', 'endTime', 'lowFreq', 'highFreq', 'duration'};
-                    
-                    % Find all of the feature properties so we know how many columns there will be.
-                    for f = 1:length(features)
-                        feature = features(f);
-                        props = properties(feature);
-                        for p = 1:length(props)
-                            if ~ismember(props{p}, ignoreProps)
-                                propName = [feature.type ':' props{p}];
-                                if ~ismember(propName, propNames)
-                                    propNames{end + 1} = propName; %#ok<AGROW>
-                                end
-                            end
-                        end
-                    end
-                    propNames = sort(propNames);
-                    
-                    % Save a header row.
-                    fprintf(fid, 'Type\tStart Time\tEnd Time');
-                    if haveFreqRanges
-                        fprintf(fid, '\tLow Freq\tHigh Freq');
-                    end
-                    for p = 1:length(propNames)
-                        fprintf(fid, '\t%s', propNames{p});
-                    end
-                    fprintf(fid, '\n');
-                    
-                    for i = 1:length(features)
-                        feature = features(i);
-                        fprintf(fid, '%s\t%f\t%f', feature.type, feature.startTime, feature.endTime);
-                        if haveFreqRanges
-                            if isinf(feature.lowFreq)
-                                fprintf(fid, '\t');
-                            else
-                                fprintf(fid, '\t%f', feature.lowFreq);
-                            end
-                            if isinf(feature.highFreq)
-                                fprintf(fid, '\t');
-                            else
-                                fprintf(fid, '\t%f', feature.highFreq);
-                            end
-                        end
-                        
-                        propValues = cell(1, length(propNames));
-                        props = sort(properties(feature));
-                        for j = 1:length(props)
-                            if ~ismember(props{j}, ignoreProps)
-                                propName = [feature.type ':' props{j}];
-                                index = strcmp(propNames, propName);
-                                value = feature.(props{j});
-                                if isnumeric(value)
-                                    value = num2str(value);
-                                end
-                                propValues{index} = value;
-                            end
-                        end
-                        for p = 1:length(propNames)
-                            fprintf(fid, '\t%s', propValues{p});
-                        end
-                        fprintf(fid, '\n');
-                    end
-                    
-                    fclose(fid);
+%                 try
+%                     rec = Recording(obj, s.recordings(i).filePath, ...
+%                                     'SampleRate', s.recordings(i).sampleRate, ...
+%                                     'TimeOffset', s.recordings(i).timeOffset);  %, ...
+% %                                    'Channel', s.recordings(i).channel);
+%                     if rec.isAudio
+%                         obj.addAudioRecording(rec);
+%                     elseif rec.isVideo
+%                         obj.addVideoRecording(rec);
+%                     end
+%                 catch ME
+%                     % TODO: allow the user to cancel or ignore?
+%                     rethrow(ME);
+%                 end
+            end
+            
+            % Load the detectors and importers.
+            if isfield(s, 'reporters')
+                obj.reporters = s.reporters;
+                for i = 1:length(obj.reporters)
+                    reporter = obj.reporters{i};
+                    reporter.controller = obj;
+%                     constructor = str2func(s.reporters(i).className);
+%                     reporter = constructor(obj);
+%                     if isa(reporter, 'FeatureDetector')
+%                         % Setthe detector's settings.
+%                         fn = fieldnames(s.reporters(i).settings);
+%                         for j = 1:length(fn)
+%                             reporter.(fn{j}) = s.reporters(i).settings.(fn{j});
+%                         end
+%                     elseif isa(reporter, 'FeatureImporter')
+%                         reporter.featuresFilePath = s.reporters(i).filePath;
+%                     end
+%                     reporter.setFeatures(s.reporters(i).features);
+%                     
+%                     obj.reporters{end + 1} = reporter;
+                    obj.otherPanels{end + 1} = FeaturesPanel(reporter);
+                    obj.otherPanels{end}.setVisible(obj.showFeatures);
                 end
             end
+            
+            obj.windowSize = s.windowSize;
+            obj.displayRange = s.displayRange;
+            obj.selectedRange = s.selectedRange;
+            obj.currentTime = s.currentTime;
+            
+            obj.duration = max([cellfun(@(r) r.duration, obj.recordings) cellfun(@(r) r.duration, obj.reporters)]);
+                
+            set(obj.timeSlider, 'Max', obj.duration);
+                
+            % Alter the zoom so that the same window of time is visible.
+            if isempty(obj.displayRange)
+                obj.setZoom(1);
+            else
+                obj.setZoom(obj.duration / (obj.displayRange(2) - obj.displayRange(1)));
+            end
+                
+            obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
+            
+            obj.arrangePanels();
+            
+            set(obj.figure, 'Pointer', 'arrow'); drawnow
         end
         
         
         function handleClose(obj, ~, ~)
-            if obj.isPlayingMedia
-                stop(obj.mediaTimer);
+            obj.handlePauseMedia([]);
+            
+            if obj.needsSave
+                button = questdlg('Do you want to save the changes to the workspace?', 'Tempo', 'Don''t Save', 'Cancel', 'Save', 'Save');
+                if strcmp(button, 'Save')
+                    if ~obj.handleSaveWorkspace()
+                        return
+                    end
+                elseif strcmp(button, 'Cancel')
+                    return;
+                else
+                    % TODO: obj.needsSave = false?
+                end
             end
+            
             delete(obj.mediaTimer);
             
             % Remember the window position.
@@ -1245,6 +1362,11 @@ function [classNames, typeNames] = findPlugIns(pluginsDir)
                 waitfor(warndlg(['Could not load ' pluginDirs(i).name ': ' ME.message]));
                 rmpath(fullfile(pluginsDir, filesep, pluginDirs(i).name));
             end
+        elseif ~pluginDirs(i).isdir && strcmp(pluginDirs(i).name(end-1:end), '.m')
+            className = pluginDirs(i).name(1:end-2);
+            pluginCount = pluginCount + 1;
+            classNames{pluginCount} = className;
+            typeNames{pluginCount} = className;
         end
     end
     classNames = classNames(1:pluginCount);
