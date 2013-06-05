@@ -47,6 +47,26 @@ classdef SternRecording < AudioRecording
             loadParameters@AudioRecording(obj, parser);
             
             obj.channel = parser.Results.Channel;
+            
+            if isempty(obj.channel)
+                fid = fopen(obj.filePath, 'r');
+                try
+                    fread(fid, 1, 'double');    % skip over the sample rate
+                    nchan = fread(fid, 1, 'double');
+                    [obj.channel, ok] = listdlg('ListString', cellstr(num2str((1:nchan)')), ...
+                                                'PromptString', {'Choose the channel to open:'}, ...
+                                                'SelectionMode', 'single', ...
+                                                'Name', 'Open BIN File');
+                    if ~ok
+                        error('Tempo:UserCancelled', 'The user cancelled opening the BIN file.');
+                    end
+                    fclose(fid);
+                catch ME
+                    % Make sure the file gets closed.
+                    fclose(fid);
+                    rethrow(ME);
+                end
+            end
         end
         
         
@@ -55,19 +75,9 @@ classdef SternRecording < AudioRecording
             try
                 obj.sampleRate = fread(fid, 1, 'double');
                 nchan = fread(fid, 1, 'double');
-                if ~isempty(obj.channel)
-                    ok = true;
-                else
-                    [obj.channel, ok] = listdlg('ListString', cellstr(num2str((1:nchan)')), ...
-                                                'PromptString', {'Choose the channel to open:'}, ...
-                                                'SelectionMode', 'single', ...
-                                                'Name', 'Open BIN File');
-                end
-                if ok
-                    fread(fid, obj.channel, 'double');  % skip over first timestamp and first channels
-                    obj.data = fread(fid, inf, 'double', 8*(nchan-1));
-                    obj.name = sprintf('%s (channel %d)', obj.name, obj.channel);
-                end
+                fread(fid, obj.channel, 'double');  % skip over first timestamp and first channels
+                obj.data = fread(fid, inf, 'double', 8*(nchan-1));
+                obj.name = sprintf('%s (channel %d)', obj.name, obj.channel);
                 fclose(fid);
             catch ME
                 % Make sure the file gets closed.

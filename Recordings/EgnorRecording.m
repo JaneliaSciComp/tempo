@@ -20,23 +20,22 @@ classdef EgnorRecording < AudioRecording
         end
         
         
-        function loadData(obj)
-            info = dir(obj.filePath);
-            obj.sampleCount = info.bytes / 4;
-            
-            audioInd = [];
-            for i = 1:length(obj.controller.recordings)
-                if isa(obj.controller.recordings{i}, 'EgnorRecording') && obj ~= obj.controller.recordings{i}
-                    audioInd = i;
-                end
-            end
+        function loadParameters(obj, parser)
+            loadParameters@AudioRecording(obj, parser);
             
             if isempty(obj.beginning)
+                % See if there is another .ch file loaded whose sample rate we can copy.
+                audioInd = [];
+                for i = 1:length(obj.controller.recordings)
+                    if isa(obj.controller.recordings{i}, 'EgnorRecording') && obj ~= obj.controller.recordings{i}
+                        audioInd = i;
+                    end
+                end
                 if isempty(audioInd)
                     % Ask the user for the sample rate.
                     rate = inputdlg('Enter the sample rate:', '', 1, {'450450'});
                     if isempty(rate)
-                        obj = Recording.empty();    % The user cancelled.
+                        error('Tempo:UserCancelled', 'The user cancelled opening the .ch file.');
                     else
                         obj.sampleRate = str2double(rate{1});
                         
@@ -47,7 +46,7 @@ classdef EgnorRecording < AudioRecording
                             % Also ask the user which chunk of the file to load.
                             begin = inputdlg(['Recording is ' num2str(chLen,3) ' min long.  starting at which minute should i read a 1-min block of data? '],'',1,{'1'});
                             if isempty(begin)
-                                obj = Recording.empty();    % The user cancelled.
+                                error('Tempo:UserCancelled', 'The user cancelled opening the .ch file.');
                             else
                                 obj.beginning = str2double(begin{1});
                             end
@@ -59,18 +58,22 @@ classdef EgnorRecording < AudioRecording
                     obj.beginning = obj.controller.recordings{audioInd}.beginning;
                 end
             end
-
-            if ~isempty(obj)
-                fid = fopen(obj.filePath, 'r');
-                try
-                    fseek(fid, 60 * (obj.beginning - 1) * obj.sampleRate * 4, 'bof');
-                    obj.data = fread(fid, 1 * 60 * obj.sampleRate, 'single');
-                catch ME
-                    fclose(fid);
-                    rethrow(ME);
-                end
+        end
+        
+        
+        function loadData(obj)
+            info = dir(obj.filePath);
+            obj.sampleCount = info.bytes / 4;
+            
+            fid = fopen(obj.filePath, 'r');
+            try
+                fseek(fid, 60 * (obj.beginning - 1) * obj.sampleRate * 4, 'bof');
+                obj.data = fread(fid, 1 * 60 * obj.sampleRate, 'single');
+            catch ME
                 fclose(fid);
+                rethrow(ME);
             end
+            fclose(fid);
         end
         
     end

@@ -1052,8 +1052,10 @@ classdef AnalysisController < handle
                     end
                 catch ME
                     set(obj.figure, 'Pointer', 'arrow'); drawnow
-                    warndlg(sprintf('Error opening media file:\n\n%s', ME.message));
-                    rethrow(ME);
+                    if ~strcmp(ME.identifier, 'Tempo:UserCancelled')
+                        warndlg(sprintf('Error opening media file:\n\n%s', ME.message));
+                        rethrow(ME);
+                    end
                 end
             end
             
@@ -1159,24 +1161,8 @@ classdef AnalysisController < handle
             s.windowSize = obj.windowSize;
             
             s.recordings = obj.recordings;
-%             for i = 1:length(obj.recordings)
-%                 s.recordings(i).filePath = obj.recordings(i).filePath;
-%                 s.recordings(i).sampleRate = obj.recordings(i).sampleRate;
-%                 s.recordings(i).timeOffset = obj.recordings(i).timeOffset;
-%                 s.recordings(i).channel = obj.recordings(i).channel;
-%             end
 
             s.reporters = obj.reporters;
-%             for i = 1:length(obj.reporters)
-%                 s.reporters(i).className = class(obj.reporters{i});
-%                 if isa(obj.reporters{i}, 'FeatureDetector')
-%                     s.reporters(i).settings = obj.reporters{i}.settings();
-%                 elseif isa(obj.reporters{i}, 'FeatureImporter')
-%                     s.reporters(i).filePath = obj.reporters{i}.featuresFilePath;
-%                 end
-%                 % TODO: are dynamic properties being saved?
-%                 s.reporters(i).features = obj.reporters{i}.features();
-%             end
 
             s.windowPosition = get(obj.figure, 'Position');
             s.showWaveforms = obj.showWaveforms;
@@ -1199,7 +1185,9 @@ classdef AnalysisController < handle
             
             s = load(filePath, '-mat');
             
+            % TODO: check if the window still fits on screen?
             set(obj.figure, 'Position', s.windowPosition);
+            
             if obj.showWaveforms ~= s.showWaveforms
                 obj.handleToggleWaveforms([])
             end
@@ -1212,7 +1200,7 @@ classdef AnalysisController < handle
             
             % Load the recordings.
             obj.recordings = s.recordings;
-            for i = 1:length(s.recordings)
+            for i = 1:length(obj.recordings)
                 recording = obj.recordings{i};
                 recording.controller = obj;
                 recording.loadData();
@@ -1228,20 +1216,6 @@ classdef AnalysisController < handle
                     panel = VideoPanel(obj, recording);
                     obj.videoPanels{end + 1} = panel;
                 end
-%                 try
-%                     rec = Recording(obj, s.recordings(i).filePath, ...
-%                                     'SampleRate', s.recordings(i).sampleRate, ...
-%                                     'TimeOffset', s.recordings(i).timeOffset);  %, ...
-% %                                    'Channel', s.recordings(i).channel);
-%                     if rec.isAudio
-%                         obj.addAudioRecording(rec);
-%                     elseif rec.isVideo
-%                         obj.addVideoRecording(rec);
-%                     end
-%                 catch ME
-%                     % TODO: allow the user to cancel or ignore?
-%                     rethrow(ME);
-%                 end
             end
             
             % Load the detectors and importers.
@@ -1250,20 +1224,6 @@ classdef AnalysisController < handle
                 for i = 1:length(obj.reporters)
                     reporter = obj.reporters{i};
                     reporter.controller = obj;
-%                     constructor = str2func(s.reporters(i).className);
-%                     reporter = constructor(obj);
-%                     if isa(reporter, 'FeatureDetector')
-%                         % Setthe detector's settings.
-%                         fn = fieldnames(s.reporters(i).settings);
-%                         for j = 1:length(fn)
-%                             reporter.(fn{j}) = s.reporters(i).settings.(fn{j});
-%                         end
-%                     elseif isa(reporter, 'FeatureImporter')
-%                         reporter.featuresFilePath = s.reporters(i).filePath;
-%                     end
-%                     reporter.setFeatures(s.reporters(i).features);
-%                     
-%                     obj.reporters{end + 1} = reporter;
                     obj.otherPanels{end + 1} = FeaturesPanel(reporter);
                     obj.otherPanels{end}.setVisible(obj.showFeatures);
                 end
