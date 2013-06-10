@@ -38,7 +38,7 @@ classdef PulseTrainDetector < FeatureDetector
             n = 0;
             
             pulses = obj.baseReporter.features(obj.pulseFeatureType);
-            pulseTimes = sort(arrayfun(@(x) x.startTime, pulses));
+            pulseTimes = sort([pulses.startTime]);
             
             obj.updateProgress('Looking for pulse trains...');
             startPulse = 1;
