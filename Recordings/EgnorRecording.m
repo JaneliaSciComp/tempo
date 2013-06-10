@@ -1,17 +1,24 @@
 classdef EgnorRecording < AudioRecording
     
-    properties
-        beginning
+    properties (Constant)
+        bufferSize = 16 * 1024 * 1024;  % The maximum number of samples to load at any time.
+    end
+    
+    properties (Transient)
+        dataStartSample = -Inf
     end
     
     
     methods (Static)
+        
         function canLoad = canLoadFromPath(filePath)
             % See if the file's extension is .ch1, .ch2, etc.
             [~, ~, fileExt] = fileparts(filePath);
             canLoad = ~isempty(regexp(fileExt, '^\.ch[0-9]$', 'once'));
         end
+        
     end
+    
     
     methods
         
@@ -23,7 +30,7 @@ classdef EgnorRecording < AudioRecording
         function loadParameters(obj, parser)
             loadParameters@AudioRecording(obj, parser);
             
-            if isempty(obj.beginning)
+            if isempty(obj.sampleRate)
                 % See if there is another .ch file loaded whose sample rate we can copy.
                 audioInd = [];
                 for i = 1:length(obj.controller.recordings)
@@ -31,31 +38,17 @@ classdef EgnorRecording < AudioRecording
                         audioInd = i;
                     end
                 end
-                if isempty(audioInd)
+                if ~isempty(audioInd)
+                    % Use the sample rate and time window from the existing recording.
+                    obj.sampleRate = obj.controller.recordings{audioInd}.sampleRate;
+                else
                     % Ask the user for the sample rate.
                     rate = inputdlg('Enter the sample rate:', '', 1, {'450450'});
                     if isempty(rate)
                         error('Tempo:UserCancelled', 'The user cancelled opening the .ch file.');
                     else
                         obj.sampleRate = str2double(rate{1});
-                        
-                        % Get the time window to load.
-                        chLen = obj.duration / 60;
-                        obj.beginning=1;
-                        if chLen > 2
-                            % Also ask the user which chunk of the file to load.
-                            begin = inputdlg(['Recording is ' num2str(chLen,3) ' min long.  starting at which minute should i read a 1-min block of data? '],'',1,{'1'});
-                            if isempty(begin)
-                                error('Tempo:UserCancelled', 'The user cancelled opening the .ch file.');
-                            else
-                                obj.beginning = str2double(begin{1});
-                            end
-                        end
                     end
-                else
-                    % Use the sample rate and time window from a previously opened recording.
-                    obj.sampleRate = obj.controller.recordings{audioInd}.sampleRate;
-                    obj.beginning = obj.controller.recordings{audioInd}.beginning;
                 end
             end
         end
@@ -65,17 +58,75 @@ classdef EgnorRecording < AudioRecording
             info = dir(obj.filePath);
             obj.sampleCount = info.bytes / 4;
             
-            fid = fopen(obj.filePath, 'r');
-            try
-                fseek(fid, 60 * (obj.beginning - 1) * obj.sampleRate * 4, 'bof');
-                obj.data = fread(fid, 1 * 60 * obj.sampleRate, 'single');
-            catch ME
-                fclose(fid);
-                rethrow(ME);
-            end
-            fclose(fid);
+            obj.loadDataBuffer(1);
         end
         
+        
+        function loadDataBuffer(obj, startSample)
+            startSample = max([1, min([startSample, obj.sampleCount - EgnorRecording.bufferSize])]);
+            
+            if startSample ~= obj.dataStartSample
+                % Only read the data that we don't already have.
+                endSample = startSample + EgnorRecording.bufferSize;
+                if startSample < obj.dataStartSample || startSample > obj.dataStartSample + EgnorRecording.bufferSize
+                    readStart = startSample;
+                else
+                    readStart = obj.dataStartSample + EgnorRecording.bufferSize;
+                end
+                if endSample < obj.dataStartSample || endSample > obj.dataStartSample + EgnorRecording.bufferSize
+                    readEnd = endSample;
+                else
+                    readEnd = obj.dataStartSample;
+                end
+                readLength = readEnd - readStart;
+                fid = fopen(obj.filePath, 'r');
+                try
+                    fseek(fid, readStart * 4, 'bof');
+                    newData = fread(fid, readLength, 'single');
+                catch ME
+                    fclose(fid);
+                    rethrow(ME);
+                end
+                fclose(fid);
+                
+                % Piece together the new data buffer from what we already had and what was just read in.
+                oldDataSize = (EgnorRecording.bufferSize - readLength);
+                if readStart > startSample
+                    obj.data = [obj.data((end - oldDataSize + 1):end); newData];
+                elseif readEnd < endSample
+                    obj.data = [newData; obj.data(1:oldDataSize)];
+                else
+                    obj.data = newData;
+                end
+                
+                % Remember which chunk we've got loaded.
+                obj.dataStartSample = startSample;
+            end
+        end
+        
+        
+        function d = dataInTimeRange(obj, timeRange)
+            sampleRange = floor((timeRange + obj.timeOffset) * obj.sampleRate);
+            if sampleRange(1) < 1
+                sampleRange(1) = 1;
+            end
+            if sampleRange(2) > obj.sampleCount
+                sampleRange(2) = obj.sampleCount;
+            end
+            
+            if sampleRange(2) - sampleRange(1) > EgnorRecording.bufferSize
+                % The requested range is too big to load in all at once.
+                d = [];
+            else
+                if sampleRange(1) < obj.dataStartSample || sampleRange(2) > obj.dataStartSample + EgnorRecording.bufferSize
+                    % At least some of the requested data is not currently loaded.
+                    obj.loadDataBuffer(sampleRange(1));
+                end
+                d = obj.data((sampleRange(1)) - obj.dataStartSample + 1:(sampleRange(2) - obj.dataStartSample));
+            end
+        end
+        
+        % TODO: override maxAmplitude?
     end
     
 end

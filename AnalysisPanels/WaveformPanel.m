@@ -51,35 +51,39 @@ classdef WaveformPanel < TimelinePanel
             
             audioData = obj.audio.dataInTimeRange(timeRange(1:2));
             
-            % The audio may not span the entire time range.
-            dataDuration = length(audioData) / obj.audio.sampleRate;
-
-            windowSampleCount = length(audioData);
-            axesSize = get(obj.axes, 'Position');
-            step = max(1, floor(windowSampleCount/axesSize(3)/100));
-
-            % Update the waveform.
-            if false    % TODO: get(handles.autoGainCheckBox, 'Value') == 1.0
-                maxAmp = max(abs(audioData(1:step:windowSampleCount)));
+            if isempty(audioData)
+                % TODO: display "zoom in" message
             else
-                maxAmp = obj.audio.maxAmplitude() / 1.0;    % TODO: get(handles.gainSlider, 'Value');
-            end
-            
-            % Update the line with the data in this time range.
-            xData = (0:step:length(audioData) - 1) / length(audioData) * dataDuration + timeRange(1);
-            set(obj.plotHandle, 'XData', xData, 'YData', audioData(1:step:windowSampleCount));
-            
-            % Update the y limits of the axes based on the gain settings.
-            curYLim = get(obj.axes, 'YLim');
-            if curYLim(1) ~= -maxAmp || curYLim(2) ~= maxAmp
-                set(obj.axes, 'YLim', [-maxAmp maxAmp]);
-            end
-            
-            % Display a gray rectangle where there isn't audio data available.
-            if obj.audio.duration < obj.controller.duration
-                set(obj.grayRect, 'Position', [obj.audio.duration, -maxAmp, obj.controller.duration - obj.audio.duration, maxAmp * 2], 'Visible', 'on');
-            else
-                set(obj.grayRect, 'Visible', 'off');
+                % The audio may not span the entire time range.
+                dataDuration = length(audioData) / obj.audio.sampleRate;
+
+                windowSampleCount = length(audioData);
+                axesSize = get(obj.axes, 'Position');
+                step = max(1, floor(windowSampleCount/axesSize(3)/100));
+
+                % Update the waveform.
+                if false    % TODO: get(handles.autoGainCheckBox, 'Value') == 1.0
+                    maxAmp = max(abs(audioData(1:step:windowSampleCount)));
+                else
+                    maxAmp = obj.audio.maxAmplitude() / 1.0;    % TODO: get(handles.gainSlider, 'Value');
+                end
+
+                % Update the line with the data in this time range.
+                xData = (0:step:length(audioData) - 1) / length(audioData) * dataDuration + timeRange(1);
+                set(obj.plotHandle, 'XData', xData, 'YData', audioData(1:step:windowSampleCount));
+
+                % Update the y limits of the axes based on the gain settings.
+                curYLim = get(obj.axes, 'YLim');
+                if curYLim(1) ~= -maxAmp || curYLim(2) ~= maxAmp
+                    set(obj.axes, 'YLim', [-maxAmp maxAmp]);
+                end
+
+                % Display a gray rectangle where there isn't audio data available.
+                if obj.audio.duration < obj.controller.duration
+                    set(obj.grayRect, 'Position', [obj.audio.duration, -maxAmp, obj.controller.duration - obj.audio.duration, maxAmp * 2], 'Visible', 'on');
+                else
+                    set(obj.grayRect, 'Visible', 'off');
+                end
             end
         end
         
