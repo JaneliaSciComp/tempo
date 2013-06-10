@@ -132,16 +132,16 @@ classdef FeatureReporter < handle
             if ischar(fileName)
                 features = sort(obj.features());
                 
-                lowFreqs = arrayfun(@(a) a.lowFreq, features);
-                highFreqs = arrayfun(@(a) a.highFreq, features);
+                lowFreqs = [features.lowFreq];
+                highFreqs = [features.highFreq];
                 haveFreqRanges = any(~isinf(lowFreqs)) || any(~isinf(highFreqs));
                 
                 if filterIndex == 1
                     % Export as a MATLAB file
                     s.features = features;
                     s.featureTypes = {features.type};
-                    s.startTimes = arrayfun(@(a) a.startTime, features);
-                    s.stopTimes = arrayfun(@(a) a.endTime, features);
+                    s.startTimes = [features.startTime];
+                    s.stopTimes = [features.endTime];
                     
                     if haveFreqRanges
                         s.lowFreqs = lowFreqs;

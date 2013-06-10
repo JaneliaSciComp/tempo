@@ -13,9 +13,12 @@ classdef VideoRecording < Recording
         function canLoad = canLoadFromPath(filePath)
             canLoad = false;
             try
-                mmfileinfo(filePath);
-                canLoad = true;
-            catch
+                info = mmfileinfo(filePath);
+                if ~isempty(info) && isfield(info, 'Video') && isfield(info.Video, 'Height') && ~isempty(info.Video.Height) && info.Video.Height > 0
+                    canLoad = true;
+                end
+            catch ME
+                disp(getReport(ME));
             end
         end
     end

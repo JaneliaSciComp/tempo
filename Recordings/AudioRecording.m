@@ -12,10 +12,20 @@ classdef AudioRecording < Recording
     methods (Static)
         function canLoad = canLoadFromPath(filePath)
             canLoad = false;
-            try
-                audioinfo(filePath);
-                canLoad = true;
-            catch
+            if isempty(which('audioinfo'))
+                try
+                    if ~isempty(wavfinfo(filePath))
+                        canLoad = true;
+                    end
+                    
+                catch
+                end
+            else
+                try
+                    audioinfo(filePath);
+                    canLoad = true;
+                catch
+                end
             end
         end
     end
@@ -29,7 +39,11 @@ classdef AudioRecording < Recording
         
         function loadData(obj)
             if ~isempty(obj.filePath)
-                [obj.data, obj.sampleRate] = audioread(obj.filePath, 'native');
+                if isempty(which('audioread'))
+                    [obj.data, obj.sampleRate] = wavread(obj.filePath, 'native');
+                else
+                    [obj.data, obj.sampleRate] = audioread(obj.filePath, 'native');
+                end
                 obj.data = double(obj.data);
                 obj.sampleCount = length(obj.data);
 

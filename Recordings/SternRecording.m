@@ -1,14 +1,5 @@
 classdef SternRecording < AudioRecording
     
-    properties
-        maxAmp
-    end
-    
-    properties(Transient)
-        audioPlayer
-    end
-    
-    
     methods (Static)
         function canLoad = canLoadFromPath(filePath)
             % See if the file's extension is .bin.
