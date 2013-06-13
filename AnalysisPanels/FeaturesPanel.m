@@ -85,6 +85,16 @@ classdef FeaturesPanel < TimelinePanel
             
             % Draw the features that have been reported.
             features = obj.reporter.features();
+            lowFreqs = [features.lowFreq];
+            highFreqs = [features.highFreq];
+            minFreq = min(lowFreqs(lowFreqs > -Inf));
+            if isempty(minFreq)
+                minFreq = -Inf;
+            end
+            maxFreq = max(highFreqs(highFreqs < Inf));
+            if isempty(maxFreq)
+                maxFreq = Inf;
+            end
             for feature = features
                 y = find(strcmp(featureTypes, feature.type));
                 if isempty(feature.contextualMenu)
@@ -99,8 +109,6 @@ classdef FeaturesPanel < TimelinePanel
                     uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)removeFeature(obj, source, event), 'Separator', 'off');
                 end
                 yCen = (length(featureTypes) - y + 0.5) * spacing;
-                % TODO: Should yCen be further tweaked (and a yHeight added) to indicate the frequency range?
-                %       The min and max frequency of all features would need to be determined to scale properly.
                 if feature.startTime == feature.endTime
                     h=text(feature.startTime, yCen, 'x', ...
                            'HorizontalAlignment', 'center', ...
@@ -111,13 +119,24 @@ classdef FeaturesPanel < TimelinePanel
                            'UserData', feature);
                     hh=[hh h];
                 else
+                    x0 = feature.startTime;
+                    x1 = feature.endTime;
+                    
+                    minY = yCen - spacing * 0.45;
+                    maxY = minY + spacing * 0.9;
+                    if feature.lowFreq > -Inf && feature.highFreq < Inf
+                        % Scale the upper and lower edges of the patch to the feature's frequency range.
+                        y0 = (feature.lowFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
+                        y1 = (feature.highFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
+                    else
+                        % Have the patch cover the full vertical space for this feature type.
+                        y0 = minY;
+                        y1 = maxY;
+                    end
+                    
                     fillColor = obj.reporter.featuresColor;
                     fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
-                    %rectangle('Position', [feature.startTime, yCen - spacing * 0.45, feature.endTime - feature.startTime, spacing * 0.9], 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor, 'UIContextMenu', feature.contextualMenu, 'UserData', feature);
-                    x0=feature.startTime;
-                    y0=yCen - spacing * 0.45;
-                    x1=feature.endTime;
-                    y1=y0+spacing * 0.9;
+                    
                     h=patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
                             'EdgeColor', obj.reporter.featuresColor, ...
                             'UIContextMenu', feature.contextualMenu, ...
