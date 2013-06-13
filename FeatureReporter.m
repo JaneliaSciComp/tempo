@@ -117,7 +117,11 @@ classdef FeatureReporter < handle
         function d = get.duration(obj)
             % TODO: this value could be pre-computed
             fs = obj.features();
-            d = max([fs.endTime]);
+            if isempty(fs)
+                d = 0;
+            else
+                d = max([fs.endTime]);
+            end
         end
         
         
