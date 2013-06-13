@@ -69,15 +69,15 @@ classdef AnalysisController < handle
     methods
         
         function obj = AnalysisController()
-            obj.showWaveforms = getpref('SongAnalysis', 'ShowWaveforms', true);
-            obj.showSpectrograms = getpref('SongAnalysis', 'ShowSpectrograms', true);
-            obj.showFeatures = getpref('SongAnalysis', 'ShowFeatures', true);
+            obj.showWaveforms = getpref('Tempo', 'ShowWaveforms', true);
+            obj.showSpectrograms = getpref('Tempo', 'ShowSpectrograms', true);
+            obj.showFeatures = getpref('Tempo', 'ShowFeatures', true);
             
-            obj.figure = figure('Name', 'Song Analysis', ...
+            obj.figure = figure('Name', 'Tempo', ...
                 'NumberTitle', 'off', ...
                 'Toolbar', 'none', ...
                 'MenuBar', 'none', ...
-                'Position', getpref('SongAnalysis', 'MainWindowPosition', [100 100 400 200]), ...
+                'Position', getpref('Tempo', 'MainWindowPosition', [100 100 400 200]), ...
                 'Color', [0.4 0.4 0.4], ...
                 'Renderer', 'opengl', ...
                 'ResizeFcn', @(source, event)handleResize(obj, source, event), ...
@@ -463,7 +463,7 @@ classdef AnalysisController < handle
             if isempty(hObject)
                 set(obj.showWaveformsTool, 'State', obj.toolStates{obj.showWaveforms + 1});
             else
-                setpref('SongAnalysis', 'ShowWaveforms', obj.showWaveforms);
+                setpref('Tempo', 'ShowWaveforms', obj.showWaveforms);
             end
         end
         
@@ -482,7 +482,7 @@ classdef AnalysisController < handle
             if isempty(hObject)
                 set(obj.showSpectrogramsTool, 'State', obj.toolStates{obj.showSpectrograms + 1});
             else
-                setpref('SongAnalysis', 'ShowSpectrograms', obj.showSpectrograms);
+                setpref('Tempo', 'ShowSpectrograms', obj.showSpectrograms);
             end
         end
         
@@ -501,7 +501,7 @@ classdef AnalysisController < handle
             if isempty(hObject)
                 set(obj.showFeaturesTool, 'State', obj.toolStates{obj.showFeatures + 1});
             else
-                setpref('SongAnalysis', 'ShowFeatures', obj.showFeatures);
+                setpref('Tempo', 'ShowFeatures', obj.showFeatures);
             end
         end
         
@@ -1272,7 +1272,7 @@ classdef AnalysisController < handle
             delete(obj.mediaTimer);
             
             % Remember the window position.
-            setpref('SongAnalysis', 'MainWindowPosition', get(obj.figure, 'Position'));
+            setpref('Tempo', 'MainWindowPosition', get(obj.figure, 'Position'));
             
 % TODO:
 %             if (handles.close_matlabpool)
