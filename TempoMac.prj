@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <deployment-project plugin="plugin.deploytool" plugin-version="1.0">
-  <configuration target="target.standalone" target-name="Standalone Application" name="FlySongAnalysisMac" location="/Users/midgleyf/Development/Fly Song Analysis/Versioned" file="/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysisMac.prj" build-checksum="3776226687">
-    <param.project.name>/Users/midgleyf/Development/Fly Song Analysis/Versioned/FlySongAnalysisMac.prj</param.project.name>
+  <configuration target="target.standalone" target-name="Standalone Application" name="TempoMac" location="/Users/midgleyf/Development/Tempo/Versioned/Tempo" file="/Users/midgleyf/Development/Tempo/Versioned/Tempo/TempoMac.prj" build-checksum="3776226687">
+    <param.project.name>/Users/midgleyf/Development/Tempo/Versioned/Tempo/TempoMac.prj</param.project.name>
     <param.target.type>Standalone Application</param.target.type>
-    <param.appname>FlySongAnalysis</param.appname>
+    <param.appname>Tempo</param.appname>
     <param.intermediate>${PROJECT_ROOT}/build/src</param.intermediate>
     <param.output>${PROJECT_ROOT}/build/distrib</param.output>
     <param.embed.ctf>false</param.embed.ctf>
@@ -56,30 +56,32 @@
       <param.user.defined.mcr.options />
     </unset>
     <fileset.main>
-      <file>${PROJECT_ROOT}/FlySongAnalysis.m</file>
+      <file>${PROJECT_ROOT}/Tempo.m</file>
     </fileset.main>
     <fileset.resources>
+      <file>${PROJECT_ROOT}/AnalysisPanels</file>
       <file>${PROJECT_ROOT}/Detectors</file>
-      <file>${PROJECT_ROOT}/Feature.m</file>
       <file>${PROJECT_ROOT}/FeatureDetector.m</file>
       <file>${PROJECT_ROOT}/FeatureImporter.m</file>
       <file>${PROJECT_ROOT}/FeatureReporter.m</file>
-      <file>${PROJECT_ROOT}/FlySongAnalysis.fig</file>
+      <file>${PROJECT_ROOT}/Icons</file>
       <file>${PROJECT_ROOT}/Importers</file>
+      <file>${PROJECT_ROOT}/Recording.m</file>
+      <file>${PROJECT_ROOT}/Recordings</file>
       <file>${PROJECT_ROOT}/export_fig</file>
     </fileset.resources>
     <fileset.package />
     <build-deliverables>
-      <file name="run_FlySongAnalysis.sh" location="${PROJECT_ROOT}/build/distrib" optional="false">/Users/midgleyf/Development/Fly Song Analysis/Versioned/build/distrib/run_FlySongAnalysis.sh</file>
-      <file name="FlySongAnalysis.app" location="${PROJECT_ROOT}/build/distrib" optional="false">/Users/midgleyf/Development/Fly Song Analysis/Versioned/build/distrib/FlySongAnalysis.app</file>
-      <file name="readme.txt" location="${PROJECT_ROOT}/build/distrib" optional="true">/Users/midgleyf/Development/Fly Song Analysis/Versioned/build/distrib/readme.txt</file>
+      <file name="readme.txt" location="${PROJECT_ROOT}/build/distrib" optional="true">/Users/midgleyf/Development/Tempo/Versioned/Tempo/build/distrib/readme.txt</file>
+      <file name="run_Tempo.sh" location="${PROJECT_ROOT}/build/distrib" optional="false">/Users/midgleyf/Development/Tempo/Versioned/Tempo/build/distrib/run_Tempo.sh</file>
+      <file name="Tempo.app" location="${PROJECT_ROOT}/build/distrib" optional="false">/Users/midgleyf/Development/Tempo/Versioned/Tempo/build/distrib/Tempo.app</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>/Applications/MATLAB_R2012a.app</root>
+      <root>/Applications/MATLAB_R2013a.app</root>
+      <toolboxes />
       <path>
         <directory>/Users/midgleyf/Documents/MATLAB</directory>
-        <directory>/Users/midgleyf/Development/SAGE/Versioned/MATLAB Interface</directory>
         <directory>${MATLAB_ROOT}/toolbox/matlab/demos</directory>
         <directory>${MATLAB_ROOT}/toolbox/matlab/graph2d</directory>
         <directory>${MATLAB_ROOT}/toolbox/matlab/graph3d</directory>
@@ -89,58 +91,62 @@
         <directory>${MATLAB_ROOT}/toolbox/matlab/specgraph</directory>
         <directory>${MATLAB_ROOT}/toolbox/matlab/uitools</directory>
         <directory>${MATLAB_ROOT}/toolbox/local</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/general</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/ops</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/lang</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/elmat</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/randfun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/elfun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/specfun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/matfun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/datafun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/polyfun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/funfun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/sparfun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/strfun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/iofun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/timefun</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/datatypes</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/verctrl</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/codetools</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/helptools</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/hds</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/guide</directory>
-        <directory>${MATLAB_ROOT}/toolbox/matlab/datamanager</directory>
         <directory>${MATLAB_ROOT}/toolbox/matlab/optimfun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/codetools</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/datafun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/datamanager</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/datatypes</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/elfun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/elmat</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/funfun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/general</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/guide</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/helptools</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/iofun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/lang</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/matfun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/ops</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/polyfun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/randfun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/sparfun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/specfun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/strfun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/timefun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/verctrl</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/testframework</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/components</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/dee</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/blocks/library</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/blocks/obsolete</directory>
-        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/dataclasses</directory>
-        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink</directory>
-        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/slresolve</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/blocks</directory>
-        <directory>${MATLAB_ROOT}/toolbox/simulink/components</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/fixedandfloat</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/fixedandfloat/obsolete</directory>
-        <directory>${MATLAB_ROOT}/toolbox/simulink/dee</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/dataclasses</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/MPlayIO</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/dataobjectwizard</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/slresolve</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simdemos/dataclasses</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simdemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simdemos/aerospace</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simdemos/automotive</directory>
-        <directory>${MATLAB_ROOT}/toolbox/simulink/simdemos/industrial</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simdemos/simfeatures</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simdemos/automotive/fuelsys</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simdemos/simgeneral</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simdemos/industrial</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/modeladvisor</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/modeladvisor/fixpt</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/glue</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/glue/studio</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/frameedit</directory>
         <directory>${MATLAB_ROOT}/toolbox/rtw/targets/AUTOSAR/AUTOSAR/dataclasses</directory>
         <directory>${MATLAB_ROOT}/toolbox/rtw/targets/AUTOSAR/AUTOSAR</directory>
         <directory>${MATLAB_ROOT}/toolbox/rtw/accel</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/simulinkcoder_core</directory>
         <directory>${MATLAB_ROOT}/toolbox/stateflow/stateflow</directory>
         <directory>${MATLAB_ROOT}/toolbox/stateflow/coder</directory>
         <directory>${MATLAB_ROOT}/toolbox/stateflow/sfdemos</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/apps</directory>
         <directory>${MATLAB_ROOT}/toolbox/matlab/audiovideo</directory>
         <directory>${MATLAB_ROOT}/toolbox/bioinfo/bioinfo</directory>
         <directory>${MATLAB_ROOT}/toolbox/bioinfo/biolearning</directory>
@@ -152,15 +158,23 @@
         <directory>${MATLAB_ROOT}/toolbox/bioinfo/biodemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/coder/matlabcoder</directory>
         <directory>${MATLAB_ROOT}/toolbox/coder/codegendemos</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/connectivity</directory>
         <directory>${MATLAB_ROOT}/toolbox/coder/emlcodermex</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/coverage</directory>
         <directory>${MATLAB_ROOT}/toolbox/rtw/rtw</directory>
         <directory>${MATLAB_ROOT}/toolbox/rtw/targets/shared</directory>
-        <directory>${MATLAB_ROOT}/toolbox/rtw/coder_foundation/tfl</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/foundation</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/foundation/tfl</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/foundation/build</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/foundation/build/tools/registry</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/simtargets</directory>
         <directory>${MATLAB_ROOT}/toolbox/coder/coder</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/profile</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/rtiostream</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/comparisons</directory>
         <directory>${MATLAB_ROOT}/toolbox/compiler</directory>
         <directory>${MATLAB_ROOT}/toolbox/compiler/compilerdemos</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/connector/connector</directory>
         <directory>${MATLAB_ROOT}/toolbox/control/control</directory>
         <directory>${MATLAB_ROOT}/toolbox/control/ctrlguis</directory>
         <directory>${MATLAB_ROOT}/toolbox/control/ctrlobsolete</directory>
@@ -187,21 +201,15 @@
         <directory>${MATLAB_ROOT}/toolbox/fixedpoint/fidemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/fixedpoint/fixedpoint</directory>
         <directory>${MATLAB_ROOT}/toolbox/fixedpoint/fixedpointtool</directory>
+        <directory>${MATLAB_ROOT}/toolbox/fixpoint</directory>
+        <directory>${MATLAB_ROOT}/toolbox/fixpoint/fpca</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/fixedandfloat/fxpdemos</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/adivdsp</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/adivdsp/mdlinfo</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/adivdsp/tfl</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/adivdsp/vdspblks</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/adivdsp/rtw</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/float2fixed</directory>
+        <directory>${MATLAB_ROOT}/toolbox/coder/float2fixed/dmm_emlauthoring</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/eclipseide</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/eclipseide/mdlinfo</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/eclipseide/registry</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/eclipseide/tfl</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/ghsmulti</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/ghsmulti/mdlinfo</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/ghsmulti/multiblks</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/ghsmulti/tfl</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/ghsmulti/rtw</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/iarew</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/iarew/blks</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/iarew/mdlinfo</directory>
@@ -235,14 +243,10 @@
         <directory>${MATLAB_ROOT}/toolbox/idelink/foundation/xmakefile</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/foundation/hookpoints</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/idelinkdemos</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/adivdsp/vdspdemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/eclipseide/eclipseidedemos</directory>
-        <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/ghsmulti/multidemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/iarew/iarewdemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/ticcs/ccsdemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/idelink/extensions/ticcs/ccsdemos/util</directory>
-        <directory>${MATLAB_ROOT}/toolbox/shared/etargets/etargets</directory>
-        <directory>${MATLAB_ROOT}/toolbox/shared/etargets/etargets/demoutils</directory>
         <directory>${MATLAB_ROOT}/toolbox/images/colorspaces</directory>
         <directory>${MATLAB_ROOT}/toolbox/images/images</directory>
         <directory>${MATLAB_ROOT}/toolbox/images/imuitools</directory>
@@ -261,7 +265,7 @@
         <directory>${MATLAB_ROOT}/toolbox/instrument/instrumentblks/instrumentmasks</directory>
         <directory>${MATLAB_ROOT}/toolbox/instrument/instrumentdemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/instrument</directory>
-        <directory>${MATLAB_ROOT}/toolbox/sam/m3i</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/m3i</directory>
         <directory>${MATLAB_ROOT}/toolbox/nnet</directory>
         <directory>${MATLAB_ROOT}/toolbox/nnet/nncontrol</directory>
         <directory>${MATLAB_ROOT}/toolbox/nnet/nndemos</directory>
@@ -291,13 +295,14 @@
         <directory>${MATLAB_ROOT}/toolbox/nnet/nnobsolete</directory>
         <directory>${MATLAB_ROOT}/toolbox/nnet/nnutils</directory>
         <directory>${MATLAB_ROOT}/toolbox/optim/optim</directory>
+        <directory>${MATLAB_ROOT}/toolbox/optim</directory>
         <directory>${MATLAB_ROOT}/toolbox/optim/optimdemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/realtime</directory>
         <directory>${MATLAB_ROOT}/toolbox/realtime/realtime</directory>
         <directory>${MATLAB_ROOT}/toolbox/realtime/realtime/rtw</directory>
         <directory>${MATLAB_ROOT}/toolbox/slvnv/reqmgt</directory>
+        <directory>${MATLAB_ROOT}/toolbox/slvnv/reqmgt/RTExplorer</directory>
         <directory>${MATLAB_ROOT}/toolbox/slvnv/slvnv</directory>
-        <directory>${MATLAB_ROOT}/toolbox/slvnv/rmidemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/rtw/targets/asap2/asap2/dataclasses</directory>
         <directory>${MATLAB_ROOT}/toolbox/rtw/targets/asap2/asap2</directory>
         <directory>${MATLAB_ROOT}/toolbox/rtw/targets/asap2/asap2/user</directory>
@@ -313,13 +318,16 @@
         <directory>${MATLAB_ROOT}/toolbox/rtw/rtwdemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/rtw/rtwdemos/rsimdemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/blocks/sb2sl</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/advisor</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/asynciolib</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/can</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/can/canblks</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/can/canmasks</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/can/canmex</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/cgir_fe</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/cgxe/cgxe</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/coder/coder</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/configset</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/controllib/engine</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/controllib/engine/numerics</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/controllib/engine/options</directory>
@@ -329,10 +337,12 @@
         <directory>${MATLAB_ROOT}/toolbox/shared/controllib/graphics/utils</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/controllib/graphics/plotoptions</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/controllib/requirements</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/curvefitlib</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/dastudio</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/dastudio/depviewer</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/dspblks/dspblks</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/dspblks/dspmex</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/dsp/hdl</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/dsp/vision/matlab/utilities</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/dsp/vision/simulink/utilities</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/dsp/vision/matlab/utilities/mex</directory>
@@ -341,10 +351,13 @@
         <directory>${MATLAB_ROOT}/toolbox/shared/dsp/vision/matlab/vision</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/dsp/vision/simulink/vision</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/filterdesignlib</directory>
-        <directory>${MATLAB_ROOT}/toolbox/shared/hdlshared</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/hdlshared/hdlshared_gui</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/hwconnectinstaller</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/hwconnectinstaller/common</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/imageslib</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/imaqlib</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/measure</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/multimedia</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/optimlib</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/rptgen</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/sigbldr</directory>
@@ -355,7 +368,11 @@
         <directory>${MATLAB_ROOT}/toolbox/slvnv/simcoverage</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/spcuilib</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/statslib</directory>
-        <directory>${MATLAB_ROOT}/toolbox/shared/system/system</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/system/coder</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/system/coreblocks</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/system/fixedpoint</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/system/sfun</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/system/simulink</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/testmeaslib/general</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/testmeaslib/graphics</directory>
         <directory>${MATLAB_ROOT}/toolbox/shared/testmeaslib/simulink</directory>
@@ -366,6 +383,13 @@
         <directory>${MATLAB_ROOT}/toolbox/shared/simulink</directory>
         <directory>${MATLAB_ROOT}/toolbox/sl3d/sl3d</directory>
         <directory>${MATLAB_ROOT}/toolbox/sl3d/sl3ddemos</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/iodata/iomap</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/iodata/ioedit</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/iodata/ioedit/util</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/performance</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/performance/performancea</directory>
+        <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/upgradeadvisor</directory>
+        <directory>${MATLAB_ROOT}/toolbox/sldv/sldv</directory>
         <directory>${MATLAB_ROOT}/toolbox/simulink/simulink/slproject</directory>
         <directory>${MATLAB_ROOT}/toolbox/stats/stats</directory>
         <directory>${MATLAB_ROOT}/toolbox/stats/classreg</directory>
@@ -375,19 +399,7 @@
         <directory>${MATLAB_ROOT}/toolbox/symbolic/symbolic</directory>
         <directory>${MATLAB_ROOT}/toolbox/symbolic/symbolicdemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/matlab/system</directory>
-        <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/blackfin</directory>
-        <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/blackfin/blks</directory>
-        <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/blackfin/blks/mex</directory>
-        <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/blackfin/blks/masks</directory>
-        <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/blackfin/blackfindemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/intelhost/tfl</directory>
-        <directory>${MATLAB_ROOT}/toolbox/rtw/targets/mpc555dk</directory>
-        <directory>${MATLAB_ROOT}/toolbox/rtw/targets/mpc555dk/common/configuration</directory>
-        <directory>${MATLAB_ROOT}/toolbox/rtw/targets/mpc555dk/mpc555dk</directory>
-        <directory>${MATLAB_ROOT}/toolbox/rtw/targets/mpc555dk/pil</directory>
-        <directory>${MATLAB_ROOT}/toolbox/rtw/targets/mpc555dk/rt/blockset/mfiles/dataclasses</directory>
-        <directory>${MATLAB_ROOT}/toolbox/rtw/targets/mpc555dk/rt/blockset/mfiles</directory>
-        <directory>${MATLAB_ROOT}/toolbox/rtw/targets/mpc555dk/rt/blockset</directory>
         <directory>${MATLAB_ROOT}/toolbox/target</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/foundation</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/foundation/utils</directory>
@@ -402,6 +414,8 @@
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/shared/ti/blks</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/shared/ti/blks/mex</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/shared/ti/blks/masks</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/etargets/etargets</directory>
+        <directory>${MATLAB_ROOT}/toolbox/shared/etargets/etargets/demoutils</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/targetdemos</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/tic2000</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/tic2000/rtw</directory>
@@ -409,6 +423,7 @@
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/tic2000/blks</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/tic2000/blks/mex</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/tic2000/blks/masks</directory>
+        <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/tic2000/tic2000demos/dataclasses</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/tic2000/tic2000demos</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/tic5000</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/processor/tic5000/blks</directory>
@@ -437,6 +452,7 @@
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/operatingsystem/windows/blks/masks</directory>
         <directory>${MATLAB_ROOT}/toolbox/target/extensions/operatingsystem/windows/blks/mex</directory>
         <directory>${MATLAB_ROOT}/toolbox/matlab/timeseries</directory>
+        <directory>${MATLAB_ROOT}/toolbox/matlab/hds</directory>
         <directory>${MATLAB_ROOT}/toolbox/wavelet/wavelet</directory>
         <directory>${MATLAB_ROOT}/toolbox/wavelet/wmultisig1d</directory>
         <directory>${MATLAB_ROOT}/toolbox/wavelet/wavedemo</directory>
@@ -452,7 +468,7 @@
       <vista>false</vista>
       <linux>false</linux>
       <solaris>false</solaris>
-      <osver>10.6.8</osver>
+      <osver>10.7.5</osver>
       <os32>false</os32>
       <os64>true</os64>
       <arch>maci64</arch>

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <deployment-project>
-  <configuration target="target.standalone.win" target-name="Windows Standalone Application" name="FlySongAnalysisWin" location="C:\Users\midgleyf\Desktop\FlySongAnalysis" file="C:\Users\midgleyf\Desktop\FlySongAnalysis\FlySongAnalysisWin.prj" build-checksum="738860517">
-    <param.project.name>C:\Users\midgleyf\Desktop\FlySongAnalysis\FlySongAnalysisWin.prj</param.project.name>
+  <configuration target="target.standalone.win" target-name="Windows Standalone Application" name="TempoWin">
+    <param.project.name>Tempo</param.project.name>
     <param.target.type>Windows Standalone Application</param.target.type>
-    <param.appname>FlySongAnalysis</param.appname>
+    <param.appname>Tempo</param.appname>
     <param.intermediate>${PROJECT_ROOT}\build\src</param.intermediate>
     <param.output>${PROJECT_ROOT}\build\distrib</param.output>
     <param.embed.ctf>true</param.embed.ctf>
@@ -57,33 +57,28 @@
       <param.user.defined.mcr.options />
     </unset>
     <fileset.main>
-      <file>${PROJECT_ROOT}\FlySongAnalysis.m</file>
+      <file>${PROJECT_ROOT}\Tempo.m</file>
     </fileset.main>
     <fileset.resources>
+      <file>${PROJECT_ROOT}\AnalysisPanels</file>
       <file>${PROJECT_ROOT}\Detectors</file>
       <file>${PROJECT_ROOT}\export_fig</file>
-      <file>${PROJECT_ROOT}\Feature.m</file>
+      <file>${PROJECT_ROOT}\Icons</file>
+      <file>${PROJECT_ROOT}\Importers</file>
+      <file>${PROJECT_ROOT}\Recordings</file>
       <file>${PROJECT_ROOT}\FeatureDetector.m</file>
       <file>${PROJECT_ROOT}\FeatureImporter.m</file>
       <file>${PROJECT_ROOT}\FeatureReporter.m</file>
-      <file>${PROJECT_ROOT}\FlySongAnalysis.fig</file>
-      <file>${PROJECT_ROOT}\getRootPanel.m</file>
-      <file>${PROJECT_ROOT}\Importers</file>
       <file>${PROJECT_ROOT}\Recording.m</file>
-      <file>${PROJECT_ROOT}\secondstr.m</file>
-      <file>${PROJECT_ROOT}\uigetfile2.m</file>
-      <file>${PROJECT_ROOT}\uisplitpane.m</file>
     </fileset.resources>
     <fileset.package />
     <build-deliverables>
-      <file name="readme.txt" location="${PROJECT_ROOT}\build\distrib" optional="false">C:\Users\midgleyf\Desktop\FlySongAnalysis\build\distrib\readme.txt</file>
-      <file name="FlySongAnalysis.exe" location="${PROJECT_ROOT}\build\distrib" optional="false">C:\Users\midgleyf\Desktop\FlySongAnalysis\build\distrib\FlySongAnalysis.exe</file>
+      <file name="readme.txt" location="${PROJECT_ROOT}\build\distrib" optional="false">C:\Users\frank\Desktop\Tempo\build\distrib\readme.txt</file>
+      <file name="Tempo.exe" location="${PROJECT_ROOT}\build\distrib" optional="false">C:\Users\frank\Desktop\Tempo\build\distrib\Tempo.exe</file>
     </build-deliverables>
     <matlab>
       <root>C:\Program Files (x86)\MATLAB\R2011a</root>
       <path>
-        <directory>C:\Users\midgleyf\Documents\MATLAB</directory>
-        <directory>C:\Users\midgleyf\Desktop\Symphony UI</directory>
         <directory>${MATLAB_ROOT}\toolbox\matlab\general</directory>
         <directory>${MATLAB_ROOT}\toolbox\matlab\ops</directory>
         <directory>${MATLAB_ROOT}\toolbox\matlab\lang</directory>
