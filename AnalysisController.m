@@ -1133,29 +1133,27 @@ classdef AnalysisController < handle
         function saved = handleExportSelection(obj, ~, ~)
             saved = false;
             
-            if isempty(obj.savePath)
-                % Figure out a default save location and name.
-                if isempty(obj.recordings)
-                    filePath = '';
-                    fileName = 'Workspace';
-                else
-                    [filePath, fileName, ~] = fileparts(obj.recordings{1}.filePath);
-                end
-                [fileName, filePath] = uiputfile('*.mp4', 'Export Selection', fullfile(filePath, fileName));
-                if ~eq(fileName, 0)
-                    obj.savePath = fullfile(filePath, fileName);
-                    [~, fileName, ~] = fileparts(fileName); % strip off the extension
-                    set(obj.figure, 'Name', ['Tempo: ' fileName]);
-                end
+            % Figure out a default save location and name.
+            if isempty(obj.recordings)
+                filePath = '';
+                fileName = 'Workspace';
+            else
+                [filePath, fileName, ~] = fileparts(obj.recordings{1}.filePath);
+            end
+            [fileName, filePath] = uiputfile('*.mp4', 'Export Selection', fullfile(filePath, fileName));
+            if ~eq(fileName, 0)
+                savePath = fullfile(filePath, fileName);
+                [~, fileName, ~] = fileparts(fileName); % strip off the extension
+                set(obj.figure, 'Name', ['Tempo: ' fileName]);
             end
             
-            if ~isempty(obj.savePath)
+            if ~isempty(savePath)
                 try
                     h=waitbar(0,'');
                     if ismac
                       c='./ffmpeg_mac ';
                     elseif ispc
-                      c='./ffmpeg_win.exe ';
+                      c='ffmpeg_win.exe ';
                     elseif isunix
                       c='./ffmpeg_linux ';
                     end
@@ -1166,9 +1164,14 @@ classdef AnalysisController < handle
                         f{i}=obj.recordings{i}.saveData;
                         c=[c '-i ' f{i} ' '];
                     end
-                    c=[c '-acodec copy -vcodec copy ' obj.savePath];
-                    waitbar(length(obj.recordings)/(length(obj.recordings)+1),h,['Processing '  obj.savePath]);
+                    c=[c '-acodec copy -vcodec copy ' savePath];
+                    waitbar(length(obj.recordings)/(length(obj.recordings)+1),h,['Processing '  savePath]);
                     [s,r]=system(c);
+                    if s
+                      close(h);
+                      ME=MException('problem with system(''ffmpeg'')');
+                      throw(ME);
+                    end
                     waitbar(1,h,'Deleting temporary files');
                     for i=1:length(obj.recordings)
                       delete(f{i});
