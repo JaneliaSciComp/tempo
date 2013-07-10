@@ -154,6 +154,13 @@ classdef AnalysisController < handle
                 'TooltipString', 'Save the workspace',...
                 'ClickedCallback', @(hObject, eventdata)handleSaveWorkspace(obj, hObject, eventdata));
             
+            iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'tool_shape_rectangle.png'),'BackgroundColor', defaultBackground)) / 65535;
+            uipushtool(obj.toolbar, ...
+                'Tag', 'exportSelection', ...
+                'CData', iconData, ...
+                'TooltipString', 'Export the seleted time window to a movie',...
+                'ClickedCallback', @(hObject, eventdata)handleExportSelection(obj, hObject, eventdata));
+            
             iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'tool_zoom_in.png'), 'BackgroundColor', defaultBackground)) / 65535;
             uipushtool(obj.toolbar, ...
                 'Tag', 'zoomIn', ...
@@ -1119,6 +1126,60 @@ classdef AnalysisController < handle
                 obj.videoPanels{end + 1} = panel;
                 
                 obj.arrangePanels();
+            end
+        end
+        
+        
+        function saved = handleExportSelection(obj, ~, ~)
+            saved = false;
+            
+            if isempty(obj.savePath)
+                % Figure out a default save location and name.
+                if isempty(obj.recordings)
+                    filePath = '';
+                    fileName = 'Workspace';
+                else
+                    [filePath, fileName, ~] = fileparts(obj.recordings{1}.filePath);
+                end
+                [fileName, filePath] = uiputfile('*.mp4', 'Export Selection', fullfile(filePath, fileName));
+                if ~eq(fileName, 0)
+                    obj.savePath = fullfile(filePath, fileName);
+                    [~, fileName, ~] = fileparts(fileName); % strip off the extension
+                    set(obj.figure, 'Name', ['Tempo: ' fileName]);
+                end
+            end
+            
+            if ~isempty(obj.savePath)
+                try
+                    h=waitbar(0,'');
+                    if ismac
+                      c='./ffmpeg_mac ';
+                    elseif ispc
+                      c='./ffmpeg_win.exe ';
+                    elseif isunix
+                      c='./ffmpeg_linux ';
+                    end
+                    f=cell(1,length(obj.recordings));
+                    for i=1:length(obj.recordings)
+                        h=waitbar(i/(length(obj.recordings)+1),h,['Processing ' obj.recordings{i}.name]);
+                        set(findall(h,'type','text'),'Interpreter','none');
+                        f{i}=obj.recordings{i}.saveData;
+                        c=[c '-i ' f{i} ' '];
+                    end
+                    c=[c '-acodec copy -vcodec copy ' obj.savePath];
+                    waitbar(length(obj.recordings)/(length(obj.recordings)+1),h,['Processing '  obj.savePath]);
+                    [s,r]=system(c);
+                    waitbar(1,h,'Deleting temporary files');
+                    for i=1:length(obj.recordings)
+                      delete(f{i});
+                    end
+                    close(h);
+                    
+                    obj.needsSave = false;
+                    saved = true;
+                catch ME
+                    waitfor(warndlg(['Could not export the selection. (' ME.message ')'], 'Tempo', 'modal'));
+                end
             end
         end
         

@@ -48,6 +48,19 @@ classdef VideoRecording < Recording
             end
         end
         
+        function ret_val = saveData(obj)
+            ret_val = [tempname 'v.mp4'];
+            frameBegin = min([floor((obj.controller.selectedRange(1) + obj.timeOffset) * obj.sampleRate + 1) obj.sampleCount]);
+            frameEnd = min([floor((obj.controller.selectedRange(2) + obj.timeOffset) * obj.sampleRate + 1) obj.sampleCount]);
+            d = read(obj.videoReader, [frameBegin frameEnd]);
+            out=VideoWriter(ret_val,'MPEG-4');
+            set(out,'FrameRate',obj.sampleRate);
+            open(out);
+            writeVideo(out,d);
+            close(out);
+
+       end
+
         
 % Previous frame buffering code in case it's ever useful again:
 %         function newHandles = updateVideo(handles)
