@@ -1150,12 +1150,13 @@ classdef AnalysisController < handle
             if ~isempty(savePath)
                 try
                     h=waitbar(0,'');
+                    c=fileparts(mfilename('fullpath'));
                     if ismac
-                      c='./ffmpeg_mac ';
+                      c=fullfile(c,'ffmpeg_mac ');
                     elseif ispc
-                      c='ffmpeg_win.exe ';
+                      c=fullfile(c,'ffmpeg_win.exe ');
                     elseif isunix
-                      c='./ffmpeg_linux ';
+                      c=fullfile(c,'ffmpeg_linux ');
                     end
                     f=cell(1,length(obj.recordings));
                     for i=1:length(obj.recordings)
