@@ -85,8 +85,13 @@ classdef FeaturesPanel < TimelinePanel
             
             % Draw the features that have been reported.
             features = obj.reporter.features();
-            lowFreqs = [features.lowFreq];
-            highFreqs = [features.highFreq];
+            if isempty(features)
+                lowFreqs = [];
+                highFreqs = [];
+            else
+                lowFreqs = [features.lowFreq];
+                highFreqs = [features.highFreq];
+            end
             minFreq = min(lowFreqs(lowFreqs > -Inf));
             if isempty(minFreq)
                 minFreq = -Inf;
