@@ -269,15 +269,16 @@ classdef SpectrogramPanel < TimelinePanel
           % Draw the features that have been reported.
           features = reporter.features();
           for feature = features
-              x0=feature.sampleRange(1);
-              y0=feature.FreqRange(1);
-              x1=feature.sampleRange(2);
-              y1=feature.FreqRange(2);
+              x0=feature.range(1);
+              y0=feature.range(3);
+              x1=feature.range(2);
+              y1=feature.range(4);
               h=line([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0]);
               bounding_boxes(end+1)=h;
               set(h, 'Color', reporter.featuresColor);
               if isprop(feature,'HotPixels')
-                  chan=find(cellfun(@(x) strcmp(x,obj.audio.filePath),{reporter.recording.filePath}));
+                  chan=find(cellfun(@(x) strcmp(x,obj.audio.filePath),...
+                      cellfun(@(y) y.filePath, reporter.recording, 'uniformoutput', false)));
                   for i=1:length(feature.HotPixels)
                     idx=find(feature.HotPixels{i}{1}(:,3)==chan);
                     t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
