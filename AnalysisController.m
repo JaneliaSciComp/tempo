@@ -735,8 +735,8 @@ classdef AnalysisController < handle
                             obj.selectedRange(1:2) = sort([clickedTime obj.selectedRange(2)]);
                         end
                         
-                        % Extend the frequency range.
-                        if otherPanel.showsFrequencyRange
+                        % Extend the frequency range if appropriate.
+                        if otherPanel.showsFrequencyRange && ~isinf(obj.selectedRange(3)) && ~isinf(obj.selectedRange(4))
                             if clickedFreq < obj.selectedRange(3)
                                 obj.selectedRange(3) = clickedFreq;
                             else
@@ -1333,7 +1333,7 @@ classdef AnalysisController < handle
             obj.handlePauseMedia([]);
             
             if obj.needsSave
-                button = questdlg('Do you want to save the changes to the workspace?', 'Tempo', 'Don''t Save', 'Cancel', 'Save', 'Save');
+                button = questdlg('Do you want to save the changes to the Tempo workspace?', 'Tempo', 'Don''t Save', 'Cancel', 'Save', 'Save');
                 if strcmp(button, 'Save')
                     if ~obj.handleSaveWorkspace()
                         return
