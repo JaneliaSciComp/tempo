@@ -417,9 +417,10 @@ classdef AnalysisController < handle
                 [defaultPath, defaultName, ~] = fileparts(obj.recordings{1}.filePath);
             end
             [fileName, pathName] = uiputfile({'*.pdf','Portable Document Format (*.pdf)'; ...
+                                              '*.eps','Encapsulated Level 2 Color PostScript (*.eps)'; ...
                                               '*.png','PNG format (*.png)'; ...
                                               '*.jpg','JPEG format (*.jpg)'}, ...
-                                             'Select an audio or video file to analyze', ...
+                                             'Save a screen shot', ...
                                              fullfile(defaultPath, [defaultName '.pdf']));
 
             if ~isnumeric(fileName)
@@ -441,7 +442,17 @@ classdef AnalysisController < handle
 %                    visibleOtherPanels{i}.showSelection(false);
                 end
                 
-                print(obj.figure, '-dpng', fullfile(pathName, fileName));
+                [~,~,e]=fileparts(fileName);
+                switch e
+                  case '.pdf'
+                    print(obj.figure, '-dpdf', '-painters', fullfile(pathName, fileName));
+                  case '.eps'
+                    print(obj.figure, '-depsc2', '-painters', fullfile(pathName, fileName));
+                  case '.png'
+                    print(obj.figure, '-dpng', fullfile(pathName, fileName));
+                  case '.jpg'
+                    print(obj.figure, '-djpeg', fullfile(pathName, fileName));
+                end
 %                export_fig(fullfile(pathName, fileName), '-opengl', '-a1');  %, axesToSave);
 
                 % Show the current selection again.
