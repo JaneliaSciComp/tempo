@@ -580,9 +580,16 @@ classdef AnalysisController < handle
         function removeFeaturePanel(obj, featurePanel)
             answer = questdlg('Are you sure you wish to remove this reporter?', 'Removing Reporter', 'Cancel', 'Remove', 'Cancel');
             if strcmp(answer, 'Remove')
+                reporter = featurePanel.reporter;
+                
+                % Remove the panel.
                 obj.otherPanels(cellfun(@(x) x == featurePanel, obj.otherPanels)) = [];
                 delete(featurePanel);
                 obj.arrangePanels();
+                
+                % Remove the panel's reporter.
+                obj.reporters(cellfun(@(x) x == reporter, obj.reporters)) = [];
+                delete(reporter);
                 
 % TODO:                handles = updateFeatureTimes(handles);
 
