@@ -274,7 +274,8 @@ classdef FeaturesPanel < TimelinePanel
 %                 syncGUIWithTime(handles);
                 fillColor = obj.reporter.featuresColor;
                 fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
-                set(obj.featureHandles,'FaceColor',fillColor,'EdgeColor',obj.reporter.featuresColor);
+                set(obj.featureHandles(strcmp(get(obj.featureHandles, 'Type'), 'patch')), 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor);
+                set(obj.featureHandles(strcmp(get(obj.featureHandles, 'Type'), 'text')), 'Color', obj.reporter.featuresColor);
                 for j = 1:length(obj.controller.otherPanels)
                     panel = obj.controller.otherPanels{j};
                     if isa(panel, 'SpectrogramPanel')
