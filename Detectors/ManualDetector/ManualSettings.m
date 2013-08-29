@@ -68,6 +68,9 @@ function edited = ManualSettings(manualDetector, varargin)
     
     guidata(handles.figure, handles);
     
+    % Force keyboard focus into the first field to save a click.
+    uicontrol(handles.typeEdit);
+    
     % Wait for the user to cancel or save.
     uiwait;
     
@@ -99,6 +102,9 @@ end
 
 function saveEditSettings(~, ~, handles)
     % TODO: update the feature type of existing features?
+    
+    % Move focus off of any edit text so the changes are committed.
+    uicontrol(handles.saveButton);
     
     handles.detector.hotKey = get(handles.hotKeyEdit, 'String');
     handles.detector.featureType = get(handles.typeEdit, 'String');
