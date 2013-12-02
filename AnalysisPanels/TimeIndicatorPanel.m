@@ -1,11 +1,5 @@
 classdef TimeIndicatorPanel < TimelinePanel
 
-	properties
-        currentTimeHandle
-        selectedTimeStartHandle
-        selectedTimeEndHandle
-	end
-	
 	methods
 	
 		function obj = TimeIndicatorPanel(controller, varargin)
@@ -15,10 +9,6 @@ classdef TimeIndicatorPanel < TimelinePanel
         
 	    function createControls(obj, ~)
             set(obj.controller.figure, 'CurrentAxes', obj.axes);
-            
-%             obj.currentTimeHandle = text(0, 0.5, '', 'HitTest', 'off');
-%             obj.selectedTimeStartHandle = text(0, 0.5, '', 'Visible', 'off', 'HitTest', 'off');
-%             obj.selectedTimeEndHandle = text(0, 0.5, '', 'Visible', 'off', 'HitTest', 'off');
             
             % Get rid of the default current time and selection indicators.
             delete(obj.timeLine);
@@ -88,20 +78,23 @@ classdef TimeIndicatorPanel < TimelinePanel
                 startInRange = obj.controller.selectedRange(1) > timeRange(1) && obj.controller.selectedRange(1) < timeRange(2);
                 endInRange = obj.controller.selectedRange(2) > timeRange(1) && obj.controller.selectedRange(2) < timeRange(2);
                 if startInRange
+                    % Draw the start time of the selection.
                     line([obj.controller.selectedRange(1) obj.controller.selectedRange(1)], [0.8 1], 'Color', 'red');
                     text(obj.controller.selectedRange(1), textY, secondstr(obj.controller.selectedRange(1), obj.controller.timeLabelFormat, 2), ...
                         'VerticalAlignment', 'baseline', 'HorizontalAlignment', 'center', ...
                         'FontName', textFont, 'Color', redColor);
                 end
                 if endInRange
+                    % Draw the end time of the selection.
                     line([obj.controller.selectedRange(2) obj.controller.selectedRange(2)], [0.8 1], 'Color', 'red');
                     text(obj.controller.selectedRange(2), textY, secondstr(obj.controller.selectedRange(2), obj.controller.timeLabelFormat, 2), ...
                         'VerticalAlignment', 'baseline', 'HorizontalAlignment', 'center', ...
                         'FontName', textFont, 'Color', redColor);
                 end
+                % Draw the size of the selection if it's on screen, the current time is not within the range and there is room.
                 selectionInRange = obj.controller.selectedRange(1) < timeRange(2) || obj.controller.selectedRange(2) > timeRange(1);
                 currentTimeAmidRange = obj.controller.currentTime ~= obj.controller.selectedRange(1) && obj.controller.currentTime ~= obj.controller.selectedRange(2);
-                if selectionInRange && ~currentTimeAmidRange % TODO: && there is room
+                if selectionInRange && ~currentTimeAmidRange && (obj.controller.selectedRange(2) - obj.controller.selectedRange(1)) > labelWidth * 2.5
                     midPoint = sum(obj.controller.selectedRange(1:2)) / 2.0;
                     grayColor = [0.75 0.5 0.5];
                     line([obj.controller.selectedRange(1) + labelWidth * 0.75, obj.controller.selectedRange(1) + labelWidth * 0.75], [0.2 0.6], 'Color', grayColor);
