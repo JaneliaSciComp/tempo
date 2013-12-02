@@ -1204,7 +1204,7 @@ classdef AnalysisController < handle
                         f{i}=obj.recordings{i}.saveData;
                         c=[c '-i ' f{i} ' '];
                     end
-                    c=[c '-acodec copy -vcodec copy ' savePath];
+                    c=[c '-acodec copy -vcodec copy ''' savePath ''''];
                     waitbar(length(obj.recordings)/(length(obj.recordings)+1),h,['Processing '  savePath]);
                     [s,r]=system(c);
                     if s
