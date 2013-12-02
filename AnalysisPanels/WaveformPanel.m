@@ -6,8 +6,10 @@ classdef WaveformPanel < TimelinePanel
         plotHandle
         sampleCount
         
-	    autoGainCheckbox
-	    gainSlider
+        infoMenuItem
+        
+	    verticalScalingMethod = 1;      % 1 = whole recording, 2 = displayed portion of recording, 3 = manual
+        verticalScalingValue = 1.0;
         
         grayRect
 	end
@@ -18,23 +20,37 @@ classdef WaveformPanel < TimelinePanel
 			obj = obj@TimelinePanel(controller);
             
             obj.audio = recording;
+            set(obj.infoMenuItem, 'Label', ['Audio file: ' obj.audio.name]);
+            % TODO: use Java to show the full path as a tooltip
+            
+%             addlistener(obj, 'verticalScalingMethod', 'PostSet', @(source, event)handleVerticalScalingChanged(obj, source, event));
+%             addlistener(obj, 'verticalScalingValue', 'PostSet', @(source, event)handleVerticalScalingChanged(obj, source, event));
+        end
+        
+        
+        function addInfoMenuItems(obj, infoMenu)
+            obj.infoMenuItem = uimenu(infoMenu, 'Label', 'Audio file: ', 'Enable', 'off');
+            uimenu(infoMenu, ...
+                'Label', 'Audio settings...', ...
+                'Separator', 'on', ...
+                'Callback', @(hObject,eventdata)showAudioSettings(obj, hObject, eventdata));
+            uimenu(infoMenu, ...
+                'Label', 'Waveform setings...', ...
+                'Callback', @(hObject,eventdata)showWaveformSettings(obj, hObject, eventdata));
+            
+            % Move our first item above the default items.
+            menuItems = get(infoMenu, 'Children');
+            set(menuItems(end), 'Separator', 'on');
+            menuItems = vertcat(menuItems(1:end-3), menuItems(end-1:end), menuItems(end-2));
+            set(infoMenu, 'Children', menuItems);
         end
 	    
         
-	    function createControls(obj, panelSize)
+	    function createControls(obj, panelSize) %#ok<INUSD>
             set(obj.controller.figure, 'CurrentAxes', obj.axes);
             
             obj.plotHandle = line([0 1000], [0 0], 'HitTest', 'off');
-%            obj.oscillogramSampleCount = windowSampleCount;
-
-%            handles.timeScaleText = text(10, 0, '', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom');
-            
-% 	        obj.autoGainCheckbox = uicontrol('Parent', obj.panel);
-% 	        obj.gainSlider = uicontrol('Parent', obj.panel);
-            
             obj.grayRect = rectangle('Position', [0, -1, 1, 2], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off', 'Visible', 'off');
-            
-            % TODO: mute button?
         end
 	    
         
@@ -42,6 +58,17 @@ classdef WaveformPanel < TimelinePanel
 %             set(obj.autoGainCheckbox, 'Position', [panelSize(1) - obj.scrollSize - 1, panelSize(2) - obj.scrollsize + 1, obj.scrollSize + 1, obj.scrollSize]);
 %             set(obj.gainSlider, 'Position', [panelSize(1) - obj.scrollSize + 1 0 obj.scrollSize panelSize(2) - obj.scrollSize]);
 %         end
+        
+        
+        function showAudioSettings(obj, ~, ~)
+            % TODO
+            beep;
+        end
+        
+        
+        function showWaveformSettings(obj, ~, ~)
+            WaveformSettings(obj);
+        end
         
         
         function updateAxes(obj, timeRange)
@@ -62,10 +89,16 @@ classdef WaveformPanel < TimelinePanel
                 step = max(1, floor(windowSampleCount/axesSize(3)/100));
 
                 % Update the waveform.
-                if false    % TODO: get(handles.autoGainCheckBox, 'Value') == 1.0
+                % TODO: skip if the correct piece of the recording is already displayed
+                globalMaxAmplitude = obj.audio.maxAmplitude();  % TODO: check others if "Apply to all"?
+                if obj.verticalScalingMethod == 1
+                    maxAmp = globalMaxAmplitude;
+                elseif obj.verticalScalingMethod == 2
                     maxAmp = max(abs(audioData(1:step:windowSampleCount)));
+                elseif obj.verticalScalingMethod == 3
+                    maxAmp = globalMaxAmplitude * obj.verticalScalingValue;
                 else
-                    maxAmp = obj.audio.maxAmplitude() / 1.0;    % TODO: get(handles.gainSlider, 'Value');
+                    % error
                 end
 
                 % Update the line with the data in this time range.
@@ -79,6 +112,8 @@ classdef WaveformPanel < TimelinePanel
                 end
 
                 % Display a gray rectangle where there isn't audio data available.
+                % This should only happen when multiple recordings of different lengths are open or 
+                % when a recording has a non-zero starting time offset.
                 if obj.audio.duration < obj.controller.duration
                     set(obj.grayRect, 'Position', [obj.audio.duration, -maxAmp, obj.controller.duration - obj.audio.duration, maxAmp * 2], 'Visible', 'on');
                 else
@@ -87,6 +122,17 @@ classdef WaveformPanel < TimelinePanel
             end
         end
         
+        
+        function setVerticalScalingMethodAndOrValue(obj, method, value)
+            % Pass [] to only change one of them.
+            if ~isempty(method)
+                obj.verticalScalingMethod = method;
+            end
+            if ~isempty(value)
+                obj.verticalScalingValue = value;
+            end
+            obj.updateAxes(obj.controller.displayRange);
+        end
 	end
 	
 end

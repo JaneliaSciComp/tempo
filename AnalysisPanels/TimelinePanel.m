@@ -11,8 +11,6 @@ classdef TimelinePanel < AnalysisPanel
 		function obj = TimelinePanel(controller)
 			obj = obj@AnalysisPanel(controller);
             
-            obj.axesBorder = [0 0 16 0];
-            
             % Use a line to indicate the current time in the axes.
             obj.timeLine = line([0 0], [-100000 200000], 'Color', [1 0 0], 'HitTest', 'off', 'HandleVisibility', 'off');
             

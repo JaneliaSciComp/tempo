@@ -5,6 +5,11 @@ classdef TimeIndicatorPanel < TimelinePanel
 		function obj = TimeIndicatorPanel(controller, varargin)
 			obj = obj@TimelinePanel(controller, varargin{:});
         end
+        
+        
+        function h = hasTitleBar(obj) %#ok<MANU>
+            h = false;
+        end
 	    
         
 	    function createControls(obj, ~)
