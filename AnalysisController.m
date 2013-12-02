@@ -251,6 +251,26 @@ classdef AnalysisController < handle
         end
         
         
+        function panels = panelsOfClass(obj, panelClass)
+            % Return a cell array of panel instances of the given class.
+            % A cell array is needed in case a base panel class is specified, e.g. TimelinePanel.
+            
+            panels = {};
+            for i = 1:length(obj.videoPanels)
+                panel = obj.videoPanels{i};
+                if isa(panel, panelClass)
+                    panels{end + 1} = panel; %#ok<AGROW>
+                end
+            end
+            for i = 1:length(obj.otherPanels)
+                panel = obj.otherPanels{i};
+                if isa(panel, panelClass)
+                    panels{end + 1} = panel; %#ok<AGROW>
+                end
+            end
+        end
+        
+        
         function vp = visiblePanels(obj, isVideo)
             if isVideo
                 panels = obj.videoPanels;
