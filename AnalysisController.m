@@ -535,7 +535,7 @@ classdef AnalysisController < handle
                 if ~isempty(jDetect)
                     jDetect.showMenu();
                 else
-                    waitfor(warndlg({'Could not automatically pop up the detectors toolbar menu.', '', 'Please click the small arrow next to the icon instead.'}, 'Song Analysis', 'modal'));
+                    waitfor(warndlg({'Could not automatically pop up the detectors toolbar menu.', '', 'Please click the small arrow next to the icon instead.'}, 'Tempo', 'modal'));
                 end
             else
                 detectorClassName = obj.detectorClassNames{index};
@@ -1111,7 +1111,7 @@ classdef AnalysisController < handle
                 obj.recordingsToAdd{end + 1} = recording;
             else
                 if isempty(obj.recordings) && isempty(obj.savePath)
-                    set(obj.figure, 'Name', ['Song Analysis: ' recording.name]);
+                    set(obj.figure, 'Name', ['Tempo: ' recording.name]);
                 end
                 
                 obj.recordings{end + 1} = recording;
@@ -1136,7 +1136,7 @@ classdef AnalysisController < handle
                 obj.recordingsToAdd{end + 1} = recording;
             else
                 if isempty(obj.recordings)
-                    set(obj.figure, 'Name', ['Song Analysis: ' recording.name]);
+                    set(obj.figure, 'Name', ['Tempo: ' recording.name]);
                 end
                 
                 obj.recordings{end + 1} = recording;
