@@ -48,21 +48,32 @@ classdef TimeIndicatorPanel < TimelinePanel
             charPixelWidth = 6;
             labelWidth = charPixelWidth * 8 * timePixels;
             
-            textY = 0.05;
+            textY = 0.15;
             textFont = 'FixedWidth';
             redColor = [0.5 0.0 0.0];
             
-            % TODO: draw time ticks
-            % Use obj.controller.displayRange(2) to determine number of ticks
-% TODO:            
-%             timeScale = fix(log10(obj.controller.displayRange(2) - obj.controller.displayRange(1)));
-%             if obj.controller.displayRange(2) - obj.controller.displayRange(1) < 1
-%                 timeScale = timeScale - 1;
-%             end
-%             tickSpacing = 10 ^ timeScale * sampleRate;
-%             set(handles.oscillogram, 'XTick', tickSpacing-mod(minSample, tickSpacing):tickSpacing:windowSampleCount);
-            
-            % TODO: If the current time is off screen then the tick closest to the center should show the full time.
+            % Draw regular time ticks.
+            % Get as close to ten ticks as possible and align to integral (or certain fraction of) times, e.g. 1:40.0 or 1:40.25.
+            % Don't draw ticks inside any selection.
+            displayRange = obj.controller.displayRange(2) - obj.controller.displayRange(1);
+            upperBound = 10.^nextpow10(displayRange);
+            possibleSpacings = upperBound .* [1 / 2, 1 / 4, 1 / 5, 1 / 10, 1 / 20, 1 / 40, 1 / 50];
+            tickCounts = displayRange ./ possibleSpacings;
+            tickSpacing = possibleSpacings(find((tickCounts < 10), 1, 'last'));
+            tickBase = floor(obj.controller.displayRange(1) / tickSpacing) * tickSpacing;
+            tickCount = ceil(displayRange / tickSpacing);
+            for i = 0:tickCount
+                tickTime = tickBase + i * tickSpacing;
+                if tickTime > (obj.controller.displayRange(1) - labelWidth) && ...
+                   tickTime < (obj.controller.displayRange(2) + labelWidth) && ...
+                   (tickTime < min(obj.controller.selectedRange(1:2)) - labelWidth || ...
+                    tickTime > max(obj.controller.selectedRange(1:2)) + labelWidth)
+                    line([tickTime tickTime], [0 1], 'Color', 'black');
+                    text(tickTime, textY, secondstr(tickTime, obj.controller.timeLabelFormat, 2), ...
+                        'VerticalAlignment', 'baseline', 'HorizontalAlignment', 'center', ...
+                        'FontName', textFont, 'Color', 'black', 'BackgroundColor', 'white', 'Margin', 1);
+                end
+            end
             
             if obj.controller.selectedRange(1) == obj.controller.selectedRange(2)
                 % Draw current time indicator

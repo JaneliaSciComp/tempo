@@ -106,6 +106,7 @@ classdef AnalysisController < handle
             addpath(fullfile(parentDir, 'AnalysisPanels'));
             
             addpath(fullfile(parentDir, 'export_fig'));
+            addpath(fullfile(parentDir, 'ThirdParty', 'dbutils'));
             
             obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
             
