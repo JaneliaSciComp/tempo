@@ -43,7 +43,7 @@ classdef TimeIndicatorPanel < TimelinePanel
             charPixelWidth = 6;
             labelWidth = charPixelWidth * 8 * timePixels;
             
-            textY = 0.15;
+            textY = 0.13;
             textFont = 'FixedWidth';
             redColor = [0.5 0.0 0.0];
             
@@ -66,7 +66,7 @@ classdef TimeIndicatorPanel < TimelinePanel
                     line([tickTime tickTime], [0 1], 'Color', 'black');
                     text(tickTime, textY, secondstr(tickTime, obj.controller.timeLabelFormat, 2), ...
                         'VerticalAlignment', 'baseline', 'HorizontalAlignment', 'center', ...
-                        'FontName', textFont, 'Color', 'black', 'BackgroundColor', 'white', 'Margin', 1);
+                        'FontName', textFont, 'Color', 'black', 'BackgroundColor', 'white', 'Margin', 1, 'Clipping', 'on');
                 end
             end
             
