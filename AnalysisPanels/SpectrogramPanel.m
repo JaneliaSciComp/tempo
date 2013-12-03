@@ -3,6 +3,8 @@ classdef SpectrogramPanel < TimelinePanel
 	properties
         audio
         
+        infoMenuItem
+        
         imageHandle
         
         freqMaxLabel
@@ -13,6 +15,10 @@ classdef SpectrogramPanel < TimelinePanel
 
         reporter
         bounding_boxes
+        
+        % The frequency range is shared by all panels and is stored in the second half of obj.controller.displayRange.
+        % The FFT window shared by all panels and is stored in obj.controller.windowSize.
+        saturation = [0.01 0.99]
 	end
 	
 	methods
@@ -23,6 +29,7 @@ classdef SpectrogramPanel < TimelinePanel
             obj.showsFrequencyRange = true;
             
             obj.audio = recording;
+            set(obj.infoMenuItem, 'Label', ['Audio file: ' obj.audio.name]);
             
             obj.listeners{end + 1} = addlistener(obj.controller, 'windowSize', 'PostSet', ...
                 @(source, event)handleSpectrogramParametersChanged(obj, source, event));
@@ -63,6 +70,36 @@ classdef SpectrogramPanel < TimelinePanel
             set(obj.freqMinLabel, 'Position', [panelSize(1) - 1, 4]);
             set(obj.otherLabel, 'Position', [5, panelSize(2)]);
             set(obj.noDisplayLabel, 'Position', [panelSize(1) / 2, panelSize(2) / 2]);
+        end
+        
+        
+        function addInfoMenuItems(obj, infoMenu)
+            % Add recording name, "Audio Settings..." and "Spectrogram Settings..." menu items
+            obj.infoMenuItem = uimenu(infoMenu, 'Label', 'Audio file: ', 'Enable', 'off');
+            uimenu(infoMenu, ...
+                'Label', 'Audio settings...', ...
+                'Separator', 'on', ...
+                'Callback', @(hObject,eventdata)showAudioSettings(obj, hObject, eventdata));
+            uimenu(infoMenu, ...
+                'Label', 'Spectrogram setings...', ...
+                'Callback', @(hObject,eventdata)showSpectrogramSettings(obj, hObject, eventdata));
+            
+            % Move the recording's name item above the default items.
+            menuItems = get(infoMenu, 'Children');
+            set(menuItems(end), 'Separator', 'on');
+            menuItems = vertcat(menuItems(1:end-3), menuItems(end-1:end), menuItems(end-2));
+            set(infoMenu, 'Children', menuItems);
+        end
+        
+        
+        function showAudioSettings(obj, ~, ~)
+            % TODO: obj.controller.showAudioSettings(obj.audio);
+            beep;
+        end
+        
+        
+        function showSpectrogramSettings(obj, ~, ~)
+            SpectrogramSettings(obj);
         end
         
         
@@ -113,14 +150,15 @@ classdef SpectrogramPanel < TimelinePanel
                         P = P(1:yScale:end, :);
                     end
                     
-                    % Remove the bottom and top 1% of values.
+                    % Saturate out the bottom and top values to alter the constrast.
                     tmp = reshape(P, 1, numel(P));
-                    tmp = prctile(tmp, [1 99]);
+                    tmp = prctile(tmp, obj.saturation * 100);
                     P(P < tmp(1)) = tmp(1);
                     P(P > tmp(2)) = tmp(2);
                     
                     if length(audioData) < fullLength
                         % Pad the image with [0.9 0.9 0.9] so it fills the entire time range.
+                        % This can happen when multiple recordings are open and they don't have the same duration.
                         scale = (fullLength / length(audioData)) - 1;
                         maxP = max(P(:));
                         minP = min(P(:));
@@ -196,104 +234,114 @@ classdef SpectrogramPanel < TimelinePanel
         end
         
         
-      function changeBoundingBoxColor(obj,reporter)
-          i=1;
-          while i<=length(obj.reporter) && (obj.reporter{i}~=reporter)
-              i=i+1;
-          end
-          if i<=length(obj.reporter) && (obj.reporter{i}==reporter)
-            for j=1:length(obj.bounding_boxes{i})
-              switch(get(obj.bounding_boxes{i}(j),'type'))
-                case 'line'
-                  set(obj.bounding_boxes{i}(j),'Color',reporter.featuresColor);
-                case 'patch'
-                  set(obj.bounding_boxes{i}(j),'FaceColor',reporter.featuresColor);
+        function changeBoundingBoxColor(obj,reporter)
+            i=1;
+            while i<=length(obj.reporter) && (obj.reporter{i}~=reporter)
+                i=i+1;
+            end
+            if i<=length(obj.reporter) && (obj.reporter{i}==reporter)
+              for j=1:length(obj.bounding_boxes{i})
+                switch(get(obj.bounding_boxes{i}(j),'type'))
+                  case 'line'
+                    set(obj.bounding_boxes{i}(j),'Color',reporter.featuresColor);
+                  case 'patch'
+                    set(obj.bounding_boxes{i}(j),'FaceColor',reporter.featuresColor);
+                end
               end
             end
-          end
-      end
-
-      function deleteAllReporters(obj)
-          for i=1:length(obj.reporter)
-              j=1;
-              while j<=length(obj.listeners) && (obj.listeners{j}.Source{1}~=obj.reporter{i})
-                 j=j+1;
-              end
-              delete(obj.listeners{j});
-              obj.listeners(j)=[];
-              obj.reporter(i)=[];
-              delete(obj.bounding_boxes{i});
-              obj.bounding_boxes(i)=[];
-          end
-      end
-      
-      function addReporter(obj, reporter)
-          i=1;
-          while i<=length(obj.reporter) && (obj.reporter{i}~=reporter)
-              i=i+1;
-          end
-          if(i==(length(obj.reporter)+1))
-              obj.reporter{i}=reporter;
-              obj.bounding_boxes{i}=obj.populateFeatures(obj.reporter{i});
-              %obj.listeners{end+1} = addlistener(obj.reporter{i}, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
-              obj.listeners{i} = addlistener(obj.reporter{i}, 'FeaturesDidChange', @(src,evt,dat)handleFeaturesDidChange(obj,src,evt,i));
-          else
-              obj.reporter(i)=[];
-              delete(obj.bounding_boxes{i});
-              obj.bounding_boxes(i)=[];
-              i=1;
-              while i<=length(obj.listeners) && (obj.listeners{i}.Source{1}~=reporter)
-                  i=i+1;
-              end
-              delete(obj.listeners{i});
-              obj.listeners(i)=[];
-          end
-      end
+        end
+        
+        
+        function deleteAllReporters(obj)
+            for i=1:length(obj.reporter)
+                j=1;
+                while j<=length(obj.listeners) && (obj.listeners{j}.Source{1}~=obj.reporter{i})
+                   j=j+1;
+                end
+                delete(obj.listeners{j});
+                obj.listeners(j)=[];
+                obj.reporter(i)=[];
+                delete(obj.bounding_boxes{i});
+                obj.bounding_boxes(i)=[];
+            end
+        end
+        
+        function addReporter(obj, reporter)
+            i=1;
+            while i<=length(obj.reporter) && (obj.reporter{i}~=reporter)
+                i=i+1;
+            end
+            if(i==(length(obj.reporter)+1))
+                obj.reporter{i}=reporter;
+                obj.bounding_boxes{i}=obj.populateFeatures(obj.reporter{i});
+                %obj.listeners{end+1} = addlistener(obj.reporter{i}, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
+                obj.listeners{i} = addlistener(obj.reporter{i}, 'FeaturesDidChange', @(src,evt,dat)handleFeaturesDidChange(obj,src,evt,i));
+            else
+                obj.reporter(i)=[];
+                delete(obj.bounding_boxes{i});
+                obj.bounding_boxes(i)=[];
+                i=1;
+                while i<=length(obj.listeners) && (obj.listeners{i}.Source{1}~=reporter)
+                    i=i+1;
+                end
+                delete(obj.listeners{i});
+                obj.listeners(i)=[];
+            end
+        end
+        
+        
+        function handleFeaturesDidChange(obj, ~, ~, idx)
+           delete(obj.bounding_boxes{idx});
+           obj.bounding_boxes{idx}=obj.populateFeatures(obj.reporter{idx});
+        end
+        
+        
+        function bounding_boxes=populateFeatures(obj,reporter)
+          
+            bounding_boxes=[];
+            axes(obj.axes);
+            
+            featureTypes = reporter.featureTypes();
+            
+            spacing = 1 / length(featureTypes);
+            axesPos = get(obj.axes, 'Position');
+            
+            % Draw the features that have been reported.
+            features = reporter.features();
+            for feature = features
+                x0=feature.range(1);
+                y0=feature.range(3);
+                x1=feature.range(2);
+                y1=feature.range(4);
+                h=line([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0]);
+                bounding_boxes(end+1)=h;
+                set(h, 'Color', reporter.featuresColor);
+                if isprop(feature,'HotPixels')
+                    chan=find(cellfun(@(x) strcmp(x,obj.audio.filePath),...
+                        cellfun(@(y) y.filePath, reporter.recording, 'uniformoutput', false)));
+                    for i=1:length(feature.HotPixels)
+                      idx=find(feature.HotPixels{i}{1}(:,3)==chan);
+                      t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
+                        repmat(feature.HotPixels{i}{2}*[-0.5; +0.5; +0.5; -0.5; -0.5],1,length(idx));
+                      f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...
+                        repmat(feature.HotPixels{i}{3}*[-0.5; -0.5; +0.5; +0.5; -0.5],1,length(idx));
+                      h=patch(t+reporter.detectedTimeRanges(1),f,reporter.featuresColor);
+                      set(h,'edgecolor','none');
+                      bounding_boxes=[bounding_boxes h'];
+                    end
+                end
+            end
+        end
 	
-      function handleFeaturesDidChange(obj, ~, ~, idx)
-         delete(obj.bounding_boxes{idx});
-         obj.bounding_boxes{idx}=obj.populateFeatures(obj.reporter{idx});
-      end
       
+        function set.saturation(obj, saturation)
+            if any(obj.saturation ~= saturation)
+                obj.saturation = saturation;
+        
+                obj.updateAxes(obj.controller.displayRange);
+            end
+        end
       
-      function bounding_boxes=populateFeatures(obj,reporter)
-          
-          bounding_boxes=[];
-          axes(obj.axes);
-          
-          featureTypes = reporter.featureTypes();
-          
-          spacing = 1 / length(featureTypes);
-          axesPos = get(obj.axes, 'Position');
-          
-          % Draw the features that have been reported.
-          features = reporter.features();
-          for feature = features
-              x0=feature.range(1);
-              y0=feature.range(3);
-              x1=feature.range(2);
-              y1=feature.range(4);
-              h=line([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0]);
-              bounding_boxes(end+1)=h;
-              set(h, 'Color', reporter.featuresColor);
-              if isprop(feature,'HotPixels')
-                  chan=find(cellfun(@(x) strcmp(x,obj.audio.filePath),...
-                      cellfun(@(y) y.filePath, reporter.recording, 'uniformoutput', false)));
-                  for i=1:length(feature.HotPixels)
-                    idx=find(feature.HotPixels{i}{1}(:,3)==chan);
-                    t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
-                      repmat(feature.HotPixels{i}{2}*[-0.5; +0.5; +0.5; -0.5; -0.5],1,length(idx));
-                    f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...
-                      repmat(feature.HotPixels{i}{3}*[-0.5; -0.5; +0.5; +0.5; -0.5],1,length(idx));
-                    h=patch(t+reporter.detectedTimeRanges(1),f,reporter.featuresColor);
-                    set(h,'edgecolor','none');
-                    bounding_boxes=[bounding_boxes h'];
-                  end
-              end
-          end
-          
-      end
-	
 	end
 	
 end
