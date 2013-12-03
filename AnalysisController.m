@@ -1106,18 +1106,7 @@ classdef AnalysisController < handle
             end
             
             if somethingOpened
-                obj.duration = max([cellfun(@(r) r.duration, obj.recordings) cellfun(@(r) r.duration, obj.reporters)]);
-                
-                set(obj.timeSlider, 'Max', obj.duration);
-                
-                % Alter the zoom so that the same window of time is visible.
-                if isempty(obj.displayRange)
-                    obj.setZoom(1);
-                else
-                    obj.setZoom(obj.duration / (obj.displayRange(2) - obj.displayRange(1)));
-                end
-                
-                obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
+                obj.updateOverallDuration();
                 
                 obj.needsSave = true;
             end
@@ -1145,6 +1134,8 @@ classdef AnalysisController < handle
                 panel.setVisible(obj.showSpectrograms);
                 
                 obj.arrangePanels();
+                
+                addlistener(recording, 'timeOffset', 'PostSet', @(source, event)handleRecordingDurationChanged(obj, source, event));
             end
         end
         
@@ -1165,12 +1156,35 @@ classdef AnalysisController < handle
                 obj.videoPanels{end + 1} = panel;
                 
                 obj.arrangePanels();
+                
+                addlistener(recording, 'timeOffset', 'PostSet', @(source, event)handleRecordingDurationChanged(obj, source, event));
             end
         end
         
         
+        function updateOverallDuration(obj)
+            obj.duration = max([cellfun(@(r) r.duration, obj.recordings) cellfun(@(r) r.duration, obj.reporters)]);
+            
+            set(obj.timeSlider, 'Max', obj.duration);
+            
+            % Alter the zoom so that the same window of time is visible.
+            if isempty(obj.displayRange)
+                obj.setZoom(1);
+            else
+                obj.setZoom(obj.duration / (obj.displayRange(2) - obj.displayRange(1)));
+            end
+            
+            obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
+        end
+        
+        
+        function handleRecordingDurationChanged(obj, ~, ~)
+            obj.updateOverallDuration();
+        end
+        
+        
         function saved = handleExportSelection(obj, ~, ~)
-            saved = false;
+           saved = false;
             
             % Figure out a default save location and name.
             if isempty(obj.recordings)

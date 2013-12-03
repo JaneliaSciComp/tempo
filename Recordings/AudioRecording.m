@@ -53,15 +53,19 @@ classdef AudioRecording < Recording
         end
         
         
-        function d = dataInTimeRange(obj, timeRange)
-            sampleRange = floor((timeRange + obj.timeOffset) * obj.sampleRate);
+        function [data, offset] = dataInTimeRange(obj, timeRange)
+            % If the returned data doesn't begin at the start of the time range then a non-zero offset will be returned.
+            
+            fullRange = floor((timeRange + obj.timeOffset) * obj.sampleRate);
+            sampleRange = fullRange;
             if sampleRange(1) < 1
                 sampleRange(1) = 1;
             end
             if sampleRange(2) > length(obj.data)
                 sampleRange(2) = length(obj.data);
             end
-            d = obj.data(sampleRange(1):sampleRange(2));
+            data = obj.data(sampleRange(1):sampleRange(2));
+            offset = (sampleRange(1) - fullRange(1)) / obj.sampleRate;
         end
         
         

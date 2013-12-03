@@ -6,8 +6,11 @@ classdef Recording < handle
         
         sampleRate
         sampleCount
-        
+    end
+    
+    properties (SetObservable)
         timeOffset = 0  % in seconds.  (allows recordings to be offset in time to sync up with other recordings)
+        muted = false
     end
     
     properties (Transient)
@@ -65,7 +68,15 @@ classdef Recording < handle
         
         
         function d = get.duration(obj)
-            d = obj.sampleCount / obj.sampleRate;
+            d = obj.sampleCount / obj.sampleRate - obj.timeOffset;
+        end
+        
+        
+        function f = format(obj)
+            % The default format is just the file extension, capitalized.
+            [~, ~, fileExt] = fileparts(obj.filePath);
+            f = upper(fileExt);
+            f = f(2:end);
         end
         
     end        

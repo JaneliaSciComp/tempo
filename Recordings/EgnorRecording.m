@@ -32,6 +32,7 @@ classdef EgnorRecording < AudioRecording
             
             if isempty(obj.sampleRate)
                 % See if there is another .ch file loaded whose sample rate we can copy.
+                % TODO: add a recordingsOfClass method to AnalysisController?
                 audioInd = [];
                 for i = 1:length(obj.controller.recordings)
                     if isa(obj.controller.recordings{i}, 'EgnorRecording') && obj ~= obj.controller.recordings{i}
@@ -127,6 +128,12 @@ classdef EgnorRecording < AudioRecording
         end
         
         % TODO: override maxAmplitude?
+        
+        
+        function f = format(obj) %#ok<MANU>
+            f = 'Egnor lab ''.ch'' audio';
+        end
+        
     end
     
 end

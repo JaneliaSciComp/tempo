@@ -82,6 +82,11 @@ classdef SternRecording < AudioRecording
             end
         end
         
+        
+        function f = format(obj) %#ok<MANU>
+            f = 'Stern lab (Omnivore) ''.bin'' audio';
+        end
+        
     end
     
 end
