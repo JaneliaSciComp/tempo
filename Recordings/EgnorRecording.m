@@ -106,8 +106,9 @@ classdef EgnorRecording < AudioRecording
         end
         
         
-        function d = dataInTimeRange(obj, timeRange)
-            sampleRange = floor((timeRange + obj.timeOffset) * obj.sampleRate);
+        function [data, offset] = dataInTimeRange(obj, timeRange)
+            fullRange = floor((timeRange + obj.timeOffset) * obj.sampleRate);
+            sampleRange = fullRange;
             if sampleRange(1) < 1
                 sampleRange(1) = 1;
             end
@@ -117,14 +118,15 @@ classdef EgnorRecording < AudioRecording
             
             if sampleRange(2) - sampleRange(1) > EgnorRecording.bufferSize
                 % The requested range is too big to load in all at once.
-                d = [];
+                data = [];
             else
                 if sampleRange(1) < obj.dataStartSample || sampleRange(2) > obj.dataStartSample + EgnorRecording.bufferSize
                     % At least some of the requested data is not currently loaded.
                     obj.loadDataBuffer(sampleRange(1));
                 end
-                d = obj.data((sampleRange(1)) - obj.dataStartSample + 1:(sampleRange(2) - obj.dataStartSample));
+                data = obj.data((sampleRange(1)) - obj.dataStartSample + 1:(sampleRange(2) - obj.dataStartSample));
             end
+            offset = (sampleRange(1) - fullRange(1)) / obj.sampleRate;
         end
         
         % TODO: override maxAmplitude?
