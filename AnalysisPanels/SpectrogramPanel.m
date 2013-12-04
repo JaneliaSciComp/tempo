@@ -93,8 +93,7 @@ classdef SpectrogramPanel < TimelinePanel
         
         
         function showAudioSettings(obj, ~, ~)
-            % TODO: obj.controller.showAudioSettings(obj.audio);
-            beep;
+            RecordingSettings(obj.audio);
         end
         
         
