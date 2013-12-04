@@ -124,7 +124,7 @@ classdef SpectrogramPanel < TimelinePanel
                 % It will take too long to compute the spectrogram for this much data.
                 set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'Zoom in to see the spectrogram');
             else
-                audioData = obj.audio.dataInTimeRange(timeRange(1:2));
+                [audioData, dataOffset] = obj.audio.dataInTimeRange(timeRange(1:2));
                 set(obj.noDisplayLabel, 'Visible', 'off');
 
                 if ~isempty(audioData)
@@ -158,11 +158,17 @@ classdef SpectrogramPanel < TimelinePanel
                     
                     if length(audioData) < fullLength
                         % Pad the image with [0.9 0.9 0.9] so it fills the entire time range.
-                        % This can happen when multiple recordings are open and they don't have the same duration.
-                        scale = (fullLength / length(audioData)) - 1;
+                        % This can happen when multiple recordings are open and they don't have the same duration 
+                        % or when one or more recordings have non-zero start times.
                         maxP = max(P(:));
                         minP = min(P(:));
-                        P = horzcat(P, ones(size(P, 1), floor(size(P, 2) * scale)) * (maxP - minP) * 0.1 + minP);
+                        gray = (maxP - minP) * 0.1 + minP;
+                        dataFraction = length(audioData) / fullLength;
+                        preFraction = dataOffset / (timeRange(2) - timeRange(1));
+                        postFraction = 1.0 - dataFraction - preFraction;
+                        prePixels = floor(preFraction * size(P, 2) / dataFraction);
+                        postPixels = floor(postFraction * size(P, 2) / dataFraction);
+                        P = horzcat(ones(size(P, 1), prePixels) * gray, P, ones(size(P, 1), postPixels) * gray);
                     end
                 end
             end
