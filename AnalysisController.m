@@ -390,7 +390,10 @@ classdef AnalysisController < handle
                     if playRange(2) > recording.duration * recording.sampleRate
                         playRange(2) = floor(recording.duration * recording.sampleRate);
                     end
-                    play(recording.audioPlayer, playRange);
+                    player = recording.player();
+                    if ~isempty(player)
+                        play(player, playRange);
+                    end
                 end
             end
             
@@ -420,7 +423,10 @@ classdef AnalysisController < handle
                 for i = 1:length(obj.recordings)
                     recording = obj.recordings{i};
                     if isa(recording, 'AudioRecording') && ~recording.muted
-                        stop(recording.audioPlayer);
+                        player = recording.player();
+                        if ~isempty(player)
+                            stop(player);
+                        end
                     end
                 end
                 stop(obj.mediaTimer);

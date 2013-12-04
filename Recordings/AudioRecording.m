@@ -4,7 +4,7 @@ classdef AudioRecording < Recording
         maxAmp
     end
     
-    properties(Transient)
+    properties(Transient,GetAccess=protected)
         audioPlayer
     end
     
@@ -46,10 +46,21 @@ classdef AudioRecording < Recording
                 end
                 obj.data = double(obj.data);
                 obj.sampleCount = length(obj.data);
-
-                obj.audioPlayer = audioplayer(obj.data, obj.sampleRate);
-                obj.audioPlayer.TimerPeriod = 1.0 / 15.0;
             end
+        end
+        
+        
+        function p = player(obj)
+            if isempty(obj.audioPlayer) && ~isempty(obj.data)
+                % Check if the data is playable.
+                devID = audiodevinfo(0, obj.sampleRate, 16, 1);
+                if devID ~= -1
+                    obj.audioPlayer = audioplayer(obj.data, obj.sampleRate);
+                    obj.audioPlayer.TimerPeriod = 1.0 / 15.0;
+                end
+            end
+            
+            p = obj.audioPlayer;
         end
         
         
