@@ -13,7 +13,9 @@ classdef WaveformPanel < TimelinePanel
         
         leftGrayRect
         rightGrayRect
-	end
+        
+        axesYLim = [0 0];               % cached copy of the axes YLim property for performance
+    end
 	
 	methods
 	
@@ -108,9 +110,9 @@ classdef WaveformPanel < TimelinePanel
                 set(obj.plotHandle, 'XData', xData, 'YData', audioData(1:step:windowSampleCount));
 
                 % Update the y limits of the axes based on the gain settings.
-                curYLim = get(obj.axes, 'YLim');
-                if curYLim(1) ~= -maxAmp || curYLim(2) ~= maxAmp
+                if obj.axesYLim(1) ~= -maxAmp || obj.axesYLim(2) ~= maxAmp
                     set(obj.axes, 'YLim', [-maxAmp maxAmp]);
+                    obj.axesYLim = [-maxAmp maxAmp];
                 end
 
                 % Display a gray rectangle where there isn't audio data available.

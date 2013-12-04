@@ -47,26 +47,28 @@ classdef TimeIndicatorPanel < TimelinePanel
             textFont = 'FixedWidth';
             redColor = [0.5 0.0 0.0];
             
-            % Draw regular time ticks.
+            % Draw regular time ticks if we're not playing media.
             % Get as close to ten ticks as possible and align to integral (or certain fraction of) times, e.g. 1:40.0 or 1:40.25.
             % Don't draw ticks inside any selection.
-            displayRange = obj.controller.displayRange(2) - obj.controller.displayRange(1);
-            upperBound = 10.^nextpow10(displayRange);
-            possibleSpacings = upperBound .* [1 / 2, 1 / 4, 1 / 5, 1 / 10, 1 / 20, 1 / 40, 1 / 50];
-            tickCounts = displayRange ./ possibleSpacings;
-            tickSpacing = possibleSpacings(find((tickCounts < 10), 1, 'last'));
-            tickBase = floor(obj.controller.displayRange(1) / tickSpacing) * tickSpacing;
-            tickCount = ceil(displayRange / tickSpacing);
-            for i = 0:tickCount
-                tickTime = tickBase + i * tickSpacing;
-                if tickTime > (obj.controller.displayRange(1) - labelWidth) && ...
-                   tickTime < (obj.controller.displayRange(2) + labelWidth) && ...
-                   (tickTime < min(obj.controller.selectedRange(1:2)) - labelWidth || ...
-                    tickTime > max(obj.controller.selectedRange(1:2)) + labelWidth)
-                    line([tickTime tickTime], [0 1], 'Color', 'black');
-                    text(tickTime, textY, secondstr(tickTime, obj.controller.timeLabelFormat, 2), ...
-                        'VerticalAlignment', 'baseline', 'HorizontalAlignment', 'center', ...
-                        'FontName', textFont, 'Color', 'black', 'BackgroundColor', 'white', 'Margin', 1, 'Clipping', 'on');
+            if ~obj.controller.isPlayingMedia
+                displayRange = obj.controller.displayRange(2) - obj.controller.displayRange(1);
+                upperBound = 10.^nextpow10(displayRange);
+                possibleSpacings = upperBound .* [1 / 2, 1 / 4, 1 / 5, 1 / 10, 1 / 20, 1 / 40, 1 / 50];
+                tickCounts = displayRange ./ possibleSpacings;
+                tickSpacing = possibleSpacings(find((tickCounts < 10), 1, 'last'));
+                tickBase = floor(obj.controller.displayRange(1) / tickSpacing) * tickSpacing;
+                tickCount = ceil(displayRange / tickSpacing);
+                for i = 0:tickCount
+                    tickTime = tickBase + i * tickSpacing;
+                    if tickTime > (obj.controller.displayRange(1) - labelWidth) && ...
+                       tickTime < (obj.controller.displayRange(2) + labelWidth) && ...
+                       (tickTime < min(obj.controller.selectedRange(1:2)) - labelWidth || ...
+                        tickTime > max(obj.controller.selectedRange(1:2)) + labelWidth)
+                        line([tickTime tickTime], [0 1], 'Color', 'black');
+                        text(tickTime, textY, secondstr(tickTime, obj.controller.timeLabelFormat, 2), ...
+                            'VerticalAlignment', 'baseline', 'HorizontalAlignment', 'center', ...
+                            'FontName', textFont, 'Color', 'black', 'BackgroundColor', 'white', 'Margin', 1, 'Clipping', 'on');
+                    end
                 end
             end
             

@@ -4,6 +4,8 @@ classdef TimelinePanel < AnalysisPanel
         timeLine
         selectionPatch
         showsFrequencyRange = false
+        
+        axesXLim = [0 0]
 	end
 	
 	methods
@@ -72,9 +74,9 @@ classdef TimelinePanel < AnalysisPanel
             if obj.visible && ~isempty(obj.controller.displayRange)
                 % For performance only update the axes if the time range has changed.
                 % The spectogram needs to update even when the media stops playing and the range doesn't change so it's special cased.
-                curLims = get(obj.axes, 'XLim');
-                if ~isempty(obj.controller.displayRange) && (any(curLims ~= obj.controller.displayRange(1:2)) || isa(obj, 'SpectrogramPanel'))
+                if ~isempty(obj.controller.displayRange) && (any(obj.axesXLim ~= obj.controller.displayRange(1:2)) || isa(obj, 'SpectrogramPanel'))
                     set(obj.axes, 'XLim', obj.controller.displayRange(1:2));
+                    obj.axesXLim = obj.controller.displayRange(1:2);
                 
                     % Let the subclass update the axes content.
                     obj.updateAxes(obj.controller.displayRange)
@@ -115,7 +117,10 @@ classdef TimelinePanel < AnalysisPanel
             set(obj.timeLine, 'XData', [obj.controller.currentTime obj.controller.currentTime]);
             
             % Make sure they are still rendered in front of all other objects.
-            uistack([obj.timeLine, obj.selectionPatch], 'top');
+            % In case new features, etc. have been added.
+            if ~obj.controller.isPlayingMedia
+                uistack([obj.timeLine, obj.selectionPatch], 'top');
+            end
         end
         
         
