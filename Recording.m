@@ -23,6 +23,15 @@ classdef Recording < handle
     end
     
     
+    methods (Static)
+        
+        function initialize()
+            % Perform any set up for all instances of this recording type.
+        end
+        
+    end
+    
+    
     methods (Static, Abstract)
         canLoad = canLoadFromPath(filePath)
     end

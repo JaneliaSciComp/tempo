@@ -364,29 +364,37 @@ classdef AnalysisController < handle
             if obj.selectedRange(1) ~= obj.selectedRange(2)
                 % Only play within the selected range.
                 if obj.currentTime >= obj.selectedRange(1) && obj.currentTime < obj.selectedRange(2) - 0.1
-                    playRange = [obj.currentTime obj.selectedRange(2)];
+                    idealRange = [obj.currentTime obj.selectedRange(2)];
                 else
-                    playRange = [obj.selectedRange(1) obj.selectedRange(2)];
+                    idealRange = [obj.selectedRange(1) obj.selectedRange(2)];
                 end
             else
                 % Play the whole song, starting at the current time unless it's at the end.
                 if obj.currentTime < obj.duration
-                    playRange = [obj.currentTime obj.duration];
+                    idealRange = [obj.currentTime obj.duration];
                 else
-                    playRange = [0.0 obj.duration];
+                    idealRange = [0.0 obj.duration];
                 end
             end
             
             obj.isPlayingMedia = true;
             
-% TODO: get audio playing again            
-%             playRange = round(playRange * handles.audio.sampleRate);
-%             if playRange(1) == 0
-%                 playRange(1) = 1;
-%             end
-%             play(obj.audioPlayer, playRange);
+            % Start all of the audio players.
+            for i = 1:length(obj.recordings)
+                recording = obj.recordings{i};
+                if isa(recording, 'AudioRecording') && ~recording.muted
+                    playRange = round((idealRange + recording.timeOffset) * recording.sampleRate);
+                    if playRange(1) == 0
+                        playRange(1) = 1;
+                    end
+                    if playRange(2) > recording.duration * recording.sampleRate
+                        playRange(2) = floor(recording.duration * recording.sampleRate);
+                    end
+                    play(recording.audioPlayer, playRange);
+                end
+            end
             
-            obj.mediaTimeSync = [playRange now];
+            obj.mediaTimeSync = [idealRange now];
             start(obj.mediaTimer);
         end
         
@@ -408,7 +416,13 @@ classdef AnalysisController < handle
                 set(obj.playMediaTool, 'Enable', 'on');
                 set(obj.pauseMediaTool, 'Enable', 'off');
 
-%                stop(obj.audioPlayer);
+                % Stop all of the audio players.
+                for i = 1:length(obj.recordings)
+                    recording = obj.recordings{i};
+                    if isa(recording, 'AudioRecording') && ~recording.muted
+                        stop(recording.audioPlayer);
+                    end
+                end
                 stop(obj.mediaTimer);
 
                 obj.isPlayingMedia = false;
@@ -1429,6 +1443,7 @@ function [classNames, typeNames] = findPlugIns(pluginsDir)
     pluginCount = 0;
     for i = 1:length(pluginDirs)
         if pluginDirs(i).isdir && pluginDirs(i).name(1) ~= '.'
+            % Directory plug-in
             className = pluginDirs(i).name;
             try
                 addpath(fullfile(pluginsDir, filesep, className));
@@ -1441,10 +1456,16 @@ function [classNames, typeNames] = findPlugIns(pluginsDir)
                 rmpath(fullfile(pluginsDir, filesep, pluginDirs(i).name));
             end
         elseif ~pluginDirs(i).isdir && strcmp(pluginDirs(i).name(end-1:end), '.m')
+            % Single file plug-in
             className = pluginDirs(i).name(1:end-2);
-            pluginCount = pluginCount + 1;
-            classNames{pluginCount} = className;
-            typeNames{pluginCount} = className;
+            try
+                eval([className '.initialize()'])
+                pluginCount = pluginCount + 1;
+                classNames{pluginCount} = className;
+                typeNames{pluginCount} = className;
+            catch
+                % It's a .m file but not a plug-in.
+            end
         end
     end
     classNames = classNames(1:pluginCount);
