@@ -20,13 +20,15 @@ classdef VideoPanel < AnalysisPanel
             %obj.currentFrame = read(obj.video.videoReader, frameNum);
             obj.currentFrame = obj.video.frameAtTime(obj.controller.currentTime);
             obj.currentTime = obj.controller.currentTime;
+            
+            set(obj.panel, 'BackgroundColor', 'black');
 		end
         
         
         function createControls(obj, ~)
             obj.imageHandle = image(obj.currentFrame, 'HitTest', 'off');
             axis(obj.axes, 'image');
-            set(obj.axes, 'XTick', [], 'YTick', []);
+            set(obj.axes, 'XTick', [], 'YTick', [], 'Color', 'black');
         end
         
         
