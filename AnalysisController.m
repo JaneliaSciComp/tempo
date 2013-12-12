@@ -9,7 +9,9 @@ classdef AnalysisController < handle
         duration = 300
         zoom = 1
         
+        videosPanel
         videoPanels = {}
+        othersPanel
         otherPanels = {}
         timeIndicatorPanel = []
         
@@ -104,16 +106,43 @@ classdef AnalysisController < handle
             [obj.importerClassNames, obj.importerTypeNames] = findPlugIns(fullfile(parentDir, 'Importers'));
             
             addpath(fullfile(parentDir, 'AnalysisPanels'));
-            
             addpath(fullfile(parentDir, 'export_fig'));
             addpath(fullfile(parentDir, 'ThirdParty', 'dbutils'));
+            addpath(fullfile(parentDir, 'ThirdParty', 'uisplitpane'));
+            
+            % Insert a splitter at the top level to separate the video and audio panels.
+            % TODO: Allow the splitter to split the screen vertically with the video panels on top.
+            %       This will require removing and re-adding the uisplitpane since that property cannot be modified.
+            obj.videosPanel = uipanel(obj.figure, ...
+                'BorderType', 'none', ...
+                'BorderWidth', 0, ...
+                'BackgroundColor', 'black', ...
+                'SelectionHighlight', 'off', ...
+                'Units', 'normalized', ...
+                'Position', [0 0 .25 1], ...
+                'ResizeFcn', @(source, event)arrangeVideoPanels(obj, source, event));
+            obj.othersPanel = uipanel(obj.figure, ...
+                'BorderType', 'none', ...
+                'BorderWidth', 0, ...
+                'BackgroundColor', 'black', ...
+                'SelectionHighlight', 'off', ...
+                'Units', 'normalized', ...
+                'Position', [0.25 0 0.75 1], ...
+                'ResizeFcn', @(source, event)arrangeOtherPanels(obj, source, event));
+            videoPos = get(obj.videosPanel, 'Position');
+            audioPos = get(obj.othersPanel, 'Position');
+            %warning('off', 'MATLAB:hg:JavaSetHGProperty');
+            [leftSplit, rightSplit, ~] = uisplitpane('DividerLocation', videoPos(3) / (videoPos(3) + audioPos(3)));
+            %warning('on', 'MATLAB:hg:JavaSetHGProperty');
+            set(obj.videosPanel, 'Parent', leftSplit, 'Position', [0 0 1 1]);
+            set(obj.othersPanel, 'Parent', rightSplit, 'Position', [0 0 1 1]);   
             
             obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
             
             obj.createToolbar();
             
             % Create the scroll bar that lets the user scrub through time.
-            obj.timeSlider = uicontrol('Style', 'slider',...
+            obj.timeSlider = uicontrol('Style', 'slider',... 
                 'Min', 0, ...
                 'Max', obj.duration, ...
                 'Value', 0, ...
@@ -289,26 +318,39 @@ classdef AnalysisController < handle
         
         
         function arrangePanels(obj)
-            pos = get(obj.figure, 'Position');
+            videosPos = obj.arrangeVideoPanels(obj);
+            othersPos = obj.arrangeOtherPanels(obj);
             
-            % Figure out which panels are currently visible.
-            visibleVideoPanels = obj.visiblePanels(true);
-            visibleOtherPanels = obj.visiblePanels(false);
-            
-            if isempty(visibleVideoPanels)
-                videoPanelWidth = 0;
+            % TODO: would it make more sense to have the time slider outside of the uisplitpane?
+            if isempty(obj.visiblePanels(false))
+                % The time slider should be under the video panels.
+                set(obj.timeSlider, 'Parent', obj.videosPanel, 'Position', [1, 0, videosPos(3), 16]);
             else
-                % Arrange the video panels
+                % The time slider should be under the non-video panels.
+                set(obj.timeSlider, 'Parent', obj.othersPanel, 'Position', [1, 0, othersPos(3), 16]);
+            end
+        end
+        
+        
+        function videosPos = arrangeVideoPanels(obj, ~, ~)
+            visibleVideoPanels = obj.visiblePanels(true);
+
+            % Get the size of the top-level panel.
+            set(obj.videosPanel, 'Units', 'pixels');
+            videosPos = get(obj.videosPanel, 'Position');
+            set(obj.videosPanel, 'Units', 'normalized');
+            
+            if ~isempty(visibleVideoPanels)
                 numPanels = length(visibleVideoPanels);
                 
                 % TODO: toolbar icon to allow column vs. row layout?
                 if true %visibleVideoPanels{1}.video.videoSize(1) < visibleVideoPanels{1}.video.videoSize(2)
                     % Arrange the videos in a column.
-                    if isempty(visibleOtherPanels)
-                        panelHeight = floor((pos(4) - 16) / numPanels);
-                        videoPanelWidth = pos(3);
+                    if true %isempty(visibleOtherPanels)
+                        panelHeight = floor((videosPos(4) - 16) / numPanels);
+                        videoPanelWidth = videosPos(3);
                     else
-                        panelHeight = floor(pos(4) / numPanels);
+                        panelHeight = floor(videosPos(4) / numPanels);
                         videoPanelWidth = floor(max(cellfun(@(panel) panelHeight / panel.video.videoSize(1) * panel.video.videoSize(2), visibleVideoPanels)));
                         videoWidth = max(cellfun(@(panel) panel.video.videoSize(1), visibleVideoPanels));
                         if videoWidth < videoPanelWidth
@@ -317,42 +359,47 @@ classdef AnalysisController < handle
                     end
                     
                     for i = 1:numPanels
-                        set(visibleVideoPanels{i}.panel, 'Position', [1, pos(4) - i * panelHeight, videoPanelWidth, panelHeight]);
+                        set(visibleVideoPanels{i}.panel, 'Position', [1, videosPos(4) - i * panelHeight, videoPanelWidth, panelHeight]);
                         visibleVideoPanels{i}.handleResize([], []);
                     end
                 else
                     % Arrange the videos in a row.
                 end
             end
+        end
+        
+        
+        function othersPos = arrangeOtherPanels(obj, ~, ~)
+            visibleOtherPanels = obj.visiblePanels(false);
+            
+            % Get the size of the top-level panel.
+            set(obj.othersPanel, 'Units', 'pixels');
+            othersPos = get(obj.othersPanel, 'Position');
+            set(obj.othersPanel, 'Units', 'normalized');
             
             if isempty(visibleOtherPanels)
                 if ~isempty(obj.timeIndicatorPanel)
                     obj.timeIndicatorPanel.setVisible(false);
                 end
             else
-                % Arrange the other panels
+                % Arrange the other panels.
                 % Leave a one pixel gap between panels so there's a visible line between them.
-                panelsHeight = pos(4) - 13 - 16;
+                panelsHeight = othersPos(4) - 13 - 16;
                 numPanels = length(visibleOtherPanels);
                 panelHeight = floor(panelsHeight / numPanels);
                 for i = 1:numPanels - 1
-                    set(visibleOtherPanels{i}.panel, 'Position', [videoPanelWidth + 1, pos(4) - 13 - i * panelHeight, pos(3) - videoPanelWidth, panelHeight - 2]);
+                    set(visibleOtherPanels{i}.panel, 'Position', [1, othersPos(4) - 13 - i * panelHeight, othersPos(3), panelHeight - 2]);
                     visibleOtherPanels{i}.handleResize([], []);
                 end
                 lastPanelHeight = panelsHeight - panelHeight * (numPanels - 1) - 4;
-                set(visibleOtherPanels{end}.panel, 'Position', [videoPanelWidth + 1, 18, pos(3) - videoPanelWidth, lastPanelHeight]);
+                set(visibleOtherPanels{end}.panel, 'Position', [1, 18, othersPos(3), lastPanelHeight]);
                 visibleOtherPanels{end}.handleResize([], []);
                 
                 obj.timeIndicatorPanel.setVisible(true);
-                set(obj.timeIndicatorPanel.panel, 'Position', [videoPanelWidth + 1, pos(4) - 13, pos(3) - videoPanelWidth, 14]);
-            end
-            
-            if isempty(visibleVideoPanels) || isempty(visibleOtherPanels)
-                % The time slider should fill the window.
-                set(obj.timeSlider, 'Position', [1, 0, pos(3), 16]);
-            else
+                set(obj.timeIndicatorPanel.panel, 'Position', [1, othersPos(4) - 13, othersPos(3), 14]);
+                
                 % The time slider should only be under the non-video panels.
-                set(obj.timeSlider, 'Position', [videoPanelWidth + 1, 0, pos(3) - videoPanelWidth, 16]);
+                set(obj.timeSlider, 'Parent', obj.othersPanel, 'Position', [1, 0, othersPos(3), 16]);
             end
         end
         
@@ -707,6 +754,7 @@ classdef AnalysisController < handle
         
         
         function handleResize(obj, ~, ~)
+            % TODO: is this needed anymore?
             obj.arrangePanels();
         end
         
