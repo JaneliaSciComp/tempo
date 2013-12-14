@@ -27,7 +27,7 @@ classdef AnalysisPanel < handle
             if isa(obj, 'VideoPanel')
                 parentPanel = obj.controller.videosPanel;
             else
-                parentPanel = obj.controller.othersPanel;
+                parentPanel = obj.controller.timelinesPanel;
             end
             
             obj.panel = uipanel(parentPanel, ...

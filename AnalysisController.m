@@ -9,10 +9,12 @@ classdef AnalysisController < handle
         duration = 300
         zoom = 1
         
+        splitterPanel
+        splitter
         videosPanel
         videoPanels = {}
-        othersPanel
-        otherPanels = {}
+        timelinesPanel
+        timelinePanels = {}
         timeIndicatorPanel = []
         
         timeSlider
@@ -99,63 +101,63 @@ classdef AnalysisController < handle
                 parentDir = fileparts(analysisPath);
             end
             
+            addpath(fullfile(parentDir, 'AnalysisPanels'));
             addpath(fullfile(parentDir, 'Recordings'));
             
             [obj.recordingClassNames, obj.recordingTypeNames] = findPlugIns(fullfile(parentDir, 'Recordings'));
             [obj.detectorClassNames, obj.detectorTypeNames] = findPlugIns(fullfile(parentDir, 'Detectors'));
             [obj.importerClassNames, obj.importerTypeNames] = findPlugIns(fullfile(parentDir, 'Importers'));
             
-            addpath(fullfile(parentDir, 'AnalysisPanels'));
+            % Add the paths to the third-party code.
             addpath(fullfile(parentDir, 'export_fig'));
             addpath(fullfile(parentDir, 'ThirdParty', 'dbutils'));
             addpath(fullfile(parentDir, 'ThirdParty', 'uisplitpane'));
             
-            % Insert a splitter at the top level to separate the video and audio panels.
+            % Insert a splitter at the top level to separate the video and timeline panels.
             % TODO: Allow the splitter to split the screen vertically with the video panels on top.
             %       This will require removing and re-adding the uisplitpane since that property cannot be modified.
-            obj.videosPanel = uipanel(obj.figure, ...
+            figurePos = get(obj.figure, 'Position');
+            obj.splitterPanel = uipanel(obj.figure, ...
                 'BorderType', 'none', ...
                 'BorderWidth', 0, ...
-                'BackgroundColor', 'black', ...
+                'BackgroundColor', [0.25 0.25 0.25], ...
                 'SelectionHighlight', 'off', ...
-                'Units', 'normalized', ...
-                'Position', [0 0 .25 1], ...
+                'Units', 'pixels', ...
+                'Position', [0 16 figurePos(3) figurePos(4) - 16]);
+            [obj.videosPanel, obj.timelinesPanel, obj.splitter] = uisplitpane(obj.splitterPanel, ...
+                'DividerLocation', 0.2, ...
+                'DividerColor', 'red', ...
+                'DividerWidth', 5);
+            set(obj.videosPanel, ...
+                'BackgroundColor', 'black', ...
                 'ResizeFcn', @(source, event)arrangeVideoPanels(obj, source, event));
-            obj.othersPanel = uipanel(obj.figure, ...
-                'BorderType', 'none', ...
-                'BorderWidth', 0, ...
-                'BackgroundColor', 'black', ...
-                'SelectionHighlight', 'off', ...
-                'Units', 'normalized', ...
-                'Position', [0.25 0 0.75 1], ...
-                'ResizeFcn', @(source, event)arrangeOtherPanels(obj, source, event));
-            videoPos = get(obj.videosPanel, 'Position');
-            audioPos = get(obj.othersPanel, 'Position');
-            %warning('off', 'MATLAB:hg:JavaSetHGProperty');
-            [leftSplit, rightSplit, ~] = uisplitpane('DividerLocation', videoPos(3) / (videoPos(3) + audioPos(3)));
-            %warning('on', 'MATLAB:hg:JavaSetHGProperty');
-            set(obj.videosPanel, 'Parent', leftSplit, 'Position', [0 0 1 1]);
-            set(obj.othersPanel, 'Parent', rightSplit, 'Position', [0 0 1 1]);   
+            set(obj.timelinesPanel, ...
+                'BackgroundColor', 'white', ...
+                'ResizeFcn', @(source, event)arrangeTimelinePanels(obj, source, event));
+            set(obj.splitter, 'DividerColor', 'red');
             
             obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
             
             obj.createToolbar();
             
             % Create the scroll bar that lets the user scrub through time.
-            obj.timeSlider = uicontrol('Style', 'slider',... 
+            obj.timeSlider = uicontrol(...
+                'Parent', obj.figure, ...
+                'Style', 'slider',... 
                 'Min', 0, ...
                 'Max', obj.duration, ...
                 'Value', 0, ...
-                'Position', [1 1 400 16]);
-            %    'Callback', @(source, event)handleTimeSliderChanged(obj, source, event));
+                'Position', [1 1 figurePos(3) 16]);
             if verLessThan('matlab', '7.12.0')
                 addlistener(obj.timeSlider, 'Action', @(source, event)handleTimeSliderChanged(obj, source, event));
             else
                 addlistener(obj.timeSlider, 'ContinuousValueChange', @(source, event)handleTimeSliderChanged(obj, source, event));
             end
+            
+            % Listen for changes to the displayRange property.
             addlistener(obj, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
             
-            obj.arrangePanels();
+            obj.arrangeTimelinePanels();
             
             % Set up a timer to fire 30 times per second when the media is being played.
             obj.mediaTimer = timer('ExecutionMode', 'fixedRate', 'TimerFcn', @(timerObj, event)handleMediaTimer(obj, timerObj, event), 'Period', round(1.0 / 30.0 * 1000) / 1000);
@@ -291,8 +293,8 @@ classdef AnalysisController < handle
                     panels{end + 1} = panel; %#ok<AGROW>
                 end
             end
-            for i = 1:length(obj.otherPanels)
-                panel = obj.otherPanels{i};
+            for i = 1:length(obj.timelinePanels)
+                panel = obj.timelinePanels{i};
                 if isa(panel, panelClass)
                     panels{end + 1} = panel; %#ok<AGROW>
                 end
@@ -300,106 +302,132 @@ classdef AnalysisController < handle
         end
         
         
-        function vp = visiblePanels(obj, isVideo)
-            if isVideo
-                panels = obj.videoPanels;
-            else
-                panels = obj.otherPanels;
-            end
-            
+        function vp = visibleVideoPanels(obj)
             vp = {};
-            for i = 1:length(panels)
-                panel = panels{i};
-                if panel.visible
-                    vp{end + 1} = panel; %#ok<AGROW>
-                end
-            end
-        end
-        
-        
-        function arrangePanels(obj)
-            videosPos = obj.arrangeVideoPanels(obj);
-            othersPos = obj.arrangeOtherPanels(obj);
             
-            % TODO: would it make more sense to have the time slider outside of the uisplitpane?
-            if isempty(obj.visiblePanels(false))
-                % The time slider should be under the video panels.
-                set(obj.timeSlider, 'Parent', obj.videosPanel, 'Position', [1, 0, videosPos(3), 16]);
-            else
-                % The time slider should be under the non-video panels.
-                set(obj.timeSlider, 'Parent', obj.othersPanel, 'Position', [1, 0, othersPos(3), 16]);
-            end
-        end
-        
-        
-        function videosPos = arrangeVideoPanels(obj, ~, ~)
-            visibleVideoPanels = obj.visiblePanels(true);
-
             % Get the size of the top-level panel.
             set(obj.videosPanel, 'Units', 'pixels');
             videosPos = get(obj.videosPanel, 'Position');
             set(obj.videosPanel, 'Units', 'normalized');
             
-            if ~isempty(visibleVideoPanels)
-                numPanels = length(visibleVideoPanels);
-                
-                % TODO: toolbar icon to allow column vs. row layout?
-                if true %visibleVideoPanels{1}.video.videoSize(1) < visibleVideoPanels{1}.video.videoSize(2)
-                    % Arrange the videos in a column.
-                    if true %isempty(visibleOtherPanels)
-                        panelHeight = floor((videosPos(4) - 16) / numPanels);
-                        videoPanelWidth = videosPos(3);
-                    else
-                        panelHeight = floor(videosPos(4) / numPanels);
-                        videoPanelWidth = floor(max(cellfun(@(panel) panelHeight / panel.video.videoSize(1) * panel.video.videoSize(2), visibleVideoPanels)));
-                        videoWidth = max(cellfun(@(panel) panel.video.videoSize(1), visibleVideoPanels));
-                        if videoWidth < videoPanelWidth
-                            videoPanelWidth = videoWidth;
-                        end
+            if videosPos(3) > 5
+                % The splitter is open, check the panels.
+                panels = obj.videoPanels;
+                for i = 1:length(panels)
+                    panel = panels{i};
+                    if panel.visible
+                        vp{end + 1} = panel; %#ok<AGROW>
                     end
-                    
-                    for i = 1:numPanels
-                        set(visibleVideoPanels{i}.panel, 'Position', [1, videosPos(4) - i * panelHeight, videoPanelWidth, panelHeight]);
-                        visibleVideoPanels{i}.handleResize([], []);
-                    end
-                else
-                    % Arrange the videos in a row.
                 end
             end
         end
         
         
-        function othersPos = arrangeOtherPanels(obj, ~, ~)
-            visibleOtherPanels = obj.visiblePanels(false);
+        function arrangeVideoPanels(obj, ~, ~)
+            visibleVideoPanels = obj.visibleVideoPanels();
             
             % Get the size of the top-level panel.
-            set(obj.othersPanel, 'Units', 'pixels');
-            othersPos = get(obj.othersPanel, 'Position');
-            set(obj.othersPanel, 'Units', 'normalized');
+            set(obj.videosPanel, 'Units', 'pixels');
+            videosPos = get(obj.videosPanel, 'Position');
+            set(obj.videosPanel, 'Units', 'normalized');
             
-            if isempty(visibleOtherPanels)
-                if ~isempty(obj.timeIndicatorPanel)
-                    obj.timeIndicatorPanel.setVisible(false);
-                end
+            if videosPos(3) < 5
+                % The splitter has been collapsed, don't show the video panels.
+                set(obj.videosPanel, 'Visible', 'off');
             else
-                % Arrange the other panels.
-                % Leave a one pixel gap between panels so there's a visible line between them.
-                panelsHeight = othersPos(4) - 13 - 16;
-                numPanels = length(visibleOtherPanels);
-                panelHeight = floor(panelsHeight / numPanels);
-                for i = 1:numPanels - 1
-                    set(visibleOtherPanels{i}.panel, 'Position', [1, othersPos(4) - 13 - i * panelHeight, othersPos(3), panelHeight - 2]);
-                    visibleOtherPanels{i}.handleResize([], []);
+                % The splitter is open, show the panels.
+                set(obj.videosPanel, 'Visible', 'on');
+                
+                if ~isempty(visibleVideoPanels)
+                    numPanels = length(visibleVideoPanels);
+                    
+                    % TODO: toolbar icon to allow column vs. row layout?
+                    if true %visibleVideoPanels{1}.video.videoSize(1) < visibleVideoPanels{1}.video.videoSize(2)
+                        % Arrange the videos in a column.
+                        if true %isempty(visibleTimelinePanels)
+                            panelHeight = floor(videosPos(4) / numPanels);
+                            videoPanelWidth = videosPos(3);
+                        else
+                            panelHeight = floor(videosPos(4) / numPanels);
+                            videoPanelWidth = floor(max(cellfun(@(panel) panelHeight / panel.video.videoSize(1) * panel.video.videoSize(2), visibleVideoPanels)));
+                            videoWidth = max(cellfun(@(panel) panel.video.videoSize(1), visibleVideoPanels));
+                            if videoWidth < videoPanelWidth
+                                videoPanelWidth = videoWidth;
+                            end
+                        end
+                        
+                        for i = 1:numPanels
+                            set(visibleVideoPanels{i}.panel, 'Position', [1, videosPos(4) - i * panelHeight, videoPanelWidth, panelHeight]);
+                            visibleVideoPanels{i}.handleResize([], []);
+                        end
+                    else
+                        % Arrange the videos in a row.
+                    end
                 end
-                lastPanelHeight = panelsHeight - panelHeight * (numPanels - 1) - 4;
-                set(visibleOtherPanels{end}.panel, 'Position', [1, 18, othersPos(3), lastPanelHeight]);
-                visibleOtherPanels{end}.handleResize([], []);
+            end
+        end
+        
+        
+        function vp = visibleTimelinePanels(obj)
+            vp = {};
+            
+            % Get the size of the top-level panel.
+            set(obj.timelinesPanel, 'Units', 'pixels');
+            timelinesPos = get(obj.timelinesPanel, 'Position');
+            set(obj.timelinesPanel, 'Units', 'normalized');
+            
+            if timelinesPos(3) > 15
+                % The splitter is open, check the panels.
+                panels = obj.timelinePanels;
+                for i = 1:length(panels)
+                    panel = panels{i};
+                    if panel.visible
+                        vp{end + 1} = panel; %#ok<AGROW>
+                    end
+                end
+            end
+        end
+        
+        
+        function arrangeTimelinePanels(obj, ~, ~)
+            set(obj.splitter, 'DividerColor', 'red');
+            
+            visibleTimelinePanels = obj.visibleTimelinePanels();
+            
+            % Get the size of the top-level panel.
+            set(obj.timelinesPanel, 'Units', 'pixels');
+            timelinesPos = get(obj.timelinesPanel, 'Position');
+            set(obj.timelinesPanel, 'Units', 'normalized');
+            
+            if timelinesPos(3) < 15
+                % The splitter has been collapsed, don't show the timeline panels.
+                set(obj.timelinesPanel, 'Visible', 'off');
+            else
+                % The splitter is open, show the panels.
+                set(obj.timelinesPanel, 'Visible', 'on');
                 
-                obj.timeIndicatorPanel.setVisible(true);
-                set(obj.timeIndicatorPanel.panel, 'Position', [1, othersPos(4) - 13, othersPos(3), 14]);
-                
-                % The time slider should only be under the non-video panels.
-                set(obj.timeSlider, 'Parent', obj.othersPanel, 'Position', [1, 0, othersPos(3), 16]);
+                if isempty(visibleTimelinePanels)
+                    if ~isempty(obj.timeIndicatorPanel)
+                        obj.timeIndicatorPanel.setVisible(false);
+                    end
+                else
+                    % Arrange the other panels, leaving room at the top for the time indicator panel.
+                    % Leave a one pixel gap between panels so there's a visible line between them.
+                    timeIndicatorHeight = 13;
+                    panelsHeight = timelinesPos(4) - timeIndicatorHeight;
+                    numPanels = length(visibleTimelinePanels);
+                    panelHeight = floor(panelsHeight / numPanels);
+                    for i = 1:numPanels - 1
+                        set(visibleTimelinePanels{i}.panel, 'Position', [4, timelinesPos(4) - timeIndicatorHeight - i * panelHeight, timelinesPos(3) - 3, panelHeight - 2]);
+                        visibleTimelinePanels{i}.handleResize([], []);
+                    end
+                    lastPanelHeight = panelsHeight - panelHeight * (numPanels - 1) - 4;
+                    set(visibleTimelinePanels{end}.panel, 'Position', [4, 2, timelinesPos(3) - 3, lastPanelHeight]);
+                    visibleTimelinePanels{end}.handleResize([], []);
+                    
+                    obj.timeIndicatorPanel.setVisible(true);
+                    set(obj.timeIndicatorPanel.panel, 'Position', [4, timelinesPos(4) - timeIndicatorHeight, timelinesPos(3) - 3, timeIndicatorHeight + 1]);
+                end
             end
         end
         
@@ -520,14 +548,14 @@ classdef AnalysisController < handle
                 
                 % Determine the list of axes to export.
                 axesToSave = [obj.timeIndicatorPanel.axes];
-                visibleVideoPanels = obj.visiblePanels(true);
+                visibleVideoPanels = obj.visibleVideoPanels();
                 for i = 1:length(visibleVideoPanels)
                     axesToSave(end + 1) = visibleVideoPanels{i}.axes; %#ok<AGROW>
                 end
-                visibleOtherPanels = obj.visiblePanels(false);
-                for i = 1:length(visibleOtherPanels)
-                    axesToSave(end + 1) = visibleOtherPanels{i}.axes; %#ok<AGROW>
-%                    visibleOtherPanels{i}.showSelection(false);
+                visibleTimelinePanels = obj.visibleTimelinePanels();
+                for i = 1:length(visibleTimelinePanels)
+                    axesToSave(end + 1) = visibleTimelinePanels{i}.axes; %#ok<AGROW>
+%                    visibleTimelinePanels{i}.showSelection(false);
                 end
                 
                 [~,~,e]=fileparts(fileName);
@@ -544,8 +572,8 @@ classdef AnalysisController < handle
 %                export_fig(fullfile(pathName, fileName), '-opengl', '-a1');  %, axesToSave);
 
                 % Show the current selection again.
-                for i = 1:length(visibleOtherPanels)
-                    visibleOtherPanels{i}.showSelection(true);
+                for i = 1:length(visibleTimelinePanels)
+                    visibleTimelinePanels{i}.showSelection(true);
                 end
                 
                 if ismac
@@ -557,14 +585,14 @@ classdef AnalysisController < handle
         
         function handleToggleWaveforms(obj, hObject, ~)
             obj.showWaveforms = ~obj.showWaveforms;
-            for i = 1:length(obj.otherPanels)
-                panel = obj.otherPanels{i};
+            for i = 1:length(obj.timelinePanels)
+                panel = obj.timelinePanels{i};
                 if isa(panel, 'WaveformPanel')
                     panel.setVisible(obj.showWaveforms);
                 end
             end
             
-            obj.arrangePanels();
+            obj.arrangeTimelinePanels();
             
             if isempty(hObject)
                 set(obj.showWaveformsTool, 'State', obj.toolStates{obj.showWaveforms + 1});
@@ -576,14 +604,14 @@ classdef AnalysisController < handle
         
         function handleToggleSpectrograms(obj, hObject, ~)
             obj.showSpectrograms = ~obj.showSpectrograms;
-            for i = 1:length(obj.otherPanels)
-                panel = obj.otherPanels{i};
+            for i = 1:length(obj.timelinePanels)
+                panel = obj.timelinePanels{i};
                 if isa(panel, 'SpectrogramPanel')
                     panel.setVisible(obj.showSpectrograms);
                 end
             end
             
-            obj.arrangePanels();
+            obj.arrangeTimelinePanels();
             
             if isempty(hObject)
                 set(obj.showSpectrogramsTool, 'State', obj.toolStates{obj.showSpectrograms + 1});
@@ -595,14 +623,14 @@ classdef AnalysisController < handle
         
         function handleToggleFeatures(obj, hObject, ~)
             obj.showFeatures = ~obj.showFeatures;
-            for i = 1:length(obj.otherPanels)
-                panel = obj.otherPanels{i};
+            for i = 1:length(obj.timelinePanels)
+                panel = obj.timelinePanels{i};
                 if isa(panel, 'FeaturesPanel')
                     panel.setVisible(obj.showFeatures);
                 end
             end
             
-            obj.arrangePanels();
+            obj.arrangeTimelinePanels();
             
             if isempty(hObject)
                 set(obj.showFeaturesTool, 'State', obj.toolStates{obj.showFeatures + 1});
@@ -646,9 +674,9 @@ classdef AnalysisController < handle
                             waitfor(msgbox('No features were detected.', detectorClassName, 'warn', 'modal'));
                         else
                             obj.reporters{end + 1} = detector;
-                            obj.otherPanels{end + 1} = FeaturesPanel(detector);
+                            obj.timelinePanels{end + 1} = FeaturesPanel(detector);
 
-                            obj.arrangePanels();
+                            obj.arrangeTimelinePanels();
                             
                             obj.needsSave = true;
                         end
@@ -671,9 +699,9 @@ classdef AnalysisController < handle
                 reporter = featurePanel.reporter;
                 
                 % Remove the panel.
-                obj.otherPanels(cellfun(@(x) x == featurePanel, obj.otherPanels)) = [];
+                obj.timelinePanels(cellfun(@(x) x == featurePanel, obj.timelinePanels)) = [];
                 delete(featurePanel);
-                obj.arrangePanels();
+                obj.arrangeTimelinePanels();
                 
                 % Remove the panel's reporter.
                 obj.reporters(cellfun(@(x) x == reporter, obj.reporters)) = [];
@@ -681,8 +709,8 @@ classdef AnalysisController < handle
                 
 % TODO:                handles = updateFeatureTimes(handles);
 
-                for j = 1:length(obj.otherPanels)
-                    panel = obj.otherPanels{j};
+                for j = 1:length(obj.timelinePanels)
+                    panel = obj.timelinePanels{j};
                     if isa(panel, 'SpectrogramPanel')
                         panel.deleteAllReporters();
                     end
@@ -754,8 +782,10 @@ classdef AnalysisController < handle
         
         
         function handleResize(obj, ~, ~)
-            % TODO: is this needed anymore?
-            obj.arrangePanels();
+            pos = get(obj.figure, 'Position');
+            
+            set(obj.splitterPanel, 'Position', [1, 16, pos(3), pos(4) - 16]);
+            set(obj.timeSlider, 'Position', [1, 0, pos(3) + 1, 16]);
         end
         
         
@@ -806,12 +836,12 @@ classdef AnalysisController < handle
             %     if ~handled
             %         ...
             
-            for i = 1:length(obj.otherPanels)
-                otherPanel = obj.otherPanels{i};
-                if clickedObject == otherPanel.axes
+            for i = 1:length(obj.timelinePanels)
+                timelinePanel = obj.timelinePanels{i};
+                if clickedObject == timelinePanel.axes
                     clickedPoint = get(clickedObject, 'CurrentPoint');
                     clickedTime = clickedPoint(1, 1);
-                    if otherPanel.showsFrequencyRange
+                    if timelinePanel.showsFrequencyRange
                         % Get the frequency from the clicked point.
                         % TODO: this doesn't work if the spectrogram is hidden when zoomed out.  Probably just need to have YLim set.
                         clickedFreq = clickedPoint(1, 2);
@@ -832,7 +862,7 @@ classdef AnalysisController < handle
                         end
                         
                         % Extend the frequency range if appropriate.
-                        if otherPanel.showsFrequencyRange && ~isinf(obj.selectedRange(3)) && ~isinf(obj.selectedRange(4))
+                        if timelinePanel.showsFrequencyRange && ~isinf(obj.selectedRange(3)) && ~isinf(obj.selectedRange(4))
                             if clickedFreq < obj.selectedRange(3)
                                 obj.selectedRange(3) = clickedFreq;
                             else
@@ -842,18 +872,18 @@ classdef AnalysisController < handle
                             obj.selectedRange(3:4) = [-inf inf];
                         end
                     else
-                        obj.panelSelectingTime = otherPanel;
+                        obj.panelSelectingTime = timelinePanel;
                         obj.originalSelectedRange = obj.selectedRange;
                         if clickedTime > obj.selectedRange(1) && clickedTime < obj.selectedRange(2) && ...
                            clickedFreq > obj.selectedRange(3) && clickedFreq < obj.selectedRange(4)
                             % The user clicked inside of the existing selection, figure out which part was clicked on.
                             % TODO: only allow mid/mid if box is too small?
                             
-                            if otherPanel.showsFrequencyRange && isinf(obj.selectedRange(3))
+                            if timelinePanel.showsFrequencyRange && isinf(obj.selectedRange(3))
                                 obj.selectedRange(3:4) = obj.displayRange(3:4);
                             end
                             
-                            axesPos = get(otherPanel.axes, 'Position');
+                            axesPos = get(timelinePanel.axes, 'Position');
                             timeMargin = 10 * (obj.displayRange(2) - obj.displayRange(1)) / (axesPos(3) - axesPos(1));
                             freqMargin = 10 * (obj.displayRange(4) - obj.displayRange(3)) / (axesPos(4) - axesPos(2));
                             if clickedTime < obj.selectedRange(1) + timeMargin && clickedTime < obj.selectedRange(2) - timeMargin
@@ -872,7 +902,7 @@ classdef AnalysisController < handle
                             end
                         else
                             % The user clicked outside of the existing selection.
-                            if otherPanel.showsFrequencyRange
+                            if timelinePanel.showsFrequencyRange
                                 obj.selectedRange = [clickedTime clickedTime clickedFreq clickedFreq];
                             else
                                 obj.selectedRange = [clickedTime clickedTime -inf inf];    %obj.displayRange(3:4)];
@@ -996,7 +1026,7 @@ classdef AnalysisController < handle
         function handleKeyPress(obj, ~, keyEvent)
             if ~strcmp(keyEvent.Key, 'space')
                 % Let one of the panels handle the event.
-                visiblePanels = horzcat(obj.visiblePanels(false), obj.visiblePanels(true));
+                visiblePanels = horzcat(obj.visibleTimelinePanels(), obj.visibleVideoPanels());
                 for i = 1:length(visiblePanels)
                     if visiblePanels{i}.keyWasPressed(keyEvent)
                         break
@@ -1015,7 +1045,7 @@ classdef AnalysisController < handle
                 end
             else
                 % Let one of the panels handle the event.
-                visiblePanels = horzcat(obj.visiblePanels(false), obj.visiblePanels(true));
+                visiblePanels = horzcat(obj.visibleTimelinePanels(), obj.visibleVideoPanels());
                 for i = 1:length(visiblePanels)
                     if visiblePanels{i}.keyWasReleased(keyEvent)
                         break
@@ -1125,9 +1155,9 @@ classdef AnalysisController < handle
                                     waitfor(msgbox('No features were imported.', obj.importerTypeNames{index}, 'warn', 'modal'));
                                 else
                                     obj.reporters{end + 1} = importer;
-                                    obj.otherPanels{end + 1} = FeaturesPanel(importer);
+                                    obj.timelinePanels{end + 1} = FeaturesPanel(importer);
                                     
-                                    obj.arrangePanels();
+                                    obj.arrangeTimelinePanels();
                                     
                                     somethingOpened = true;
                                 end
@@ -1194,14 +1224,14 @@ classdef AnalysisController < handle
                 obj.recordings{end + 1} = recording;
                 
                 panel = WaveformPanel(obj, recording);
-                obj.otherPanels{end + 1} = panel;
+                obj.timelinePanels{end + 1} = panel;
                 panel.setVisible(obj.showWaveforms);
                 
                 panel = SpectrogramPanel(obj, recording);
-                obj.otherPanels{end + 1} = panel;
+                obj.timelinePanels{end + 1} = panel;
                 panel.setVisible(obj.showSpectrograms);
                 
-                obj.arrangePanels();
+                obj.arrangeTimelinePanels();
                 
                 addlistener(recording, 'timeOffset', 'PostSet', @(source, event)handleRecordingDurationChanged(obj, source, event));
             end
@@ -1223,7 +1253,7 @@ classdef AnalysisController < handle
                 panel = VideoPanel(obj, recording);
                 obj.videoPanels{end + 1} = panel;
                 
-                obj.arrangePanels();
+                obj.arrangeVideoPanels();
                 
                 addlistener(recording, 'timeOffset', 'PostSet', @(source, event)handleRecordingDurationChanged(obj, source, event));
             end
@@ -1392,11 +1422,11 @@ classdef AnalysisController < handle
                 recording.loadData();
                 if isa(recording, 'AudioRecording')
                     panel = WaveformPanel(obj, recording);
-                    obj.otherPanels{end + 1} = panel;
+                    obj.timelinePanels{end + 1} = panel;
                     panel.setVisible(obj.showWaveforms);
 
                     panel = SpectrogramPanel(obj, recording);
-                    obj.otherPanels{end + 1} = panel;
+                    obj.timelinePanels{end + 1} = panel;
                     panel.setVisible(obj.showSpectrograms);
                 elseif isa(recording, 'VideoRecording')
                     panel = VideoPanel(obj, recording);
@@ -1410,8 +1440,8 @@ classdef AnalysisController < handle
                 for i = 1:length(obj.reporters)
                     reporter = obj.reporters{i};
                     reporter.controller = obj;
-                    obj.otherPanels{end + 1} = FeaturesPanel(reporter);
-                    obj.otherPanels{end}.setVisible(obj.showFeatures);
+                    obj.timelinePanels{end + 1} = FeaturesPanel(reporter);
+                    obj.timelinePanels{end}.setVisible(obj.showFeatures);
                 end
             end
             
@@ -1433,7 +1463,8 @@ classdef AnalysisController < handle
                 
             obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
             
-            obj.arrangePanels();
+            obj.arrangeVideoPanels();
+            obj.arrangeTimelinePanels();
             
             set(obj.figure, 'Pointer', 'arrow'); drawnow
         end
