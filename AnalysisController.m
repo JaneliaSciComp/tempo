@@ -786,6 +786,8 @@ classdef AnalysisController < handle
             
             set(obj.splitterPanel, 'Position', [1, 16, pos(3), pos(4) - 16]);
             set(obj.timeSlider, 'Position', [1, 0, pos(3) + 1, 16]);
+            
+            obj.needsSave = true;
         end
         
         
@@ -1409,7 +1411,21 @@ classdef AnalysisController < handle
             
             if isfield(s, 'mainSplitter')
                 % TODO: set vertical orientation once supported
-                set(obj.splitter, 'DividerLocation', s.mainSplitter.location);
+                if s.mainSplitter.location < 0.01
+                    try
+                        obj.splitter.JavaComponent.getComponent(0).doClick();
+                    catch
+                        % oh well
+                    end
+                elseif s.mainSplitter.location > 0.99
+                    try
+                        obj.splitter.JavaComponent.getComponent(1).doClick();
+                    catch
+                        % oh well
+                    end
+                else
+                    set(obj.splitter, 'DividerLocation', s.mainSplitter.location);
+                end
             end
             
             if obj.showWaveforms ~= s.showWaveforms
