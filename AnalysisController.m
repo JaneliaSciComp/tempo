@@ -89,7 +89,7 @@ classdef AnalysisController < handle
                 'KeyReleaseFcn', @(source, event)handleKeyRelease(obj, source, event), ...
                 'CloseRequestFcn', @(source, event)handleClose(obj, source, event), ...
                 'WindowButtonDownFcn', @(source, event)handleMouseButtonDown(obj, source, event), ...
-                'WindowButtonMotionFcn', @(source, event)handleMouseMotion(obj, source, event), ...
+                'WindowButtonMotionFcn', @()handleMouseMotion(obj), ...
                 'WindowButtonUpFcn', @(source, event)handleMouseButtonUp(obj, source, event)); %#ok<CPROP>
             
             if isdeployed && exist(fullfile(ctfroot, 'Detectors'), 'dir')
@@ -986,7 +986,7 @@ classdef AnalysisController < handle
         end
         
         
-        function handleMouseMotion(obj, ~, ~)
+        function handleMouseMotion(obj, varargin)
             if ~isempty(obj.panelSelectingTime)
                 obj.updateSelectedRange();
             elseif false    %handles.showSpectrogram && isfield(handles, 'spectrogramTooltip')
