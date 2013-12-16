@@ -125,7 +125,7 @@ classdef AnalysisController < handle
                 'Units', 'pixels', ...
                 'Position', [0 16 figurePos(3) figurePos(4) - 16]);
             [obj.videosPanel, obj.timelinesPanel, obj.splitter] = uisplitpane(obj.splitterPanel, ...
-                'DividerLocation', 0.2, ...
+                'DividerLocation', 0.25, ...
                 'DividerColor', 'red', ...
                 'DividerWidth', 5);
             set(obj.videosPanel, ...
@@ -1381,6 +1381,9 @@ classdef AnalysisController < handle
             s.reporters = obj.reporters;
 
             s.windowPosition = get(obj.figure, 'Position');
+            s.mainSplitter.orientation = get(obj.splitter, 'Orientation');
+            s.mainSplitter.location = get(obj.splitter, 'DividerLocation');
+            
             s.showWaveforms = obj.showWaveforms;
             s.showSpectrograms = obj.showSpectrograms;
             s.showFeatures = obj.showFeatures;
@@ -1403,6 +1406,11 @@ classdef AnalysisController < handle
             
             % TODO: check if the window still fits on screen?
             set(obj.figure, 'Position', s.windowPosition);
+            
+            if isfield(s, 'mainSplitter')
+                % TODO: set vertical orientation once supported
+                set(obj.splitter, 'DividerLocation', s.mainSplitter.location);
+            end
             
             if obj.showWaveforms ~= s.showWaveforms
                 obj.handleToggleWaveforms([])
