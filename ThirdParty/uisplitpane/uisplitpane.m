@@ -627,10 +627,24 @@ function dividerActionCallback(varargin)
             dvFlush = 0.001;
         end
         if flag  % flushed on the side => move back to center
-            hDivider.DividerLocation = 0.5;
+            try
+                warning('off', 'MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');
+                hDivider.DividerLocation = get(jButton, 'UserData');
+                warning('on', 'MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');
+            catch
+                hDivider.DividerLocation = 0.5;
+            end
             jButton.setToolTipText(['Click to hide ' str ' sub-pane']);
             jOther.setVisible(1);
         else
+            try
+                warning('off', 'MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');
+                set(jButton, 'UserData', hDivider.DividerLocation);
+                set(jOther, 'UserData', hDivider.DividerLocation);
+                warning('on', 'MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');
+            catch
+                % oh well
+            end
             hDivider.DividerLocation = dvFlush;
             jOther.setToolTipText(['Click to restore ' str ' sub-pane']);
             jButton.setVisible(0);
