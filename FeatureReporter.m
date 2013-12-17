@@ -273,6 +273,7 @@ classdef FeatureReporter < handle
                 obj.featureListSize = obj.featureListSize + 1000;
             end
             obj.featureList{obj.featureCount} = feature;
+            feature.reporter = obj;
             
             notify(obj, 'FeaturesDidChange');
         end

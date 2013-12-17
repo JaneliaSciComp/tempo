@@ -1,6 +1,7 @@
 classdef Feature < dynamicprops
     
     properties
+        reporter
         type
         range
     end
@@ -88,6 +89,10 @@ classdef Feature < dynamicprops
         function [obj, idx] = sort(obj, varargin)
             [~, idx] = sort([obj.startTime], varargin{:});
             obj = obj(idx);
+        end
+        
+        function c = color(obj)
+            c = obj.reporter.featuresColor;
         end
         
     end
