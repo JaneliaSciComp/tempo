@@ -395,6 +395,11 @@ function [h1, h2, hDivider] = splitPane(hParent, paramsStruct)
     if v(1)<='6'
         dvMargin = 0.005;
     end
+    
+    % Grab the mouse motion fcn and clear it before drawnow gets called.
+    hFig = ancestor(hParent,'figure');
+    winFcn = get(hFig,'WindowButtonMotionFcn');
+    set(hFig,'WindowButtonMotionFcn', []);
 
     % Get the container dimensions
     if strcmpi(paramsStruct.orientation(1),'v')
@@ -469,8 +474,6 @@ function [h1, h2, hDivider] = splitPane(hParent, paramsStruct)
     %uimenu(hMenu, 'Label','drag-able divider', 'Callback',@moveCursor, 'UserData',hDivider);
 
     % Set the mouse callbacks
-    hFig = ancestor(hParent,'figure');
-    winFcn = get(hFig,'WindowButtonMotionFcn');
     if ~isempty(winFcn) & ~isequal(winFcn,@mouseMoveCallback) & (~iscell(winFcn) | ~isequal(winFcn{1},@mouseMoveCallback))  %#ok for Matlab 6 compatibility
         setappdata(hFig, 'uisplitpane_oldButtonMotionFcn',winFcn);
     end
