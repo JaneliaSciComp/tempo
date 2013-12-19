@@ -82,6 +82,7 @@ classdef SternRecording < AudioRecording
                         tmp=fread(fid,[2 nchan],'double');
                         step=tmp(1,nchan);
                         offset=tmp(2,nchan);
+                        fread(fid, obj.channel-1, 'int16');  % skip over first channels
                         [obj.data, obj.sampleCount]=fread(fid,inf,'int16', 2*(nchan-1));
 %                         y=bsxfun(@times,y',step);
 %                         y=bsxfun(@plus,y,offset);
