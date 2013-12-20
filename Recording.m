@@ -29,6 +29,10 @@ classdef Recording < handle
             % Perform any set up for all instances of this recording type.
         end
         
+        function n = typeName()
+            n = 'Recording';
+        end
+        
     end
     
     
