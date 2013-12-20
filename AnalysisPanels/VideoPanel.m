@@ -49,6 +49,10 @@ classdef VideoPanel < AnalysisPanel
             if obj.controller.currentTime ~= obj.currentTime
                 obj.currentFrame = obj.video.frameAtTime(obj.controller.currentTime);
                 set(obj.imageHandle, 'CData', obj.currentFrame);
+                
+                % Force a redraw of the frame and allow non-timer events to be processed so we don't lock up MATLAB.
+                drawnow
+                
                 obj.currentTime = obj.controller.currentTime;
             end
         end
