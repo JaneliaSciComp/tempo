@@ -1209,6 +1209,8 @@ classdef AnalysisController < handle
                 obj.updateOverallDuration();
                 
                 obj.needsSave = true;
+            else
+                warndlg('Tempo does not know how to open that kind of file.');
             end
         end
         
