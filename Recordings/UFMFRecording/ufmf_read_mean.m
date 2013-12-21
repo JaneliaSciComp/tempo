@@ -17,7 +17,11 @@ else
     idx = false(size(meani));
   end
   for i = find(idx),
-    im(:,:,:,i) = header.cachedmeans(:,:,:,cachei(i));
+    if length(meani) == 1
+        im = header.cachedmeans(:,:,:,cachei(i));
+    else
+        im(:,:,:,i) = header.cachedmeans(:,:,:,cachei(i));
+    end
     header.cachedmeans_accesstime(i) = now;
   end
   for i = find(~idx),

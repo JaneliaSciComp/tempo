@@ -46,9 +46,7 @@ classdef UFMFRecording < VideoRecording
         function d = frameAtTime(obj, time)
             frameNum = min([floor((time + obj.timeOffset) * obj.sampleRate + 1) obj.sampleCount]);
             
-            %tic;
-            [d, ~, ~, ~, ~] = ufmf_read_frame(obj.fileHeader, frameNum);
-            %toc
+            d = ufmf_read_frame(obj.fileHeader, frameNum);
         end
         
         
