@@ -58,6 +58,8 @@ classdef AnalysisController < handle
         
         needsSave = false
         savePath
+        
+        frameCount
     end
     
     
@@ -472,6 +474,7 @@ classdef AnalysisController < handle
                 end
             end
             
+            obj.frameCount = 0;
             obj.mediaTimeSync = [idealRange now];
             start(obj.mediaTimer);
         end
@@ -508,6 +511,9 @@ classdef AnalysisController < handle
 
                 obj.isPlayingMedia = false;
 
+                elapsedTime = (now - obj.mediaTimeSync(end)) * (24*60*60);
+                fprintf('FPS: %g (%d/%g)\n', obj.frameCount / elapsedTime, obj.frameCount, elapsedTime);
+                
                 if isempty(hObject)
                     % The media played to the end without the user clicking the pause button.
                     if obj.selectedRange(1) ~= obj.selectedRange(2)

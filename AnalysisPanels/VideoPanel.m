@@ -63,6 +63,8 @@ classdef VideoPanel < AnalysisPanel
                 drawnow
                 
                 obj.currentTime = obj.controller.currentTime;
+                
+                obj.controller.frameCount = obj.controller.frameCount + 1;
             end
         end
         
