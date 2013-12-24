@@ -1237,7 +1237,7 @@ classdef AnalysisController < handle
                     if isempty(obj.videoPanels)
                         % Hide the video half of the splitter.
                         obj.toggleVideoPanels();
-                    elseif length(obj.timelinePanels) == 1
+                    elseif isempty(obj.timelinePanels)
                         % Hide the video half of the splitter.
                         obj.toggleTimelinePanels();
                     end
