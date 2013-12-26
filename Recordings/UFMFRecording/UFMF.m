@@ -1,36 +1,58 @@
 classdef UFMF < handle
     
-    % TODO: make sure none of the reading code touches the image toolbox
-    
     properties (SetAccess=private)
         version = 4
     end
     
     properties
+        path
+        
         numMeans = 1
     	bgUpdateSecs = 10
     	bgInitialMeans = 0
     	bgThreshold = 10
         
         useBoxes = true
-        smallestCompPix = 1
+        minimizeBoxes = false
+        smallestBoxSize = 1
         
         frameRate
+        frameCount = 0
         
         printStats = false
     end
     
     properties (Access=private)
-        header
-        bgModel
-        
-        frameCount = 0
-        
-        frameIndex
-        
         fileID
         isReadOnly
         isWritable
+        
+        % Reading
+        pixelCoding = ''
+        colorsPerPixel
+        bytesPerPixel
+        pixelDataClass
+        frames
+        keyFrames
+        boxesAreFixedSize
+        boxMaxSize          % height, width
+        
+        % Writing
+        bgModel
+        bgHasBeenUpdated = false
+        frameIndex
+        frameStats
+    end
+    
+    properties (Constant, Access=private)
+        KEYFRAME_CHUNK = 0
+        FRAME_CHUNK = 1
+        INDEX_DICT_CHUNK = 2
+        
+        MEAN_KEYFRAME_TYPE = 'mean'
+        
+        DICT_START_CHAR = 'd'
+        ARRAY_START_CHAR = 'a'
     end
     
     
@@ -40,27 +62,58 @@ classdef UFMF < handle
             obj = UFMF(filePath, 'read');
         end
         
+        
         function obj = createFile(filePath)
             obj = UFMF(filePath, 'write');
         end
         
+        
+        function isUFMF = isUFMFFile(filePath)
+            isUFMF = false;
+            
+            if exist(filePath, 'file')
+                % Check if the file has 'ufmf' for its first four byte.
+                fid = fopen(filePath, 'rb' , 'ieee-le');
+                if fid >= 0
+                    try
+                        s = fread(fid, [1, 4], '*char');
+                        isUFMF = strcmp(s, 'ufmf');
+                        fclose(fid);
+                    catch ME
+                        fclose(fid);
+                        rethrow(ME);
+                    end
+                end
+            end
+        end
     end
     
     
     methods
         
-        function obj = UFMF(filePath)
-            % If a file at the path exists then open it, otherwise write to it.
+        function obj = UFMF(filePath, mode)
+            obj.path = filePath;
             
-            if exist(filePath, 'file')  % TODO: or ???
-                % Open the UFMF file for reading.
-                obj.fileID = fopen(filePath, 'r');
+            if nargin < 2
+                % If a file exists at the path then read it, otherwise write to it.
+                if exist(filePath, 'file')
+                    mode = 'read';
+                else
+                    mode = 'write';
+                end
+            end
+            
+            if strcmp(mode, 'read')
+                % Open the UFMF file for reading, binary, little-endian
+                obj.fileID = fopen(filePath, 'rb' , 'ieee-le');
                 if obj.fileID < 0
                     error('UFMF:IOError', 'Could not open UFMF file for reading.');
                 end
                 obj.isReadOnly = true;
                 obj.isWritable = false;
-            else
+                
+                obj.readHeader();
+            elseif strcmp(mode, 'write')
                 % Open the UFMF file for writing.
                 obj.fileID = fopen(filePath, 'w');
                 if obj.fileID < 0
@@ -68,19 +121,31 @@ classdef UFMF < handle
                 end
                 obj.isReadOnly = false;
                 obj.isWritable = true;
+                
+                obj.frameStats = struct('bytes', [],'components',[]);
+            else
+                error('UFMF:ValueError', 'Invalid mode given for opening a UFMF file: %s', mode);
             end
         end
         
         
         function im = getFrame(obj, frameInd)
-            im = [];
+            % Read in a frame
+            % TODO: cache frames
             
-            % TODO: read in a frame
-            if isinteger(frameInd)
-                % Get the frame at the index.
-            else
-                % Get the frame at the time.
+            if ~ismember(lower(obj.pixelCoding), {'mono8','rgb8'})
+                error('Colorspace ''%s'' is not yet supported.  Only MONO8 and RGB8 allowed.', obj.pixelCoding);
             end
+            
+            im = obj.readFrame(uint64(frameInd));
+        end
+        
+        
+        function im = getFrameAtTime(obj, frameTime)
+            % TODO: this assumes a constant frame rate, would be better to lookup the index from the time stamps but it will be slow...
+            frameInd = obj.frameRate * frameTime + 1;
+            
+            im = obj.getFrame(frameInd);
         end
         
         
@@ -102,28 +167,54 @@ classdef UFMF < handle
                 % Perform initial set up when the first frame comes in.
                 obj.setupBGModel();
                 obj.writeHeader(frameImage);
+                obj.updateBGModel(frameImage, frameIndex, frameTime);
             end
             
-            % Update the background model if necessary, may generate a key frame.
-            obj.updateBGModel(frameImage, frameIndex, frameTime);
+            % Update the background model if necessary.
+            if ~obj.bgHasBeenUpdated && frameTime > obj.bgUpdateSecs
+                obj.updateBGModel(frameImage, frameIndex, frameTime);
+                obj.bgHasBeenUpdated = true;
+            end
             
             % Write the frame itself.
-            obj.writeFrame(frameImage, frameTime);
+            obj.writeFrame(frameImage, frameIndex, frameTime);
             
             obj.frameCount = obj.frameCount + 1;
         end
         
         
+        function [coding, colorsPerPixel, bytesPerPixel] = coding(obj)
+            coding = obj.pixelCoding;
+            if nargout > 1
+                colorsPerPixel = obj.colorsPerPixel;
+                if nargout > 2
+                    bytesPerPixel = obj.bytesPerPixel;
+                end
+            end
+        end
+        
+        
         function close(obj)
-            if ~obj.isReadOnly && obj.isWritable
-                obj.writeIndex();
+            if ~isempty(obj.fileID)
+                if ~obj.isReadOnly && obj.isWritable
+                    % Finish writing to the file.
+                    obj.writeIndex();
+
+                    obj.isWritable = false;
+
+                    if obj.printStats
+                        if obj.useBoxes
+                            fprintf('UFMF: Mean frame size: %g KB, %d components\n', mean([obj.frameStats.bytes]) / 1024, ...
+                                                                                     uint16(mean([obj.frameStats.components])));
+                        else
+                            fprintf('UFMF: Mean frame size: %g KB\n', mean([obj.frameStats.bytes]) / 1024);
+                        end
+                    end
+                end
                 
                 fclose(obj.fileID);
                 obj.fileID = [];
-                obj.isWritable = false;
             end
-            
-            % TODO: convert it to read-style so you can immediately call getFrame?
         end
         
         
@@ -138,11 +229,266 @@ classdef UFMF < handle
     
     %% UFMF Reading
     
+    
     methods (Access = private)
         
+        function readHeader(obj)
+            % ufmf: 4 bytes
+            s = fread(obj.fileID, [1,4],'*char');
+            if ~strcmp(s, 'ufmf')
+                error('Invalid UFMF file: first four bytes must be ''ufmf''.');
+            end
+
+            % version: 4 bytes
+            obj.version = fread(obj.fileID, 1, 'uint');
+            if obj.version < 2
+                error('Only UFMF versions 2-4 are supported.');
+            end
+
+            % index location: 8 bytes
+            indexloc = fread(obj.fileID, 1, 'uint64');
+
+            % this is somewhat backwards for faster reading
+            % max_height: 2 bytes, max_width: 2 bytes
+            obj.boxMaxSize = fread(obj.fileID, 2, 'ushort');
+
+            % whether it is fixed size patches: 1 byte
+            if obj.version >= 4
+                obj.boxesAreFixedSize = (fread(obj.fileID, 1, 'uchar') == 1);
+            else
+                obj.boxesAreFixedSize = false;
+            end
+
+            % coding: 1 byte length then that many more bytes
+            l = fread(obj.fileID, 1, 'uchar');
+            obj.pixelCoding = fread(obj.fileID, [1, l], '*char');
+            switch lower(obj.pixelCoding)
+              case 'mono8'
+                obj.colorsPerPixel = 1;
+                obj.bytesPerPixel = 1;
+              case 'rgb8'
+                obj.colorsPerPixel = 3;
+                obj.bytesPerPixel = 3;
+            end
+            obj.pixelDataClass = 'uint8'; 
+
+            % seek to the start of the index
+            fseek(obj.fileID, indexloc, 'bof');
+
+            % read in the index
+            index = obj.readDict();
+            
+            % Grab the key frame info from the index.
+            obj.keyFrames = struct('type', cell(length(index.keyframe.mean.loc), 1), ...
+                                   'fileLoc', num2cell(cast(index.keyframe.mean.loc, 'int64')), ...
+                                   'timeStamp', num2cell(index.keyframe.mean.timestamp), ...
+                                   'frameImage', cell(length(index.keyframe.mean.loc), 1));
+            
+            % Grab the frame info from the index.
+            obj.frameCount = length(index.frame.loc);
+            frameMeans = ones(obj.frameCount, 1) * length(obj.keyFrames);  % Assume all use the last one to start with.
+            for i = 1:length(obj.keyFrames)-1
+                idx = index.frame.timestamp >= index.keyframe.mean.timestamp(i) & ...
+                      index.frame.timestamp < index.keyframe.mean.timestamp(i + 1);
+                frameMeans(idx) = i;
+            end
+            obj.frames = struct('fileLoc', num2cell(cast(index.frame.loc, 'int64')), ...
+                                'timeStamp', num2cell(index.frame.timestamp), ...
+                                'meanIndex', num2cell(frameMeans), ...
+                                'frameImage', cell(length(index.frame.loc), 1));
+            
+            if isempty(obj.frameRate)
+                % Assume a constant frame rate based on the frame count and first and last time stamps.
+                obj.frameRate = (obj.frameCount - 1) / (obj.frames(end).timeStamp - obj.frames(1).timeStamp);
+            end
+        end
+        
+        
+        function index = readDict(obj)
+            % read in a 'd': 1 byte
+            chunktype = fread(obj.fileID, 1,'*char');
+            if chunktype ~= obj.DICT_START_CHAR
+                error('Error reading index: dictionary does not start with ''%s''.', obj.DICT_START_CHAR);
+            end
+
+            % read in the number of fields: 1 byte
+            nkeys = fread(obj.fileID, 1,'uchar');
+
+            for j = 1:nkeys
+                
+                % read the length of the key name: 2 bytes
+                l = fread(obj.fileID, 1,'ushort');
+                % read the key name: l byte
+                key = fread(obj.fileID, [1,l],'*char');
+                % read the next letter to tell if it is an array or another dictionary
+                chunktype = fread(obj.fileID, 1,'*char');
+                if chunktype == obj.DICT_START_CHAR
+                    % if it's a 'd', then step back one char and read in the dictionary
+                    % recursively
+                    fseek(obj.fileID, -1,'cof');
+                    index.(key) = obj.readDict();
+                elseif chunktype == obj.ARRAY_START_CHAR
+                    % array
+
+                    % read in the data type
+                    dtypechar = fread(obj.fileID, 1,'*char');
+                    [matlabclass,bytes_per_element] = dtypechar2matlabclass(dtypechar);
+
+                    % read in number of bytes
+                    l = fread(obj.fileID, 1,'ulong');
+                    n = l / bytes_per_element;
+                    if n ~= round(n)
+                        error('Length in bytes %d is not divisible by bytes per element %d',l,bytes_per_element);
+                    end
+
+                    % read in the index array
+                    [index.(key),ntrue] = fread(obj.fileID, n,['*',matlabclass]);
+                    if ntrue ~= n
+                        warning('Could only read %d/%d bytes for array %s of index',n,ntrue,key);
+                    end
+                else
+                    error('Error reading dictionary %s. Expected either ''%s'' or ''%s''.', key, obj.DICT_START_CHAR, obj.ARRAY_START_CHAR);
+                end
+
+            end
+        end
+        
+        
+        function [frameImage, timeStamp] = readKeyFrame(obj, keyFrameIndex)
+            if keyFrameIndex < 1 || keyFrameIndex > length(obj.keyFrames)
+                error('UFMF:RangeError', 'There is no key frame at index %d', keyFrameIndex);
+            end
+            
+            fseek(obj.fileID, obj.keyFrames(keyFrameIndex).fileLoc, 'bof');
+            
+            % chunktype: 1 byte
+            chunkType = fread(obj.fileID, 1, 'uchar');
+            if chunkType ~= obj.KEYFRAME_CHUNK
+                error('Expected chunktype = %d at start of keyframe.');
+            end
+            
+            % keyframe type 1 byte length followed by that number of bytes
+            typeLength = fread(obj.fileID, 1, 'uchar');
+            obj.keyFrames(keyFrameIndex).type = fread(obj.fileID, [1, typeLength], '*char');
+            
+            % data type
+            dtypechar = fread(obj.fileID, 1, '*char');
+            matlabclass = dtypechar2matlabclass(dtypechar);
+
+            % images are sideways: swap width and height
+            % width, height
+            sz = double(fread(obj.fileID, 2, 'ushort'));
+            height = sz(1);
+            width = sz(2);
+
+            % timestamp
+            timeStamp = fread(obj.fileID, 1, 'double');
+
+            % actual frame data
+            % TODO: handle colorspaces other than RGB8 and MONO8
+            frameImage = fread(obj.fileID, width * height * obj.bytesPerPixel, ['*', matlabclass]);
+            frameImage = reshape(frameImage, [obj.colorsPerPixel, height, width]);
+            
+            obj.keyFrames(keyFrameIndex).frameImage = frameImage;
+        end
+        
+        
         function [frameImage, timeStamp] = readFrame(obj, frameIndex)
-            frameImage = [];
-            timeStamp = -inf;
+            frame = obj.frames(frameIndex);
+            
+            fseek(obj.fileID, frame.fileLoc, 'bof');
+            
+            % read in the chunk type: 1 byte
+            chunkType = fread(obj.fileID, 1,'uchar');
+            if chunkType ~= obj.FRAME_CHUNK
+                error('Expected chunktype = %d at start of frame, got %d', FRAME_CHUNK, chunkType);
+            end
+            % read in timestamp: 8 bytes
+            timeStamp = fread(obj.fileID, 1,'double');
+            if obj.version == 4
+                % number of points: 4
+                boxCount = fread(obj.fileID, 1,'uint32');
+            else
+                % number of points: 2
+                boxCount = fread(obj.fileID, 1,'ushort');
+            end
+            %fprintf('nforeground boxes = %d\n',npts);
+            
+            % Get the pixel content of the boxes.
+            % TODO: handle colorspaces other than MONO8 and RGB8
+            if obj.boxesAreFixedSize
+                % TODO: untested block
+                
+                boxes = fread(obj.fileID, boxCount*2,'uint16');
+                boxes = reshape(boxes,[boxCount,2]);
+                % read sideways
+                boxes = boxes(:,[2,1]);
+                data = fread(obj.fileID, boxCount* obj.boxMaxSize(2) * obj.boxMaxSize(1) * obj.bytesPerPixel,['*', obj.pixelDataClass]);
+                data = reshape(data,[obj.colorsPerPixel, boxCount, obj.boxMaxSize(1), obj.boxMaxSize(2)]);
+            else
+                boxes = zeros(boxCount, 4);
+                data = cell(1, boxCount);
+                
+                % TODO: why read just the very last frame differently?
+                if frameIndex == obj.frameCount
+                    for i = 1:boxCount
+                        boxes(i,:) = fread(obj.fileID, 4,'ushort');
+                        width = boxes(i,4);
+                        height = boxes(i,3);
+                        data{i} = fread(obj.fileID, width * height * obj.bytesPerPixel, ['*', obj.pixelDataClass]);
+                        data{i} = reshape(data{i}, [obj.colorsPerPixel, height, width]);
+                    end
+                else
+                    byteCount = (obj.frames(frameIndex + 1).fileLoc - frame.fileLoc + 1) * obj.bytesPerPixel;
+                    allBoxData = fread(obj.fileID, byteCount, ['*', obj.pixelDataClass]);
+                    dataIndex = 1;
+                    for i = 1:boxCount
+                        tmp = double(allBoxData(dataIndex:(dataIndex+7)));
+                        boxes(i,:) = tmp(1:2:7) + 256 * tmp(2:2:8);
+                        width = boxes(i, 4);
+                        height = boxes(i, 3);
+                        byteCount = width * height * obj.bytesPerPixel;
+                        data{i} = allBoxData((dataIndex+8):(dataIndex + 7 + byteCount));
+                        dataIndex = dataIndex + 8 + byteCount;
+                        data{i} = reshape(data{i}, [obj.colorsPerPixel, height, width]);
+                    end
+                end
+                % images are read sideways
+                boxes = boxes(:,[2,1,4,3]);
+            end
+            % matlab indexing
+            boxes(:,1:2) = boxes(:,1:2)+1;
+            
+            % Start with the most recent key frame.
+            frameImage = obj.keyFrames(frame.meanIndex).frameImage;
+            if isempty(frameImage)
+                frameImage = obj.readKeyFrame(frame.meanIndex);
+            end
+            if ~strcmp(obj.keyFrames(frame.meanIndex).type, obj.MEAN_KEYFRAME_TYPE)
+                error('UFMF:TypeError', 'Expected keyframe type = ''%s'' at start of mean keyframe', obj.MEAN_KEYFRAME_TYPE);
+            end
+            
+            % Now fill in the boxes of pixels from the frame itself.
+            if obj.boxesAreFixedSize
+                % TODO: untested block
+                
+                % sparse image
+                if obj.boxMaxSize(1) == 1 && obj.boxMaxSize(2) == 1
+                    tmp = false(header.nr,header.nc);
+                    tmp(sub2ind(size(tmp),boxes(:,2),boxes(:,1))) = true;
+                    frameImage(:,tmp) = data;
+                else
+                    for i = 1:boxCount
+                        frameImage(:,boxes(i,2):boxes(i,2)+max_height-1,boxes(i,1):boxes(i,1)+max_width-1) = data(:,i,:,:);
+                    end
+                end
+            else
+                for i = 1:boxCount
+                    frameImage(:, boxes(i,2):boxes(i,2)+boxes(i,4)-1, boxes(i,1):boxes(i,1)+boxes(i,3) - 1) = data{i};
+                end
+            end
+
+            frameImage = permute(frameImage,[3,2,1]);
         end
         
     end
@@ -167,30 +513,27 @@ classdef UFMF < handle
         
         
         function updateBGModel(obj, frameImage, frameIndex, timeStamp)
-            % check if an update is needed
-            if  frameIndex < obj.bgInitialMeans || timeStamp - obj.bgModel.lastupdatetime >= obj.bgUpdateSecs
-                % set time of this update
-                obj.bgModel.lastupdatetime = timeStamp;
+            % set time of this update
+            obj.bgModel.lastupdatetime = timeStamp;
 
-                % update nframes
-                n = min(obj.bgModel.nframes + 1, obj.numMeans);
-                obj.bgModel.nframes = n;
-                
-                % update the mean image
-                % TODO: investigate whether we should be storing the mean image as a double cuz
-                % matlab's image arithmetic functions suck. 
-                if isempty(obj.bgModel.meanImage)
-                    %[rows, columns, colors] = size(frameImage);
-                    obj.bgModel.meanImage = uint8(frameImage); %zeros([rows, columns, colors], 'uint8');
-                else
-                    obj.bgModel.meanImage = imlincomb((n-1)/n, obj.bgModel.meanImage, ...
-                                                          1/n, frameImage);
-                end
-                obj.writeKeyFrame(timeStamp);
-                
-                if obj.printStats && frameIndex >= obj.bgInitialMeans
-                    fprintf('BG update %d at %s\n', obj.bgModel.nframes, num2str(timeStamp));
-                end
+            % update nframes
+            n = min(obj.bgModel.nframes + 1, obj.numMeans);
+            obj.bgModel.nframes = n;
+
+            % update the mean image
+            % TODO: investigate whether we should be storing the mean image as a double cuz
+            % matlab's image arithmetic functions suck. 
+            if isempty(obj.bgModel.meanImage)
+                %[rows, columns, colors] = size(frameImage);
+                obj.bgModel.meanImage = uint8(frameImage); %zeros([rows, columns, colors], 'uint8');
+            else
+                obj.bgModel.meanImage = imlincomb((n-1)/n, obj.bgModel.meanImage, ...
+                                                      1/n, frameImage);
+            end
+            obj.writeKeyFrame(timeStamp);
+
+            if obj.printStats && frameIndex >= obj.bgInitialMeans
+                fprintf('UFMF: BG update %d at %s\n', obj.bgModel.nframes, num2str(timeStamp));
             end
         end
         
@@ -209,17 +552,24 @@ classdef UFMF < handle
             diffImage = diffImage >= obj.bgThreshold;       
             
             if obj.useBoxes
-                % Try to reduce the number of connected components.
-                %diffim = imdilate(diffim, strel('square', 2));
-                %diffim = imfill(diffim, 'holes');
-                if obj.smallestCompPix > 1
-                    % Remove isolated pixels.
-                    diffImage = bwareaopen(diffImage, obj.smallestCompPix);
+                if obj.minimizeBoxes
+                    % Try to reduce the number of connected components.
+                    diffImage = imdilate(diffImage, strel('square', 2));
+                    diffImage = imfill(diffImage, 'holes');
+                    if obj.smallestBoxSize > 1
+                        % Remove isolated pixels.
+                        diffImage = bwareaopen(diffImage, obj.smallestBoxSize);
+                    end
                 end
                 
                 % subplot(1,2,1);image(frameImage);axis image;subplot(1,2,2);imagesc(diffImage);axis image;
+                
                 boundingBoxes = regionprops(bwconncomp(diffImage),'boundingbox');
                 boundingBoxes = cat(1, boundingBoxes.BoundingBox);
+                    
+                if obj.minimizeBoxes
+                    % TODO: Use an R-Tree (http://en.wikipedia.org/wiki/R-tree) to combine nearby boxes.
+                end
             else
                 [y, x] = find(diffImage);
                 boundingBoxes = [x, y] - .5;
@@ -229,18 +579,18 @@ classdef UFMF < handle
         
         
         function writeHeader(obj, frameImage)
-            if size(frameImage, 3) == 3,
-              coding = 'RGB8';
+            if size(frameImage, 3) == 3
+                coding = 'RGB8';
             else
-              coding = 'MONO8';
+                coding = 'MONO8';
             end
 
             if obj.useBoxes
-              max_width = size(frameImage, 2);
-              max_height = size(frameImage, 1);
+                max_width = size(frameImage, 2);
+                max_height = size(frameImage, 1);
             else
-              max_width = 1;
-              max_height = 1;  
+                max_width = 1;
+                max_height = 1;  
             end
 
             % ufmf: 4
@@ -265,7 +615,6 @@ classdef UFMF < handle
         
         
         function writeKeyFrame(obj, timeStamp)
-            KEYFRAME_CHUNK = 0;
             keyframe_type = 'mean';
 
             % update lastkeyframetime
@@ -278,14 +627,14 @@ classdef UFMF < handle
             obj.frameIndex.keyframe.mean.timestamp(end+1) = timeStamp;
 
             % write the chunk type
-            fwrite(obj.fileID,KEYFRAME_CHUNK,'uchar');
+            fwrite(obj.fileID, obj.KEYFRAME_CHUNK, 'uchar');
             % write the keyframe type
-            fwrite(obj.fileID,length(keyframe_type),'uchar');
-            fwrite(obj.fileID,keyframe_type,'char');
+            fwrite(obj.fileID, length(keyframe_type), 'uchar');
+            fwrite(obj.fileID, keyframe_type, 'char');
 
             % write the data type (based on format characters from http://docs.python.org/2/library/struct.html)
             dtype = matlabclass2dtypechar(class(obj.bgModel.meanImage));
-            fwrite(obj.fileID,dtype,'char');
+            fwrite(obj.fileID, dtype, 'char');
 
             % images are sideways: swap width and height
             % width, height
@@ -299,22 +648,10 @@ classdef UFMF < handle
         end
         
         
-        function writeFrame(obj, frameImage, timeStamp)
-%             % if the background has been updated since the last time a background keyframe was written to file
-%             if obj.bgModel.lastupdatetime > obj.bgModel.lastkeyframetime
-%               % if the time since the last background keyframe time was at least KeyframePeriod
-%               dt = timeStamp - obj.bgModel.lastkeyframetime;
-%               if dt >= obj.keyFrameSecs
-%                 % then write the current background model
-%                 obj.writeKeyFrame(timeStamp);
-%               end
-%             end
-            
+        function writeFrame(obj, frameImage, frameIndex, timeStamp)
             [boundingBoxes, diffImage] = subtractBackground(obj, frameImage);
             ncc = size(boundingBoxes, 1);
             
-            FRAME_CHUNK = 1;
-
             % get location of this frame
             loc = ftell(obj.fileID);
             % store in index
@@ -323,7 +660,7 @@ classdef UFMF < handle
             obj.frameIndex.frame.timestamp(end+1) = timeStamp;
 
             % write chunk type: 1
-            fwrite(obj.fileID, FRAME_CHUNK, 'uchar');
+            fwrite(obj.fileID, obj.FRAME_CHUNK, 'uchar');
             % write timestamp: 8
             fwrite(obj.fileID, timeStamp, 'double');
             % write number of points: 4
@@ -351,18 +688,10 @@ classdef UFMF < handle
                 tmp = permute(frameImage,[3,2,1]);
                 % index by color, then column, then row
                 fwrite(obj.fileID, tmp(:,diffImage), dtype);
-%                 for color = 1:size(im,3),
-%                     tmp = im(:,:,color);
-%                     fwrite(fid,tmp(diffImage),dtype);
-%                 end
             end
             
-% TODO: ?
-%             if nargout > 1
-%                 stats.bytes = ftell(obj.fileID) - loc - (1 + 8 + 4);
-%                 stats.components = ncc;
-%                 %fprintf('Frame size: %g KB, %d comps\n', stats.bytes / 1024, stats.components);
-%             end
+            obj.frameStats(frameIndex).bytes = ftell(obj.fileID) - loc - (1 + 8 + 4);
+            obj.frameStats(frameIndex).components = ncc;
         end
         
         
@@ -371,10 +700,9 @@ classdef UFMF < handle
             % We write the index at the end of the file using subfunction write_dict.
             % We store the location of the index in the file at the location stored in
             % obj.frameIndex.locLoc. 
-            INDEX_DICT_CHUNK = 2;
 
             % start of index chunk
-            fwrite(obj.fileID, INDEX_DICT_CHUNK, 'uchar');
+            fwrite(obj.fileID, obj.INDEX_DICT_CHUNK, 'uchar');
             obj.frameIndex.loc = ftell(obj.fileID);
             
             % write index
@@ -393,7 +721,7 @@ classdef UFMF < handle
             % write the number of fields
             fwrite(obj.fileID, length(keys), 'uchar');
 
-            for j = 1:length(keys),
+            for j = 1:length(keys)
                 key = keys{j};
                 value = dict.(key);
                 % write length of key name
@@ -401,7 +729,7 @@ classdef UFMF < handle
                 % write the key
                 fwrite(obj.fileID, key);
                 % if this is a struct, call recursively
-                if isstruct(value),
+                if isstruct(value)
                     obj.writeDict(value);
                 else
                     % write a for array followed by the single char abbr of the class

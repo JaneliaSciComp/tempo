@@ -16,26 +16,33 @@ function UFMFConverter(varargin)
 	ufmf.bgInitialMeans = inputs.bgInitialMeans;
 	ufmf.bgThreshold = inputs.bgThreshold;
 	ufmf.useBoxes = inputs.useBoxes;
-	ufmf.smallestCompPix = inputs.smallestCompPix;
+	ufmf.smallestBoxSize = inputs.smallestBoxSize;
     
-    % Set up any image dilation called for.
+    ufmf.printStats = true;
+    
+    % Set up for any image dilation.
     if isempty(inputs.dilation)
         dilationSE = [];
     else
         dilationSE = strel(inputs.dilation, inputs.dilationRadius);
     end
     
-    frameBytes = [];
-    frameComps = [];
+    % Start gathering stats.
+    startTime = now;
+    totalFrames = 0;
+    inputBytes = 0;
+    
     lastStatusTime = now;
     
     % Loop through each of the input video files and append them together.
     % TODO: will they be in the correct order if chosen from the UI?
     for fileIndex = 1:length(inputs.inputFiles)
-        [~, fileName, fileExt] = fileparts(inputs.inputFiles{fileIndex});
+        inputFile = inputs.inputFiles{fileIndex};
+        
+        [~, fileName, fileExt] = fileparts(inputFile);
         fprintf('Converting %s%s to UFMF...\n', fileName, fileExt);
         
-        vr = VideoReader(inputs.inputFiles{fileIndex}); %#ok<TNMLP>
+        vr = VideoReader(inputFile); %#ok<TNMLP>
         
         if fileIndex == 1
             % Do one-time set up for the first video encountered.
@@ -87,15 +94,18 @@ function UFMFConverter(varargin)
             % Add it.
             ufmf.addFrame(imROI);
             
-%             frameBytes(end + 1) = frameStats.bytes; %#ok<AGROW>
-%             frameComps(end + 1) = frameStats.components;  %#ok<AGROW>
-            
-            if now - lastStatusTime > 10 / (24 * 60 * 60)
+            % Show progress every 15 seconds.
+            if now - lastStatusTime > 15 / (24 * 60 * 60)
                 percentComplete = frameIndex / vr.NumberOfFrames * 100.0;
                 fprintf('    %g%% ...\n', percentComplete);
                 lastStatusTime = now;
             end
         end
+        
+        % Gather stats.
+        totalFrames = totalFrames + vr.NumberOfFrames;
+        fileInfo = dir(inputFile);
+        inputBytes = inputBytes + fileInfo.bytes;
         
         delete(vr);
         clear vr;
@@ -104,7 +114,13 @@ function UFMFConverter(varargin)
     % Close up the UFMF now that all movies have been converted.
     ufmf.close();
     
-    fprintf('Mean frame size: %g KB, %d comps\n', mean(frameBytes) / 1024, uint16(mean(frameComps)));
+    elapsedTime = (now - startTime) * (24 * 60 * 60);
+    fileInfo = dir(inputs.outputFile);
+    outputBytes = fileInfo.bytes;
+    fprintf('UFMF conversion complete.\n');
+    fprintf('   Elapsed time: %.1f secs\n', elapsedTime);
+    fprintf('   FPS: %.1f\n', totalFrames / elapsedTime);
+    fprintf('   Compression: %.1f %% (%.1f MB -> %.1f MB) \n', inputBytes / outputBytes * 100.0, inputBytes / 1024 / 1204, outputBytes / 1024 / 1024);
     
     % Base: 61.7 KB, 244 comps
     
@@ -113,6 +129,17 @@ function UFMFConverter(varargin)
     
     % Pre-dilate square 1: 61.7 KB, 344 comps
     % Pre-dilate square 3: 57.0 KB, 174 comps
+    
+    % File MB    KB/frame    # Comps    Pre-dilate    Dilate    Close    Open
+    %  157.4      147.5        1503         
+    %  149.9      140.1         850        sq2
+    %  140.3      137.5         717        sq3
+    %  171.5      169.5        1185                    sq2        Y
+    %  158.4      156.0         713        sq2         sq2        Y
+    %  156.4      154.0         603        sq3         sq2        Y
+    %  155.7      153.3         353                    sq2        Y        5
+    %  151.8      149.2         366        sq2         sq2        Y        5
+    %  151.0      148.4         317        sq3         sq2        Y        5
 end
 
 
@@ -136,7 +163,7 @@ function inputs = readInputs(varargin)
     parser.addParamValue('bgInitialMeans', 0, @(x) isnumeric(x));       % Always compute the background for this many initial frames.
     parser.addParamValue('bgThreshold', 10, @(x) isnumeric(x));         % The pixel difference between BG and FG.
     parser.addParamValue('useBoxes', true, @(x) islogical(x));          % Whether to use box-based compression.
-    parser.addParamValue('smallestCompPix', 1, @(x) isnumeric(x));      % The smallest number of pixels in connected components.
+    parser.addParamValue('smallestBoxSize', 1, @(x) isnumeric(x));      % The smallest number of pixels in connected components.
     
     % Image processing options
     parser.addParamValue('quadrant', '', @(x) ischar(x) && ismember(x, {'UL', 'UR', 'LL', 'LR'}));
