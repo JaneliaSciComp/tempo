@@ -18,7 +18,9 @@ classdef VideoRecording < Recording
                     canLoad = true;
                 end
             catch ME
-                disp(getReport(ME));
+                if ~strcmp(ME.identifier, 'MATLAB:audiovideo:VideoReader:InitializationFailed')
+                    disp(getReport(ME));
+                end
             end
         end
     end
@@ -41,12 +43,8 @@ classdef VideoRecording < Recording
         function d = frameAtTime(obj, time)
             frameNum = min([floor((time + obj.timeOffset) * obj.sampleRate + 1) obj.sampleCount]);
             d = read(obj.videoReader, frameNum);
-            
-            if ndims(d) == 2 %#ok<ISMAT>
-                % Convert monochrome to grayscale.
-                d=repmat(d,[1 1 3]);
-            end
         end
+        
         
         function ret_val = saveData(obj)
             ret_val = [tempname 'v.mp4'];

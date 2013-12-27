@@ -18,11 +18,20 @@ classdef VideoPanel < AnalysisPanel
             
             %frameNum = min([floor(obj.controller.currentTime * obj.video.sampleRate + 1) obj.video.videoReader.NumberOfFrames]);
             %obj.currentFrame = read(obj.video.videoReader, frameNum);
-            obj.currentFrame = obj.video.frameAtTime(obj.controller.currentTime);
+            obj.currentFrame = obj.frameAtTime(obj.controller.currentTime);
             obj.currentTime = obj.controller.currentTime;
             
             set(obj.panel, 'BackgroundColor', 'black');
-		end
+        end
+        
+        
+        function frame = frameAtTime(obj, frameTime)
+            frame = obj.video.frameAtTime(frameTime);
+            if ismatrix(frame)
+                % Convert monochrome to grayscale.
+                frame = repmat(frame, [1 1 3]);
+            end
+        end
         
         
         function createControls(obj, ~)
@@ -47,9 +56,15 @@ classdef VideoPanel < AnalysisPanel
             end
             
             if obj.controller.currentTime ~= obj.currentTime
-                obj.currentFrame = obj.video.frameAtTime(obj.controller.currentTime);
+                obj.currentFrame = obj.frameAtTime(obj.controller.currentTime);
                 set(obj.imageHandle, 'CData', obj.currentFrame);
+                
+                % Force a redraw of the frame and allow non-timer events to be processed so we don't lock up MATLAB.
+                drawnow
+                
                 obj.currentTime = obj.controller.currentTime;
+                
+                obj.controller.frameCount = obj.controller.frameCount + 1;
             end
         end
         

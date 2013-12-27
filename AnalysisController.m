@@ -58,6 +58,8 @@ classdef AnalysisController < handle
         
         needsSave = false
         savePath
+        
+        frameCount
     end
     
     
@@ -89,7 +91,6 @@ classdef AnalysisController < handle
                 'KeyReleaseFcn', @(source, event)handleKeyRelease(obj, source, event), ...
                 'CloseRequestFcn', @(source, event)handleClose(obj, source, event), ...
                 'WindowButtonDownFcn', @(source, event)handleMouseButtonDown(obj, source, event), ...
-                'WindowButtonMotionFcn', @()handleMouseMotion(obj), ...
                 'WindowButtonUpFcn', @(source, event)handleMouseButtonUp(obj, source, event)); %#ok<CPROP>
             
             if isdeployed && exist(fullfile(ctfroot, 'Detectors'), 'dir')
@@ -116,6 +117,7 @@ classdef AnalysisController < handle
             % Insert a splitter at the top level to separate the video and timeline panels.
             % TODO: Allow the splitter to split the screen vertically with the video panels on top.
             %       This will require removing and re-adding the uisplitpane since that property cannot be modified.
+            set(obj.figure, 'WindowButtonMotionFcn', @()handleMouseMotion(obj));
             figurePos = get(obj.figure, 'Position');
             obj.splitterPanel = uipanel(obj.figure, ...
                 'BorderType', 'none', ...
@@ -368,6 +370,21 @@ classdef AnalysisController < handle
         end
         
         
+        function showVideoPanels(obj, doShow)
+            if nargin < 2
+                doShow = true;
+            end
+            isShowing = (get(obj.splitter, 'DividerLocation') > 0.01);
+            if isShowing ~= doShow
+                try
+                    obj.splitter.JavaComponent.getComponent(0).doClick();
+                catch
+                    % oh well?
+                end
+            end
+        end
+        
+        
         function vp = visibleTimelinePanels(obj)
             vp = {};
             
@@ -432,6 +449,21 @@ classdef AnalysisController < handle
         end
         
         
+        function showTimelinePanels(obj, doShow)
+            if nargin < 2
+                doShow = true;
+            end
+            isShowing = (get(obj.splitter, 'DividerLocation') < 0.99);
+            if isShowing ~= doShow
+                try
+                    obj.splitter.JavaComponent.getComponent(1).doClick();
+                catch
+                    % oh well?
+                end
+            end
+        end
+        
+        
         function handlePlayMedia(obj, ~, ~)
             set(obj.playMediaTool, 'Enable', 'off');
             set(obj.pauseMediaTool, 'Enable', 'on');
@@ -472,6 +504,7 @@ classdef AnalysisController < handle
                 end
             end
             
+            obj.frameCount = 0;
             obj.mediaTimeSync = [idealRange now];
             start(obj.mediaTimer);
         end
@@ -507,7 +540,10 @@ classdef AnalysisController < handle
                 stop(obj.mediaTimer);
 
                 obj.isPlayingMedia = false;
-
+                
+                elapsedTime = (now - obj.mediaTimeSync(end)) * (24*60*60);
+                fprintf('FPS: %g (%d/%g)\n', obj.frameCount / elapsedTime, obj.frameCount, elapsedTime);
+                
                 if isempty(hObject)
                     % The media played to the end without the user clicking the pause button.
                     if obj.selectedRange(1) ~= obj.selectedRange(2)
@@ -677,6 +713,8 @@ classdef AnalysisController < handle
                             obj.timelinePanels{end + 1} = FeaturesPanel(detector);
 
                             obj.arrangeTimelinePanels();
+                            
+                            obj.showTimelinePanels(true);
                             
                             obj.needsSave = true;
                         end
@@ -1076,7 +1114,7 @@ classdef AnalysisController < handle
         
         
         function handleOpenFile(obj, ~, ~)
-            [fileNames, pathName] = uigetfile2('Select an audio or video file to analyze');
+            [fileNames, pathName] = uigetfile('*.*', 'Select an audio or video file to open', 'MultiSelect', 'on');
             
             if ischar(fileNames)
                 fileNames = {fileNames};
@@ -1084,6 +1122,7 @@ classdef AnalysisController < handle
                 fileNames = {};
             end
             
+            nothingWasOpen = isempty(obj.recordings);
             somethingOpened = false;
 
             for i = 1:length(fileNames)
@@ -1109,6 +1148,7 @@ classdef AnalysisController < handle
                         target = AnalysisController();
                     end
                     target.openWorkspace(fullPath);
+                    somethingOpened = true;
                     continue
                 end
                 
@@ -1208,7 +1248,19 @@ classdef AnalysisController < handle
             if somethingOpened
                 obj.updateOverallDuration();
                 
+                if nothingWasOpen
+                    if isempty(obj.videoPanels)
+                        % Hide the video half of the splitter.
+                        obj.showVideoPanels(false);
+                    elseif isempty(obj.timelinePanels)
+                        % Hide the video half of the splitter.
+                        obj.showTimelinePanels(false);
+                    end
+                end
+                
                 obj.needsSave = true;
+            elseif ~isempty(fileNames)
+                warndlg('Tempo does not know how to open that kind of file.');
             end
         end
         
@@ -1412,18 +1464,12 @@ classdef AnalysisController < handle
             if isfield(s, 'mainSplitter')
                 % TODO: set vertical orientation once supported
                 if s.mainSplitter.location < 0.01
-                    try
-                        obj.splitter.JavaComponent.getComponent(0).doClick();
-                    catch
-                        % oh well
-                    end
+                    obj.showVideoPanels(false);
                 elseif s.mainSplitter.location > 0.99
-                    try
-                        obj.splitter.JavaComponent.getComponent(1).doClick();
-                    catch
-                        % oh well
-                    end
+                    obj.showTimelinePanels(false);
                 else
+                    obj.showVideoPanels(true);
+                    obj.showTimelinePanels(true);
                     set(obj.splitter, 'DividerLocation', s.mainSplitter.location);
                 end
             end

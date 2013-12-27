@@ -13,7 +13,7 @@ classdef SternRecording < AudioRecording
                 fid = fopen(filePath, 'r');
                 try
                     version = fread(fid, 1, 'double');
-                    canLoad = (version == 1);
+                    canLoad = ((version >= 1) && (version <= 3));
                     fclose(fid);
                 catch ME
                     % Make sure the file gets closed.
@@ -68,11 +68,26 @@ classdef SternRecording < AudioRecording
         function loadData(obj)
             fid = fopen(obj.filePath, 'r');
             try
-                fread(fid, 1, 'double');    % skip over version #
+                version=fread(fid, 1, 'double');
                 obj.sampleRate = fread(fid, 1, 'double');
                 nchan = fread(fid, 1, 'double');
-                fread(fid, obj.channel-1, 'double');  % skip over first channels
-                [obj.data, obj.sampleCount] = fread(fid, inf, 'double', 8*(nchan-1));
+                switch version
+                    case 1
+                        fread(fid, obj.channel-1, 'double');  % skip over first channels
+                        [obj.data, obj.sampleCount] = fread(fid, inf, 'double', 8*(nchan-1));
+                    case 2
+                        fread(fid, obj.channel-1, 'single');  % skip over first channels
+                        [obj.data, obj.sampleCount] = fread(fid, inf, 'single', 4*(nchan-1));
+                    case 3
+                        tmp=fread(fid,[2 nchan],'double');
+                        step=tmp(1,nchan);
+                        offset=tmp(2,nchan);
+                        fread(fid, obj.channel-1, 'int16');  % skip over first channels
+                        [obj.data, obj.sampleCount]=fread(fid,inf,'int16', 2*(nchan-1));
+%                         y=bsxfun(@times,y',step);
+%                         y=bsxfun(@plus,y,offset);
+                        obj.data = obj.data*step+offset;
+                end
                 obj.name = sprintf('%s (channel %d)', obj.name, obj.channel);
                 fclose(fid);
             catch ME
