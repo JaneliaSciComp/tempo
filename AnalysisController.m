@@ -370,11 +370,17 @@ classdef AnalysisController < handle
         end
         
         
-        function toggleVideoPanels(obj)
-            try
-                obj.splitter.JavaComponent.getComponent(0).doClick();
-            catch
-                % oh well?
+        function showVideoPanels(obj, doShow)
+            if nargin < 2
+                doShow = true;
+            end
+            isShowing = (get(obj.splitter, 'DividerLocation') > 0.01);
+            if isShowing ~= doShow
+                try
+                    obj.splitter.JavaComponent.getComponent(0).doClick();
+                catch
+                    % oh well?
+                end
             end
         end
         
@@ -443,11 +449,17 @@ classdef AnalysisController < handle
         end
         
         
-        function toggleTimelinePanels(obj)
-            try
-                obj.splitter.JavaComponent.getComponent(1).doClick();
-            catch
-                % oh well?
+        function showTimelinePanels(obj, doShow)
+            if nargin < 2
+                doShow = true;
+            end
+            isShowing = (get(obj.splitter, 'DividerLocation') < 0.99);
+            if isShowing ~= doShow
+                try
+                    obj.splitter.JavaComponent.getComponent(1).doClick();
+                catch
+                    % oh well?
+                end
             end
         end
         
@@ -701,6 +713,8 @@ classdef AnalysisController < handle
                             obj.timelinePanels{end + 1} = FeaturesPanel(detector);
 
                             obj.arrangeTimelinePanels();
+                            
+                            obj.showTimelinePanels(true);
                             
                             obj.needsSave = true;
                         end
@@ -1134,6 +1148,7 @@ classdef AnalysisController < handle
                         target = AnalysisController();
                     end
                     target.openWorkspace(fullPath);
+                    somethingOpened = true;
                     continue
                 end
                 
@@ -1236,10 +1251,10 @@ classdef AnalysisController < handle
                 if nothingWasOpen
                     if isempty(obj.videoPanels)
                         % Hide the video half of the splitter.
-                        obj.toggleVideoPanels();
+                        obj.showVideoPanels(false);
                     elseif isempty(obj.timelinePanels)
                         % Hide the video half of the splitter.
-                        obj.toggleTimelinePanels();
+                        obj.showTimelinePanels(false);
                     end
                 end
                 
@@ -1449,10 +1464,12 @@ classdef AnalysisController < handle
             if isfield(s, 'mainSplitter')
                 % TODO: set vertical orientation once supported
                 if s.mainSplitter.location < 0.01
-                    obj.toggleVideoPanels();
+                    obj.showVideoPanels(false);
                 elseif s.mainSplitter.location > 0.99
-                    obj.toggleTimelinePanels();
+                    obj.showTimelinePanels(false);
                 else
+                    obj.showVideoPanels(true);
+                    obj.showTimelinePanels(true);
                     set(obj.splitter, 'DividerLocation', s.mainSplitter.location);
                 end
             end
