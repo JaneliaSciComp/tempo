@@ -581,7 +581,36 @@ classdef UFMF < handle
                 boundingBoxes = cat(1, boundingBoxes.BoundingBox);
                     
                 if obj.minimizeBoxes
-                    % TODO: Use an R-Tree (http://en.wikipedia.org/wiki/R-tree) to combine nearby boxes.
+                    % TODO: Use an R-Tree (http://en.wikipedia.org/wiki/R-tree) to deal with
+                    %       overlapping and/or nearby boxes.
+                    
+                    % Remove any boxes that are inside others.
+                    boxSizes = boundingBoxes(:,3) .* boundingBoxes(:,4);
+                    [~, sortInd] = sort(boxSizes);
+                    boundingBoxes = boundingBoxes(sortInd, :);
+                    boxCount = size(boundingBoxes, 1);
+                    littleBoxInd = 1;
+                    while littleBoxInd < boxCount
+                        bigBoxInd = littleBoxInd + 1;
+                        while bigBoxInd <= boxCount
+                            littleBox = boundingBoxes(littleBoxInd, :);
+                            bigBox = boundingBoxes(bigBoxInd, :);
+                            
+                            % If the little box is entirely inside the big one then we don't need it.
+                            if littleBox(1) >= bigBox(1) && ...
+                               littleBox(1) + littleBox(3) <= bigBox(1) + bigBox(3) && ...
+                               littleBox(2) >= bigBox(2) && ...
+                               littleBox(2) + littleBox(4) <= bigBox(2) + bigBox(4)
+                                boundingBoxes(littleBoxInd, :) = [];
+                                boxCount = boxCount - 1;
+                                littleBoxInd = littleBoxInd - 1;
+                                break
+                            end
+                            
+                            bigBoxInd = bigBoxInd + 1;
+                        end
+                        littleBoxInd = littleBoxInd + 1;
+                    end
                 end
             else
                 [y, x] = find(diffImage);
