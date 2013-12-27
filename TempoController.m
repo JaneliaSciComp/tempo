@@ -1,4 +1,4 @@
-classdef AnalysisController < handle
+classdef TempoController < handle
     
     properties
         figure
@@ -64,7 +64,7 @@ classdef AnalysisController < handle
     
     
     properties (SetObservable)
-        % The analysis panels will listen for changes to these properties.
+        % The Tempo panels will listen for changes to these properties.
         displayRange = []      % The window in time and frequency which all non-video panels should display (in seconds/Hz, [minTime maxTime minFreq maxFreq]).
         currentTime = 0         % The time point currently being played (in seconds).
         selectedRange = [0 0 -inf inf]    % The range of time and frequency currently selected (in seconds/Hz).  The first two values will be equal if there is a point selection.
@@ -74,7 +74,7 @@ classdef AnalysisController < handle
     
     methods
         
-        function obj = AnalysisController()
+        function obj = TempoController()
             obj.showWaveforms = getpref('Tempo', 'ShowWaveforms', true);
             obj.showSpectrograms = getpref('Tempo', 'ShowSpectrograms', true);
             obj.showFeatures = getpref('Tempo', 'ShowFeatures', true);
@@ -98,11 +98,11 @@ classdef AnalysisController < handle
                 parentDir = ctfroot;
             else
                 % Look for the detectors relative to this .m file.
-                analysisPath = mfilename('fullpath');
-                parentDir = fileparts(analysisPath);
+                tempoPath = mfilename('fullpath');
+                parentDir = fileparts(tempoPath);
             end
             
-            addpath(fullfile(parentDir, 'AnalysisPanels'));
+            addpath(fullfile(parentDir, 'TempoPanels'));
             addpath(fullfile(parentDir, 'Recordings'));
             
             [obj.recordingClassNames, obj.recordingTypeNames] = findPlugIns(fullfile(parentDir, 'Recordings'));
@@ -1145,7 +1145,7 @@ classdef AnalysisController < handle
                         target = obj;
                     else
                         % Open the workspace in a new controller.
-                        target = AnalysisController();
+                        target = TempoController();
                     end
                     target.openWorkspace(fullPath);
                     somethingOpened = true;

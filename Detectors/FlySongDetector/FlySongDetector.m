@@ -188,7 +188,7 @@ classdef FlySongDetector < FeatureDetector
             % TBD: expose this as a user-definable setting?
             max_pulse_pause = 0.200; %max_pulse_pause in seconds, used to winnow apparent sine between pulses        
             if maskedSine.num_events == 0 || isempty(pulses) || numel(pulses.w0) == 0 || ~isfield(pulses, 'w1') || ...
-                (numel(pulses.w0) > 1000 && strcmp(questdlg(['More than 1000 pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Fly Song Analysis', 'No', 'Yes', 'Yes'), 'No'))
+                (numel(pulses.w0) > 1000 && strcmp(questdlg(['More than 1000 pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Tempo', 'No', 'Yes', 'Yes'), 'No'))
                 winnowedSine = maskedSine;
             else
                 winnowedSine = winnow_sine(maskedSine, pulses, maskedSSF, max_pulse_pause, obj.sineFreqMin, obj.sineFreqMax);

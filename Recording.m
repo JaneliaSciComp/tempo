@@ -58,7 +58,7 @@ classdef Recording < handle
         
         
         function addParameters(obj, parser) %#ok<INUSL>
-            addRequired(parser, 'controller', @(x) isa(x, 'AnalysisController'));
+            addRequired(parser, 'controller', @(x) isa(x, 'TempoController'));
             addOptional(parser, 'FilePath', '', @(x) ischar(x) && exist(x, 'file'));
             addParamValue(parser, 'Name', '', @(x) ischar(x));
             addParamValue(parser, 'SampleRate', [], @(x) isnumeric(x) && isscalar(x));

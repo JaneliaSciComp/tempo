@@ -1,4 +1,4 @@
-classdef VideoPanel < AnalysisPanel
+classdef VideoPanel < TempoPanel
 
 	properties
         video
@@ -12,7 +12,7 @@ classdef VideoPanel < AnalysisPanel
 	methods
 	
 		function obj = VideoPanel(controller, recording)
-			obj = obj@AnalysisPanel(controller);
+			obj = obj@TempoPanel(controller);
             
             obj.video = recording;
             
@@ -98,7 +98,7 @@ classdef VideoPanel < AnalysisPanel
                 
                 handled = true;
             else
-                handled = keyWasPressed@AnalysisPanel(obj, keyEvent);
+                handled = keyWasPressed@TempoPanel(obj, keyEvent);
             end
         end
         
