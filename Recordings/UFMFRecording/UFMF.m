@@ -20,6 +20,7 @@ classdef UFMF < handle
         frameCount = 0
         
         printStats = false
+        drawBoxes = false
     end
     
     properties (Access=private)
@@ -484,7 +485,19 @@ classdef UFMF < handle
                 end
             else
                 for i = 1:boxCount
-                    frameImage(:, boxes(i,2):boxes(i,2)+boxes(i,4)-1, boxes(i,1):boxes(i,1)+boxes(i,3) - 1) = data{i};
+                    box = boxes(i, :);
+                    frameImage(:, box(2):box(2)+box(4)-1, box(1):box(1)+box(3) - 1) = data{i};
+                end
+                if obj.drawBoxes
+                    % Outline each box in red.
+                    boxColor = [255; 0; 0];
+                    for i = 1:boxCount
+                        box = boxes(i, :);
+                        frameImage(:, box(2):box(2)+box(4)-1, box(1)) = repmat(boxColor, [1 box(4)]);
+                        frameImage(:, box(2):box(2)+box(4)-1, box(1)+box(3)-1) = repmat(boxColor, [1 box(4)]);
+                        frameImage(:, box(2)+box(4)-1, box(1):box(1)+box(3)-1) = repmat(boxColor, [1 box(3)]);
+                        frameImage(:, box(2),          box(1):box(1)+box(3)-1) = repmat(boxColor, [1 box(3)]);
+                    end
                 end
             end
 
