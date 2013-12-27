@@ -104,14 +104,16 @@ classdef TempoController < handle
             
             addpath(fullfile(parentDir, 'TempoPanels'));
             addpath(fullfile(parentDir, 'Recordings'));
+            addpath(fullfile(parentDir, 'Utility'));
             
             [obj.recordingClassNames, obj.recordingTypeNames] = findPlugIns(fullfile(parentDir, 'Recordings'));
             [obj.detectorClassNames, obj.detectorTypeNames] = findPlugIns(fullfile(parentDir, 'Detectors'));
             [obj.importerClassNames, obj.importerTypeNames] = findPlugIns(fullfile(parentDir, 'Importers'));
             
             % Add the paths to the third-party code.
-            addpath(fullfile(parentDir, 'export_fig'));
+            addpath(fullfile(parentDir, 'ThirdParty', 'export_fig'));
             addpath(fullfile(parentDir, 'ThirdParty', 'dbutils'));
+            addpath(fullfile(parentDir, 'ThirdParty', 'ffmpeg'));
             addpath(fullfile(parentDir, 'ThirdParty', 'uisplitpane'));
             
             % Insert a splitter at the top level to separate the video and timeline panels.
@@ -192,7 +194,7 @@ classdef TempoController < handle
             uipushtool(obj.toolbar, ...
                 'Tag', 'exportSelection', ...
                 'CData', iconData, ...
-                'TooltipString', 'Export the seleted time window to a movie',...
+                'TooltipString', 'Export the selected time window to a movie',...
                 'ClickedCallback', @(hObject, eventdata)handleExportSelection(obj, hObject, eventdata));
             
             iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'tool_zoom_in.png'), 'BackgroundColor', defaultBackground)) / 65535;
@@ -1347,32 +1349,32 @@ classdef TempoController < handle
             end
             [fileName, filePath] = uiputfile('*.mp4', 'Export Selection', fullfile(filePath, fileName));
             if ~eq(fileName, 0)
-                savePath = fullfile(filePath, fileName);
+                exportPath = fullfile(filePath, fileName);
                 [~, fileName, ~] = fileparts(fileName); % strip off the extension
                 set(obj.figure, 'Name', ['Tempo: ' fileName]);
             end
             
-            if ~isempty(savePath)
+            if ~isempty(exportPath)
                 try
                     h=waitbar(0,'');
                     c=fileparts(mfilename('fullpath'));
                     if ismac
-                      c=fullfile(c,'ffmpeg_mac ');
+                      c=fullfile(c, 'ThirdParty', 'ffmpeg', 'ffmpeg_mac ');
                     elseif ispc
-                      c=fullfile(c,'ffmpeg_win.exe ');
+                      c=fullfile(c, 'ThirdParty', 'ffmpeg', 'ffmpeg_win.exe ');
                     elseif isunix
-                      c=fullfile(c,'ffmpeg_linux ');
+                      c=fullfile(c, 'ThirdParty', 'ffmpeg', 'ffmpeg_linux ');
                     end
                     f=cell(1,length(obj.recordings));
                     for i=1:length(obj.recordings)
                         h=waitbar(i/(length(obj.recordings)+1),h,['Processing ' obj.recordings{i}.name]);
                         set(findall(h,'type','text'),'Interpreter','none');
                         f{i}=obj.recordings{i}.saveData;
-                        c=[c '-i ' f{i} ' '];
+                        c=[c '-i ' f{i} ' ']; %#ok<AGROW>
                     end
-                    c=[c '-acodec copy -vcodec copy ''' savePath ''''];
-                    waitbar(length(obj.recordings)/(length(obj.recordings)+1),h,['Processing '  savePath]);
-                    [s,r]=system(c);
+                    c=[c '-acodec copy -vcodec copy ''' exportPath ''''];
+                    waitbar(length(obj.recordings)/(length(obj.recordings)+1),h,['Processing '  exportPath]);
+                    [s,~]=system(c);
                     if s
                       close(h);
                       ME=MException('problem with system(''ffmpeg'')');
@@ -1383,9 +1385,6 @@ classdef TempoController < handle
                       delete(f{i});
                     end
                     close(h);
-                    
-                    obj.needsSave = false;
-                    saved = true;
                 catch ME
                     waitfor(warndlg(['Could not export the selection. (' ME.message ')'], 'Tempo', 'modal'));
                 end
