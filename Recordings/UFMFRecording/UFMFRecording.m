@@ -26,9 +26,10 @@ classdef UFMFRecording < VideoRecording
         function loadData(obj)
             try
                 obj.ufmfFile = UFMF.openFile(obj.filePath);
+                % DEBUG: obj.ufmfFile.showBoxes = true;
             catch ME
                 disp(['Could not load the UFMF file: ' ME.message]);
-                rethrow ME
+                rethrow(ME);
             end
             
             obj.sampleRate = obj.ufmfFile.frameRate;
