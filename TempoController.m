@@ -1068,7 +1068,8 @@ classdef TempoController < handle
         function handleKeyPress(obj, ~, keyEvent)
             if ~strcmp(keyEvent.Key, 'space')
                 % Let one of the panels handle the event.
-                visiblePanels = horzcat(obj.visibleTimelinePanels(), obj.visibleVideoPanels());
+                % If the video panels are open they get first dibs.
+                visiblePanels = horzcat(obj.visibleVideoPanels(), obj.visibleTimelinePanels());
                 for i = 1:length(visiblePanels)
                     if visiblePanels{i}.keyWasPressed(keyEvent)
                         break

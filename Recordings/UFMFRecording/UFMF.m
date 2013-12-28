@@ -55,6 +55,7 @@ classdef UFMF < handle
         DICT_START_CHAR = 'd'
         ARRAY_START_CHAR = 'a'
         
+        % Data formats from <http://docs.python.org/2/library/struct.html#format-characters>
         dataTypes = struct('typeChar', {'c', 's', 'p', 'b', 'B', 'h', 'H', 'i', 'l', 'I', 'L', 'q', 'Q', 'f', 'd'}, ...
                            'matlabClass', {'char', 'char', 'char', 'int8', 'uint8', 'int16', 'uint16', 'int32', 'int32', 'uint32', 'uint32', 'int64', 'uint64', 'float', 'double'}, ...
                            'bytesPerElement', {1, 1, 1, 1, 1, 2, 2, 4, 4, 4, 4, 8, 8, 4, 8});
@@ -168,7 +169,7 @@ classdef UFMF < handle
         end
         
         
-        function im = getFrameAtTime(obj, frameTime)
+        function [im, frameInd] = getFrameAtTime(obj, frameTime)
             % TODO: this assumes a constant frame rate, would be better to lookup the index from the time stamps but it will be slow...
             frameInd = obj.frameRate * frameTime + 1;
             

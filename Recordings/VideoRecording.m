@@ -40,9 +40,9 @@ classdef VideoRecording < Recording
         end
         
         
-        function d = frameAtTime(obj, time)
+        function [frameImage, frameNum] = frameAtTime(obj, time)
             frameNum = min([floor((time + obj.timeOffset) * obj.sampleRate + 1) obj.sampleCount]);
-            d = read(obj.videoReader, frameNum);
+            frameImage = read(obj.videoReader, frameNum);
         end
         
         

@@ -37,8 +37,8 @@ classdef UFMFRecording < VideoRecording
         end
         
         
-        function d = frameAtTime(obj, time)
-            d = obj.ufmfFile.getFrameAtTime(obj.timeOffset + time);
+        function [frameImage, frameNum] = frameAtTime(obj, time)
+            [frameImage, frameNum] = obj.ufmfFile.getFrameAtTime(obj.timeOffset + time);
         end
         
         
