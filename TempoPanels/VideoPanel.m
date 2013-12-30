@@ -115,20 +115,20 @@ classdef VideoPanel < TempoPanel
             
             if strcmp(keyEvent.Key, 'leftarrow')
                 if cmdDown
-                    timeChange = -obj.controller.currentTime;
+                    timeChange = -obj.controller.currentTime + stepSize / 2.0;
                 elseif isempty(keyEvent.Modifier)
                     timeChange = -stepSize;
                 end
             elseif strcmp(keyEvent.Key, 'rightarrow')
                 if cmdDown
-                    timeChange = obj.controller.duration - obj.controller.currentTime;
+                    timeChange = obj.controller.duration - obj.controller.currentTime - stepSize / 2.0;
                 elseif isempty(keyEvent.Modifier)
                     timeChange = stepSize;
                 end
             end
             
             if timeChange ~= 0
-                newTime = max([0 min([obj.controller.duration obj.controller.currentTime + timeChange])]);
+                newTime = max([stepSize / 2.0, min([obj.controller.duration - stepSize / 2.0, obj.controller.currentTime + timeChange])]);
                 obj.controller.currentTime = newTime;
                 obj.controller.centerDisplayAtTime(newTime);
                 

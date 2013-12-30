@@ -127,11 +127,19 @@ classdef UFMFFile < handle
         end
         
         
-        function [im, frameInd] = getFrameAtTime(obj, frameTime)
+        function [im, frameNum] = getFrameAtTime(obj, frameTime)
             % TODO: this assumes a constant frame rate, would be better to lookup the index from the time stamps but it will be slow...
-            frameInd = obj.frameRate * frameTime + 1;
+            if frameTime == 0.0
+                frameNum = 1;
+            else
+                frameNum = ceil(obj.frameRate * frameTime);
+            end
             
-            im = obj.getFrame(frameInd);
+            if frameNum > 0 && frameNum <= obj.frameCount
+                im = obj.getFrame(frameNum);
+            else
+                im = [];
+            end
         end
         
         
