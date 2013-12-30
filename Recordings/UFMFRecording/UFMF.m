@@ -7,14 +7,11 @@ classdef UFMF < handle
     properties
         path
         
+        % TODO: these four should come in as parameters to createFile()
         numMeans = 1
     	bgUpdateSecs = 10
     	bgInitialMeans = 0
     	bgThreshold = 10
-        
-        useBoxes = true
-        minimizeBoxes = false
-        smallestBoxSize = 1
         
         frameRate
         frameCount = 0
@@ -28,6 +25,8 @@ classdef UFMF < handle
         isReadOnly
         isWritable
         
+        boxesAreFixedSize
+        
         % Reading
         pixelCoding = ''
         colorsPerPixel
@@ -35,7 +34,6 @@ classdef UFMF < handle
         pixelDataClass
         frames
         keyFrames
-        boxesAreFixedSize
         boxMaxSize          % height, width
         
         % Writing
@@ -43,6 +41,8 @@ classdef UFMF < handle
         bgHasBeenUpdated = false
         frameIndex
         frameStats
+        minimizeBoxes
+        smallestBoxSize
     end
     
     properties (Constant, Access=private)
@@ -68,8 +68,12 @@ classdef UFMF < handle
         end
         
         
-        function obj = createFile(filePath)
-            obj = UFMF(filePath, 'write');
+        function obj = createFile(filePath, varargin)
+            % Optional params:
+            %   'FixedSizeBoxes'    {'on'} | 'off'
+            %   'MinimizeBoxes'     {'on'} | 'off'
+            %   'SmallestBoxSize'   {1} through inf
+            obj = UFMF(filePath, 'write', varargin{:});
         end
         
         
@@ -118,7 +122,7 @@ classdef UFMF < handle
     
     methods
         
-        function obj = UFMF(filePath, mode)
+        function obj = UFMF(filePath, mode, varargin)
             obj.path = filePath;
             
             if nargin < 2
@@ -141,6 +145,18 @@ classdef UFMF < handle
                 
                 obj.readHeader();
             elseif strcmp(mode, 'write')
+                % Open a new UFMF file for writing.
+                parser = inputParser;
+                parser.addParamValue('FixedSizeBoxes', 'on', @(x) ismember(x, {'on', 'off'}));
+                parser.addParamValue('MinimizeBoxes', 'on', @(x) ismember(x, {'on', 'off'}));
+                parser.addParamValue('SmallestBoxSize', 1, @(x) isnumeric(x) && x > 0);
+                parser.parse(varargin{:});
+                obj.boxesAreFixedSize = strcmp(parser.Results.FixedSizeBoxes, 'on');
+                obj.minimizeBoxes = strcmp(parser.Results.MinimizeBoxes, 'on');
+                obj.smallestBoxSize = parser.Results.SmallestBoxSize;
+                
+                obj.frameStats = struct('bytes', [],'components',[]);
+                
                 % Open the UFMF file for writing.
                 obj.fileID = fopen(filePath, 'w');
                 if obj.fileID < 0
@@ -148,8 +164,6 @@ classdef UFMF < handle
                 end
                 obj.isReadOnly = false;
                 obj.isWritable = true;
-                
-                obj.frameStats = struct('bytes', [],'components',[]);
             else
                 error('UFMF:ValueError', 'Invalid mode given for opening a UFMF file: %s', mode);
             end
@@ -261,11 +275,11 @@ classdef UFMF < handle
                     obj.isWritable = false;
 
                     if obj.printStats
-                        if obj.useBoxes
+                        if obj.boxesAreFixedSize
+                            fprintf('UFMF: Mean frame size: %g KB\n', mean([obj.frameStats.bytes]) / 1024);
+                        else
                             fprintf('UFMF: Mean frame size: %g KB, %d components\n', mean([obj.frameStats.bytes]) / 1024, ...
                                                                                      uint16(mean([obj.frameStats.components])));
-                        else
-                            fprintf('UFMF: Mean frame size: %g KB\n', mean([obj.frameStats.bytes]) / 1024);
                         end
                     end
                 end
@@ -528,11 +542,9 @@ classdef UFMF < handle
             
             % Now fill in the boxes of pixels from the frame itself.
             if obj.boxesAreFixedSize
-                % TODO: untested block
-                
                 % sparse image
                 if obj.boxMaxSize(1) == 1 && obj.boxMaxSize(2) == 1
-                    tmp = false(header.nr,header.nc);
+                    tmp = false(size(frameImage, 2), size(frameImage, 3));
                     tmp(sub2ind(size(tmp),boxes(:,2),boxes(:,1))) = true;
                     frameImage(:,tmp) = data;
                 else
@@ -624,7 +636,11 @@ classdef UFMF < handle
             % Find pixels that vary more than the threshold.
             diffImage = diffImage >= obj.bgThreshold;       
             
-            if obj.useBoxes
+            if obj.boxesAreFixedSize
+                [y, x] = find(diffImage);
+                boundingBoxes = [x, y] - .5;
+                boundingBoxes(:, 3:4) = 1;
+            else
                 if obj.minimizeBoxes
                     % Try to reduce the number of connected components.
                     diffImage = imdilate(diffImage, strel('square', 2));
@@ -672,10 +688,6 @@ classdef UFMF < handle
                         littleBoxInd = littleBoxInd + 1;
                     end
                 end
-            else
-                [y, x] = find(diffImage);
-                boundingBoxes = [x, y] - .5;
-                boundingBoxes(:, 3:4) = 1;
             end
         end
         
@@ -687,12 +699,12 @@ classdef UFMF < handle
                 coding = 'MONO8';
             end
 
-            if obj.useBoxes
+            if obj.boxesAreFixedSize
+                max_width = 1;
+                max_height = 1;
+            else
                 max_width = size(frameImage, 2);
                 max_height = size(frameImage, 1);
-            else
-                max_width = 1;
-                max_height = 1;  
             end
 
             % ufmf: 4
@@ -708,7 +720,7 @@ classdef UFMF < handle
             % max height: 2
             fwrite(obj.fileID, max_width, 'ushort');
             % whether it is fixed size patches: 1
-            fwrite(obj.fileID, ~obj.useBoxes, 'uchar');
+            fwrite(obj.fileID, obj.boxesAreFixedSize, 'uchar');
             % raw coding string length: 1
             fwrite(obj.fileID, length(coding), 'uchar');
             % coding: length(coding)
@@ -769,13 +781,7 @@ classdef UFMF < handle
             fwrite(obj.fileID, ncc, 'uint32');
 
             dtype = class(frameImage);
-            if obj.useBoxes
-              for j = 1:ncc
-                fwrite(obj.fileID, [boundingBoxes(j,[1,2])-.5,boundingBoxes(j,[3,4])], 'ushort');
-                tmp = frameImage(boundingBoxes(j,2)+.5:boundingBoxes(j,2)+boundingBoxes(j,4)-.5,boundingBoxes(j,1)+.5:boundingBoxes(j,1)+boundingBoxes(j,3)-.5,:);
-                fwrite(obj.fileID, permute(tmp,[3,2,1]), dtype);
-              end
-            else
+            if obj.boxesAreFixedSize
                 %   % this is kind of complicated because the coordinates must be ushorts and
                 %   % the pixels must be uint8s.
                 %   tmp = permute(im,[3,1,2]);
@@ -786,10 +792,17 @@ classdef UFMF < handle
                 % faster to write in this order in Matlab: all pixel locations followed
                 % by all pixels; doing the complicated stuff above works almost as fast,
                 % but is ... complicated. 
-                fwrite(obj.fileID, boundingBoxes(:,[2,1])-.5,'ushort');
-                tmp = permute(frameImage,[3,2,1]);
+                fwrite(obj.fileID, boundingBoxes(:, [1, 2]) - .5, 'ushort');
+                tmp = permute(frameImage, [3, 2, 1]);
+                tmp2 = permute(diffImage, [3, 2, 1]);
                 % index by color, then column, then row
-                fwrite(obj.fileID, tmp(:,diffImage), dtype);
+                fwrite(obj.fileID, tmp(:, tmp2), dtype);
+            else
+              for j = 1:ncc
+                fwrite(obj.fileID, [boundingBoxes(j,[1,2])-.5,boundingBoxes(j,[3,4])], 'ushort');
+                tmp = frameImage(boundingBoxes(j,2)+.5:boundingBoxes(j,2)+boundingBoxes(j,4)-.5,boundingBoxes(j,1)+.5:boundingBoxes(j,1)+boundingBoxes(j,3)-.5,:);
+                fwrite(obj.fileID, permute(tmp,[3,2,1]), dtype);
+              end
             end
             
             obj.frameStats(frameIndex).bytes = ftell(obj.fileID) - loc - (1 + 8 + 4);
