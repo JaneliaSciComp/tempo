@@ -5,6 +5,6 @@ function Tempo()
     
     % TODO: implement app-level features like window menu, etc.
     
-    AnalysisController();
+    TempoController();
     return
 end

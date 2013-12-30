@@ -1,4 +1,4 @@
-classdef TimelinePanel < AnalysisPanel
+classdef TimelinePanel < TempoPanel
 	
 	properties
         timeLine
@@ -11,7 +11,7 @@ classdef TimelinePanel < AnalysisPanel
 	methods
 		
 		function obj = TimelinePanel(controller)
-			obj = obj@AnalysisPanel(controller);
+			obj = obj@TempoPanel(controller);
             
             % Use a line to indicate the current time in the axes.
             obj.timeLine = line([0 0], [-100000 200000], 'Color', [1 0 0], 'HitTest', 'off', 'HandleVisibility', 'off');
@@ -86,7 +86,7 @@ classdef TimelinePanel < AnalysisPanel
         
         
         function handleResize(obj, source, event)
-            handleResize@AnalysisPanel(obj, source, event);
+            handleResize@TempoPanel(obj, source, event);
             if obj.visible
                 obj.handleTimeWindowChanged(source, event);
             end
@@ -196,7 +196,7 @@ classdef TimelinePanel < AnalysisPanel
                 
                 handled = true;
             elseif ~handled
-                handled = keyWasPressed@AnalysisPanel(obj, keyEvent);
+                handled = keyWasPressed@TempoPanel(obj, keyEvent);
             end
         end
         

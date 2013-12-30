@@ -1,4 +1,4 @@
-classdef AnalysisPanel < handle
+classdef TempoPanel < handle
     
     properties
         controller
@@ -21,7 +21,7 @@ classdef AnalysisPanel < handle
     
     methods
         
-        function obj = AnalysisPanel(controller)
+        function obj = TempoPanel(controller)
             obj.controller = controller;
             
             if isa(obj, 'VideoPanel')
