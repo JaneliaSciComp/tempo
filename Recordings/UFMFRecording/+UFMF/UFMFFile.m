@@ -1,4 +1,4 @@
-classdef UFMF < handle
+classdef UFMFFile < handle
     
     properties (SetAccess=private)
         version = 4
@@ -13,11 +13,11 @@ classdef UFMF < handle
     	bgInitialMeans = 0
     	bgThreshold = 10
         
-        frameRate
+        frameRate = []
         frameCount = 0
         
         printStats = false
-        showBoxes = false
+        showBoxes = false       % TODO: should be a parameter to getFrame
     end
     
     properties (Access=private)
@@ -35,6 +35,7 @@ classdef UFMF < handle
         frames
         keyFrames
         boxMaxSize          % height, width
+        lastFrameNumRead = 0
         
         % Writing
         bgModel
@@ -54,76 +55,12 @@ classdef UFMF < handle
         
         DICT_START_CHAR = 'd'
         ARRAY_START_CHAR = 'a'
-        
-        % Data formats from <http://docs.python.org/2/library/struct.html#format-characters>
-        dataTypes = struct('typeChar', {'c', 's', 'p', 'b', 'B', 'h', 'H', 'i', 'l', 'I', 'L', 'q', 'Q', 'f', 'd'}, ...
-                           'matlabClass', {'char', 'char', 'char', 'int8', 'uint8', 'int16', 'uint16', 'int32', 'int32', 'uint32', 'uint32', 'int64', 'uint64', 'float', 'double'}, ...
-                           'bytesPerElement', {1, 1, 1, 1, 1, 2, 2, 4, 4, 4, 4, 8, 8, 4, 8});
-    end
-    
-    
-    methods (Static)
-        
-        function obj = openFile(filePath)
-            obj = UFMF(filePath, 'read');
-        end
-        
-        
-        function obj = createFile(filePath, varargin)
-            % Optional params:
-            %   'FixedSizeBoxes'    {'on'} | 'off'
-            %   'MinimizeBoxes'     {'on'} | 'off'
-            %   'SmallestBoxSize'   {1} through inf
-            obj = UFMF(filePath, 'write', varargin{:});
-        end
-        
-        
-        function isUFMF = isUFMFFile(filePath)
-            isUFMF = false;
-            
-            if exist(filePath, 'file')
-                % Check if the file has 'ufmf' for its first four byte.
-                fid = fopen(filePath, 'rb' , 'ieee-le');
-                if fid >= 0
-                    try
-                        s = fread(fid, [1, 4], '*char');
-                        isUFMF = strcmp(s, 'ufmf');
-                        fclose(fid);
-                    catch ME
-                        fclose(fid);
-                        rethrow(ME);
-                    end
-                end
-            end
-        end
-        
-    end
-    
-    
-    methods (Static, Access=private)
-        
-        function dataType = dataType(charOrClass)
-            types = UFMF.dataTypes;
-            if length(charOrClass) == 1
-                % Look up the data type by its type character.
-                dataInd = find(strcmp({types.typeChar}, charOrClass));
-            else
-                % Look up the data type by its MATLAB class name.
-                dataInd = find(strcmp({types.matlabClass}, charOrClass));
-            end
-            if isempty(dataInd)
-                error('UFMF:UnknownDataType', 'Unknown data type ''%s''.', charOrClass);
-            else
-                dataType = types(dataInd);
-            end
-        end
-        
     end
     
     
     methods
         
-        function obj = UFMF(filePath, mode, varargin)
+        function obj = UFMFFile(filePath, mode, varargin)
             obj.path = filePath;
             
             if nargin < 2
@@ -171,7 +108,7 @@ classdef UFMF < handle
         end
         
         
-        function im = getFrame(obj, frameInd)
+        function [im, frameNum] = getFrame(obj, frameNum)
             % Read in a frame
             % TODO: cache frames
             
@@ -179,7 +116,14 @@ classdef UFMF < handle
                 error('UFMF:UnsupportedColorspace', 'Colorspace ''%s'' is not yet supported.  Only MONO8 and RGB8 allowed.', obj.pixelCoding);
             end
             
-            im = obj.readFrame(uint64(frameInd));
+            if nargin < 2
+                % Allow sequential grabbing without caring about the frame number.
+                frameNum = obj.lastFrameNumRead + 1;
+            end
+            
+            im = obj.readFrame(uint64(frameNum));
+            
+            obj.lastFrameNumRead = frameNum;
         end
         
         
@@ -386,8 +330,8 @@ classdef UFMF < handle
         function index = readDict(obj)
             % read in a 'd': 1 byte
             chunktype = fread(obj.fileID, 1,'*char');
-            if chunktype ~= obj.DICT_START_CHAR
-                error('Error reading index: dictionary does not start with ''%s''.', obj.DICT_START_CHAR);
+            if chunktype ~= UFMF.UFMFFile.DICT_START_CHAR
+                error('Error reading index: dictionary does not start with ''%s''.', UFMF.UFMFFile.DICT_START_CHAR);
             end
 
             % read in the number of fields: 1 byte
@@ -401,17 +345,17 @@ classdef UFMF < handle
                 key = fread(obj.fileID, [1,l],'*char');
                 % read the next letter to tell if it is an array or another dictionary
                 chunktype = fread(obj.fileID, 1,'*char');
-                if chunktype == obj.DICT_START_CHAR
+                if chunktype == UFMF.UFMFFile.DICT_START_CHAR
                     % if it's a 'd', then step back one char and read in the dictionary
                     % recursively
                     fseek(obj.fileID, -1,'cof');
                     index.(key) = obj.readDict();
-                elseif chunktype == obj.ARRAY_START_CHAR
+                elseif chunktype == UFMF.UFMFFile.ARRAY_START_CHAR
                     % array
 
                     % read in the data type
                     typeChar = fread(obj.fileID, 1,'*char');
-                    dataType = UFMF.dataType(typeChar);
+                    dataType = convertDataType(typeChar);
 
                     % read in number of bytes
                     l = fread(obj.fileID, 1,'ulong');
@@ -426,7 +370,7 @@ classdef UFMF < handle
                         warning('Could only read %d/%d bytes for array %s of index', n, ntrue, key);
                     end
                 else
-                    error('Error reading dictionary %s. Expected either ''%s'' or ''%s''.', key, obj.DICT_START_CHAR, obj.ARRAY_START_CHAR);
+                    error('Error reading dictionary %s. Expected either ''%s'' or ''%s''.', key, UFMF.UFMFFile.DICT_START_CHAR, UFMF.UFMFFile.ARRAY_START_CHAR);
                 end
 
             end
@@ -442,7 +386,7 @@ classdef UFMF < handle
             
             % chunktype: 1 byte
             chunkType = fread(obj.fileID, 1, 'uchar');
-            if chunkType ~= obj.KEYFRAME_CHUNK
+            if chunkType ~= UFMF.UFMFFile.KEYFRAME_CHUNK
                 error('Expected chunktype = %d at start of keyframe.');
             end
             
@@ -452,7 +396,7 @@ classdef UFMF < handle
             
             % data type
             typeChar = fread(obj.fileID, 1, '*char');
-            dataType = UFMF.dataType(typeChar);
+            dataType = convertDataType(typeChar);
 
             % images are sideways: swap width and height
             % width, height
@@ -479,8 +423,8 @@ classdef UFMF < handle
             
             % read in the chunk type: 1 byte
             chunkType = fread(obj.fileID, 1,'uchar');
-            if chunkType ~= obj.FRAME_CHUNK
-                error('Expected chunktype = %d at start of frame, got %d', obj.FRAME_CHUNK, chunkType);
+            if chunkType ~= UFMF.UFMFFile.FRAME_CHUNK
+                error('Expected chunktype = %d at start of frame, got %d', UFMF.UFMFFile.FRAME_CHUNK, chunkType);
             end
             % read in timestamp: 8 bytes
             timeStamp = fread(obj.fileID, 1,'double');
@@ -543,8 +487,8 @@ classdef UFMF < handle
             if isempty(frameImage)
                 frameImage = obj.readKeyFrame(frame.meanIndex);
             end
-            if ~strcmp(obj.keyFrames(frame.meanIndex).type, obj.MEAN_KEYFRAME_TYPE)
-                error('UFMF:TypeError', 'Expected keyframe type = ''%s'' at start of mean keyframe', obj.MEAN_KEYFRAME_TYPE);
+            if ~strcmp(obj.keyFrames(frame.meanIndex).type, UFMF.UFMFFile.MEAN_KEYFRAME_TYPE)
+                error('UFMF:TypeError', 'Expected keyframe type = ''%s'' at start of mean keyframe', UFMF.UFMFFile.MEAN_KEYFRAME_TYPE);
             end
             
             % Now fill in the boxes of pixels from the frame itself.
@@ -620,6 +564,8 @@ classdef UFMF < handle
                 %[rows, columns, colors] = size(frameImage);
                 obj.bgModel.meanImage = uint8(frameImage); %zeros([rows, columns, colors], 'uint8');
             else
+                % TODO: If imlincomb here and imabsdiff just below could be replace with standard MATLAB calls then
+                %       the image toolbox would not be needed to create fixed size UFMFs.
                 obj.bgModel.meanImage = imlincomb((n-1)/n, obj.bgModel.meanImage, ...
                                                       1/n, frameImage);
             end
@@ -748,13 +694,13 @@ classdef UFMF < handle
             obj.frameIndex.keyframe.mean.timestamp(end+1) = timeStamp;
 
             % write the chunk type
-            fwrite(obj.fileID, obj.KEYFRAME_CHUNK, 'uchar');
+            fwrite(obj.fileID, UFMF.UFMFFile.KEYFRAME_CHUNK, 'uchar');
             % write the keyframe type
             fwrite(obj.fileID, length(keyframe_type), 'uchar');
             fwrite(obj.fileID, keyframe_type, 'char');
 
             % write the data type (based on format characters from http://docs.python.org/2/library/struct.html)
-            dataType = UFMF.dataType(class(obj.bgModel.meanImage));
+            dataType = convertDataType(class(obj.bgModel.meanImage));
             fwrite(obj.fileID, dataType.typeChar, 'char');
 
             % images are sideways: swap width and height
@@ -781,7 +727,7 @@ classdef UFMF < handle
             obj.frameIndex.frame.timestamp(end+1) = timeStamp;
 
             % write chunk type: 1
-            fwrite(obj.fileID, obj.FRAME_CHUNK, 'uchar');
+            fwrite(obj.fileID, UFMF.UFMFFile.FRAME_CHUNK, 'uchar');
             % write timestamp: 8
             fwrite(obj.fileID, timeStamp, 'double');
             % write number of points: 4
@@ -826,7 +772,7 @@ classdef UFMF < handle
             % obj.frameIndex.locLoc. 
 
             % start of index chunk
-            fwrite(obj.fileID, obj.INDEX_DICT_CHUNK, 'uchar');
+            fwrite(obj.fileID, UFMF.UFMFFile.INDEX_DICT_CHUNK, 'uchar');
             obj.frameIndex.loc = ftell(obj.fileID);
             
             % write index
@@ -857,7 +803,7 @@ classdef UFMF < handle
                     obj.writeDict(value);
                 else
                     % write a for array followed by the single char abbr of the class
-                    dataType = UFMF.dataType(class(value));
+                    dataType = convertDataType(class(value));
                     fwrite(obj.fileID, ['a', dataType.typeChar]);
                     % write length of array * bytes_per_element
                     tmp = whos('value');
