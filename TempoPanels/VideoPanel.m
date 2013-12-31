@@ -1,18 +1,22 @@
 classdef VideoPanel < TempoPanel
 
-	properties
+	properties (SetAccess = private)
         video
         
+        showFrameNum = true
+    end
+    
+    properties (Access = private)
         currentFrameImage
         currentFrameNum
-        currentTime
         
         imageHandle
-        frameCountHandle
+        frameNumHandle
         
         lastDrawNowUpdate
-	end
+    end
 	
+    
 	methods
 	
 		function obj = VideoPanel(controller, recording)
@@ -21,7 +25,6 @@ classdef VideoPanel < TempoPanel
             obj.video = recording;
             
             [obj.currentFrameImage, obj.currentFrameNum] = obj.frameAtTime(obj.controller.currentTime);
-            obj.currentTime = obj.controller.currentTime;
             
             set(obj.panel, 'BackgroundColor', 'black');
             
@@ -43,14 +46,29 @@ classdef VideoPanel < TempoPanel
             axis(obj.axes, 'image');
             set(obj.axes, 'XTick', [], 'YTick', [], 'Color', 'black');
             
-            obj.frameCountHandle = uicontrol(...
+            obj.frameNumHandle = uicontrol(...
                 'Parent', obj.panel,...
                 'Units', 'points', ...
                 'FontSize', 12, ...
                 'HorizontalAlignment', 'left', ...
-                'Position', [21 80 90 18], ...
-                'String',  'Frame 123', ...
+                'Position', [16 16 90 18], ...
+                'String',  'Frame 1', ...
                 'Style', 'text');
+            if ~obj.showFrameNum
+                set(obj.frameNumHandle, 'Visible', 'off');
+            end
+        end
+        
+        
+        function showFrameNumber(obj, show)
+            if obj.showFrameNum ~= show
+                obj.showFrameNum = show;
+                if obj.showFrameNum
+                    set(obj.frameNumHandle, 'Visible', 'on');
+                else
+                    set(obj.frameNumHandle, 'Visible', 'off');
+                end
+            end
         end
         
         
@@ -64,7 +82,7 @@ classdef VideoPanel < TempoPanel
             
             % Position the frame count label in the lower-left corner.
             axesPos = get(obj.axes, 'Position');
-            set(obj.frameCountHandle, 'Position', [axesPos(1) + 5, axesPos(2) + 5, 70, 12]);
+            set(obj.frameNumHandle, 'Position', [axesPos(1), axesPos(2) + 2, 80, 14]);
         end
         
         
@@ -73,34 +91,30 @@ classdef VideoPanel < TempoPanel
                 return
             end
             
-            if obj.controller.currentTime ~= obj.currentTime
-                [frameImage, frameNum] = obj.frameAtTime(obj.controller.currentTime);
+            [frameImage, frameNum] = obj.frameAtTime(obj.controller.currentTime);
+            
+            if frameNum ~= obj.currentFrameNum
+                obj.currentFrameImage = frameImage;
+                obj.currentFrameNum = frameNum;
                 
-                if frameNum ~= obj.currentFrameNum
-                    obj.currentFrameImage = frameImage;
-                    obj.currentFrameNum = frameNum;
-                    
-                    set(obj.imageHandle, 'CData', obj.currentFrameImage);
-                    
-                    set(obj.frameCountHandle, 'String', sprintf('Frame %d', frameNum));
-                    
-                    % Force a redraw of the frame.
-                    % Also check for events twice a second to allow non-timer events to be processed so we don't lock up MATLAB.
-                    % This gives us a 30+% increase in frame rate.
-                    if now - obj.lastDrawNowUpdate > 0.5 / (24 * 60 * 60)
-                        % Redraw the frame and check for events.
-                        drawnow
-                        obj.lastDrawNowUpdate = now;
-                    else
-                        % Just redraw the frame.
-                        drawnow expose
-                    end
-                    
-                    obj.currentTime = obj.controller.currentTime;
-                    
-                    % For FPS calculation.
-                    obj.controller.frameCount = obj.controller.frameCount + 1;
+                set(obj.imageHandle, 'CData', obj.currentFrameImage);
+                
+                set(obj.frameNumHandle, 'String', sprintf('Frame %d', frameNum));
+                
+                % Force a redraw of the frame.
+                % Also check for events once a second to allow non-timer events to be processed so we don't lock up MATLAB.
+                % This gives us a 30+% increase in frame rate.
+                if now - obj.lastDrawNowUpdate > 1.0 / (24 * 60 * 60)
+                    % Redraw the frame and check for events.
+                    drawnow
+                    obj.lastDrawNowUpdate = now;
+                else
+                    % Just redraw the frame.
+                    drawnow expose
                 end
+                
+                % For FPS calculation.
+                obj.controller.frameCount = obj.controller.frameCount + 1;
             end
         end
         

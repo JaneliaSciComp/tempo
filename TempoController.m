@@ -19,6 +19,12 @@ classdef TempoController < handle
         
         timeSlider
         
+        fileMenu
+        editMenu
+        videoMenu
+        timelineMenu
+        playbackMenu
+        
         toolbar
         zoomOutTool
         playMediaTool
@@ -170,181 +176,184 @@ classdef TempoController < handle
         
         
         function createMenuBar(obj)
-            fileMenu = uimenu(obj.figure, 'Label', 'File');
-            uimenu(fileMenu, 'Label', 'New', ...
-                             'Callback', @(hObject, eventdata)handleNewWorkspace(obj, hObject, eventdata), ...
-                             'Accelerator', 'n');
-            uimenu(fileMenu, 'Label', 'Open...', ...
-                             'Callback', @(hObject, eventdata)handleOpenFile(obj, hObject, eventdata), ...
-                             'Accelerator', 'o');
-            uimenu(fileMenu, 'Label', 'Close', ...
-                             'Callback', @(hObject, eventdata)handleClose(obj, hObject, eventdata), ...
-                             'Accelerator', 'w', ...
-                             'Separator', 'on');
-            uimenu(fileMenu, 'Label', 'Close All', ...
-                             'Callback', '', ...
-                             'Enable', 'off');
-            uimenu(fileMenu, 'Label', 'Save...', ...
-                             'Callback', @(hObject, eventdata)handleSaveWorkspace(obj, hObject, eventdata), ... 
-                             'Accelerator', 's');
-             uimenu(fileMenu, 'Label', 'Save As...', ...
-                             'Callback', '', ... 
-                             'Accelerator', '', ...
-                             'Enable', 'off');
-           uimenu(fileMenu, 'Label', 'Export Video of Selection...', ...
-                             'Callback', @(hObject, eventdata)handleExportSelection(obj, hObject, eventdata), ...
-                             'Separator', 'on');
-            uimenu(fileMenu, 'Label', 'Export All Features...', ...
-                             'Callback', '', ...
-                             'Enable', 'off');
-            uimenu(fileMenu, 'Label', 'Take Screen Shot...', ...
-                             'Callback', @(hObject, eventdata)handleSaveScreenshot(obj, hObject, eventdata), ... 
-                             'Separator', 'on');
+            checked = {'off', 'on'};
             
-            editMenu = uimenu(obj.figure, 'Label', 'Edit');
-            uimenu(editMenu, 'Label', 'Undo', ...
-                             'Callback', '', ...
-                             'Accelerator', 'z', ...
-                             'Enable', 'off');
-            uimenu(editMenu, 'Label', 'Redo...', ...
-                             'Callback', '', ...
-                             'Accelerator', 'Z', ...
-                             'Enable', 'off');
-            uimenu(editMenu, 'Label', 'Cut', ...
-                             'Callback', '', ...
-                             'Accelerator', 'x', ...
-                             'Separator', 'on', ...
-                             'Enable', 'off');
-            uimenu(editMenu, 'Label', 'Copy', ...
-                             'Callback', '', ...
-                             'Accelerator', 'c', ...
-                             'Enable', 'off');
-            uimenu(editMenu, 'Label', 'Paste', ...
-                             'Callback', '', ... 
-                             'Accelerator', 'v', ...
-                             'Enable', 'off');
-            uimenu(editMenu, 'Label', 'Select All', ...
-                             'Callback', @(hObject, eventdata)handleSelectAll(obj, hObject, eventdata), ...
-                             'Accelerator', 'a', ...
-                             'Separator', 'on');
-            uimenu(editMenu, 'Label', 'Select None', ...
-                             'Callback', @(hObject, eventdata)handleSelectNone(obj, hObject, eventdata), ...
-                             'Accelerator', '');
-            detectorMenu = uimenu(editMenu, 'Label', 'Detect Features', ...
-                                            'Callback', '', ... 
-                                            'Separator', 'on');
+            obj.fileMenu = uimenu(obj.figure, 'Label', 'File');
+            uimenu(obj.fileMenu, 'Label', 'New', ...
+                                 'Callback', @(hObject, eventdata)handleNewWorkspace(obj, hObject, eventdata), ...
+                                 'Accelerator', 'n');
+            uimenu(obj.fileMenu, 'Label', 'Open...', ...
+                                 'Callback', @(hObject, eventdata)handleOpenFile(obj, hObject, eventdata), ...
+                                 'Accelerator', 'o');
+            uimenu(obj.fileMenu, 'Label', 'Close', ...
+                                 'Callback', @(hObject, eventdata)handleClose(obj, hObject, eventdata), ...
+                                 'Accelerator', 'w', ...
+                                 'Separator', 'on');
+            uimenu(obj.fileMenu, 'Label', 'Close All', ...
+                                 'Callback', '', ...
+                                 'Enable', 'off');
+            uimenu(obj.fileMenu, 'Label', 'Save...', ...
+                                 'Callback', @(hObject, eventdata)handleSaveWorkspace(obj, hObject, eventdata), ... 
+                                 'Accelerator', 's');
+            uimenu(obj.fileMenu, 'Label', 'Save As...', ...
+                                 'Callback', '', ... 
+                                 'Accelerator', '', ...
+                                 'Enable', 'off');
+            uimenu(obj.fileMenu, 'Label', 'Export Video of Selection...', ...
+                                 'Callback', @(hObject, eventdata)handleExportSelection(obj, hObject, eventdata), ...
+                                 'Separator', 'on');
+            uimenu(obj.fileMenu, 'Label', 'Export All Features...', ...
+                                 'Callback', '', ...
+                                 'Enable', 'off');
+            uimenu(obj.fileMenu, 'Label', 'Take Screen Shot...', ...
+                                 'Callback', @(hObject, eventdata)handleSaveScreenshot(obj, hObject, eventdata), ... 
+                                 'Separator', 'on');
+            
+            obj.editMenu = uimenu(obj.figure, 'Label', 'Edit');
+            uimenu(obj.editMenu, 'Label', 'Undo', ...
+                                 'Callback', '', ...
+                                 'Accelerator', 'z', ...
+                                 'Enable', 'off');
+            uimenu(obj.editMenu, 'Label', 'Redo...', ...
+                                 'Callback', '', ...
+                                 'Accelerator', 'Z', ...
+                                 'Enable', 'off');
+            uimenu(obj.editMenu, 'Label', 'Cut', ...
+                                 'Callback', '', ...
+                                 'Accelerator', 'x', ...
+                                 'Separator', 'on', ...
+                                 'Enable', 'off');
+            uimenu(obj.editMenu, 'Label', 'Copy', ...
+                                 'Callback', '', ...
+                                 'Accelerator', 'c', ...
+                                 'Enable', 'off');
+            uimenu(obj.editMenu, 'Label', 'Paste', ...
+                                 'Callback', '', ... 
+                                 'Accelerator', 'v', ...
+                                 'Enable', 'off');
+            uimenu(obj.editMenu, 'Label', 'Select All', ...
+                                 'Callback', @(hObject, eventdata)handleSelectAll(obj, hObject, eventdata), ...
+                                 'Accelerator', 'a', ...
+                                 'Separator', 'on');
+            uimenu(obj.editMenu, 'Label', 'Select None', ...
+                                 'Callback', @(hObject, eventdata)handleSelectNone(obj, hObject, eventdata), ...
+                                 'Accelerator', '');
+            detectorMenu = uimenu(obj.editMenu, 'Label', 'Detect Features', ...
+                                                'Callback', '', ... 
+                                                'Separator', 'on');
             for detectorIdx = 1:length(obj.detectorTypeNames)
                 uimenu(detectorMenu, 'Label', obj.detectorTypeNames{detectorIdx}, ...
                                      'Callback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
                                      'UserData', detectorIdx);
             end
             
-            videoMenu = uimenu(obj.figure, 'Label', 'Video');
-            uimenu(videoMenu, 'Label', 'View at Actual Size', ...
-                              'Callback', '', ...
-                              'Accelerator', '', ...
-                              'Enable', 'off');
-            uimenu(videoMenu, 'Label', 'View at Double Size', ...
-                              'Callback', '', ...
-                              'Accelerator', '', ...
-                              'Enable', 'off');
-            uimenu(videoMenu, 'Label', 'View at Half Size', ...
-                              'Callback', '', ...
-                              'Accelerator', '', ...
-                              'Enable', 'off');
-            uimenu(videoMenu, 'Label', 'View at Maximum Size', ...
-                              'Callback', '', ...
-                              'Accelerator', '', ...
-                              'Checked', 'on', ...
-                              'Enable', 'off');
-            uimenu(videoMenu, 'Label', 'Arrange Videos Left to Right', ...
-                              'Callback', '', ...
-                              'Accelerator', '', ... 
-                              'Separator', 'on', ...
-                              'Enable', 'off');
-            uimenu(videoMenu, 'Label', 'Arrange Videos Top to Bottom', ...
-                              'Callback', '', ...
-                              'Accelerator', '', ...
-                              'Checked', 'on', ...
-                              'Enable', 'off');
-            uimenu(videoMenu, 'Label', 'Place Videos Left of the Timeline', ...
-                              'Callback', '', ...
-                              'Accelerator', '', ... 
-                              'Separator', 'on', ...
-                              'Checked', 'on', ...
-                              'Enable', 'off');
-            uimenu(videoMenu, 'Label', 'Place Videos Above the Timeline', ...
-                              'Callback', '', ...
-                              'Accelerator', '', ...
-                              'Enable', 'off');
-            uimenu(videoMenu, 'Label', 'Show Current Frame Number', ...
-                              'Callback', '', ...
-                              'Accelerator', '', ... 
-                              'Separator', 'on', ...
-                              'Checked', 'on', ...
-                              'Enable', 'off');
+            obj.videoMenu = uimenu(obj.figure, 'Label', 'Video');
+            uimenu(obj.videoMenu, 'Label', 'View at Actual Size', ...
+                                  'Callback', '', ...
+                                  'Accelerator', '', ...
+                                  'Enable', 'off');
+            uimenu(obj.videoMenu, 'Label', 'View at Double Size', ...
+                                  'Callback', '', ...
+                                  'Accelerator', '', ...
+                                  'Enable', 'off');
+            uimenu(obj.videoMenu, 'Label', 'View at Half Size', ...
+                                  'Callback', '', ...
+                                  'Accelerator', '', ...
+                                  'Enable', 'off');
+            uimenu(obj.videoMenu, 'Label', 'View at Maximum Size', ...
+                                  'Callback', '', ...
+                                  'Accelerator', '', ...
+                                  'Checked', 'on', ...
+                                  'Enable', 'off');
+            uimenu(obj.videoMenu, 'Label', 'Arrange Videos Left to Right', ...
+                                  'Callback', '', ...
+                                  'Accelerator', '', ... 
+                                  'Separator', 'on', ...
+                                  'Enable', 'off');
+            uimenu(obj.videoMenu, 'Label', 'Arrange Videos Top to Bottom', ...
+                                  'Callback', '', ...
+                                  'Accelerator', '', ...
+                                  'Checked', 'on', ...
+                                  'Enable', 'off');
+            uimenu(obj.videoMenu, 'Label', 'Place Videos Left of the Timeline', ...
+                                  'Callback', '', ...
+                                  'Accelerator', '', ... 
+                                  'Separator', 'on', ...
+                                  'Checked', 'on', ...
+                                  'Enable', 'off');
+            uimenu(obj.videoMenu, 'Label', 'Place Videos Above the Timeline', ...
+                                  'Callback', '', ...
+                                  'Accelerator', '', ...
+                                  'Enable', 'off');
+            uimenu(obj.videoMenu, 'Label', 'Show Current Frame Number', ...
+                                  'Callback', @(hObject, eventdata)handleShowFrameNumber(obj, hObject, eventdata), ...
+                                  'Accelerator', '', ... 
+                                  'Separator', 'on', ...
+                                  'Checked', checked{getpref('Tempo', 'VideoShowFrameNumber', true) + 1}, ...
+                                  'Tag', 'showFrameNumber');
             
+            obj.timelineMenu = uimenu(obj.figure, 'Label', 'Timeline');
+            uimenu(obj.timelineMenu, 'Label', 'Zoom In', ...
+                                     'Callback', @(hObject, eventdata)handleZoomIn(obj, hObject, eventdata), ...
+                                     'Accelerator', '');
+            uimenu(obj.timelineMenu, 'Label', 'Zoom Out', ...
+                                     'Callback', @(hObject, eventdata)handleZoomOut(obj, hObject, eventdata), ...
+                                     'Accelerator', '');
+            uimenu(obj.timelineMenu, 'Label', 'Zoom to Selection', ...
+                                     'Callback', @(hObject, eventdata)handleZoomToSelection(obj, hObject, eventdata), ...
+                                     'Accelerator', '');
+            uimenu(obj.timelineMenu, 'Label', 'Open Waveform for New Recordings', ...
+                                     'Callback', '', ...
+                                     'Separator', 'on', ...
+                                     'Checked', 'on', ...
+                                     'Enable', 'off');
+            uimenu(obj.timelineMenu, 'Label', 'Open Spectrogram for New Recordings', ...
+                                     'Callback', '', ...
+                                     'Checked', 'on', ...
+                                     'Enable', 'off');
             
-            timelineMenu = uimenu(obj.figure, 'Label', 'Timeline');
-            uimenu(timelineMenu, 'Label', 'Zoom In', ...
-                                 'Callback', @(hObject, eventdata)handleZoomIn(obj, hObject, eventdata), ...
-                                 'Accelerator', '');
-            uimenu(timelineMenu, 'Label', 'Zoom Out', ...
-                                 'Callback', @(hObject, eventdata)handleZoomOut(obj, hObject, eventdata), ...
-                                 'Accelerator', '');
-            uimenu(timelineMenu, 'Label', 'Zoom to Selection', ...
-                                 'Callback', @(hObject, eventdata)handleZoomToSelection(obj, hObject, eventdata), ...
-                                 'Accelerator', '');
-            uimenu(timelineMenu, 'Label', 'Open Waveform for New Recordings', ...
-                                 'Callback', '', ...
-                                 'Separator', 'on', ...
-                                 'Checked', 'on', ...
-                                 'Enable', 'off');
-            uimenu(timelineMenu, 'Label', 'Open Spectrogram for New Recordings', ...
-                                 'Callback', '', ...
-                                 'Checked', 'on', ...
-                                 'Enable', 'off');
-            
-            playbackMenu = uimenu(obj.figure, 'Label', 'Playback');
-            uimenu(playbackMenu, 'Label', 'Play', ...
-                                 'Callback', @(hObject, eventdata)handlePlayMedia(obj, hObject, eventdata), ...
-                                 'Accelerator', '');
-            uimenu(playbackMenu, 'Label', 'Pause', ...
-                                 'Callback', @(hObject, eventdata)handlePauseMedia(obj, hObject, eventdata), ...
-                                 'Accelerator', '');
-            uimenu(playbackMenu, 'Label', 'Play at Regular Speed', ...
-                                 'Callback', '', ...
-                                 'Accelerator', '1', ...
-                                 'Separator', 'on', ...
-                                 'Checked', 'on', ...
-                                 'Enable', 'off');
-            uimenu(playbackMenu, 'Label', 'Play at Double Speed', ...
-                                 'Callback', '', ...
-                                 'Accelerator', '2', ...
-                                 'Enable', 'off');
-            uimenu(playbackMenu, 'Label', 'Play at Half Speed', ...
-                                 'Callback', '', ...
-                                 'Accelerator', '', ...
-                                 'Enable', 'off');
-            uimenu(playbackMenu, 'Label', 'Increase Speed', ...
-                                 'Callback', '', ...
-                                 'Accelerator', '', ...
-                                 'Separator', 'on', ...
-                                 'Enable', 'off');
-            uimenu(playbackMenu, 'Label', 'Decrease Speed', ...
-                                 'Callback', '', ...
-                                 'Accelerator', '', ...
-                                 'Enable', 'off');
-            uimenu(playbackMenu, 'Label', 'Play Forwards', ...
-                                 'Callback', '', ...
-                                 'Accelerator', '', ...
-                                 'Separator', 'on', ...
-                                 'Checked', 'on', ...
-                                 'Enable', 'off');
-            uimenu(playbackMenu, 'Label', 'Play Backwards', ...
-                                 'Callback', '', ...
-                                 'Accelerator', '', ...
-                                 'Enable', 'off');
+            obj.playbackMenu = uimenu(obj.figure, 'Label', 'Playback');
+            uimenu(obj.playbackMenu, 'Label', 'Play', ...
+                                     'Callback', @(hObject, eventdata)handlePlayMedia(obj, hObject, eventdata), ...
+                                     'Accelerator', '');
+            uimenu(obj.playbackMenu, 'Label', 'Pause', ...
+                                     'Callback', @(hObject, eventdata)handlePauseMedia(obj, hObject, eventdata), ...
+                                     'Accelerator', '');
+            uimenu(obj.playbackMenu, 'Label', 'Play at Regular Speed', ...
+                                     'Callback', '', ...
+                                     'Accelerator', '1', ...
+                                     'Separator', 'on', ...
+                                     'Checked', 'on', ...
+                                     'Enable', 'off');
+            uimenu(obj.playbackMenu, 'Label', 'Play at Double Speed', ...
+                                     'Callback', '', ...
+                                     'Accelerator', '2', ...
+                                     'Enable', 'off');
+            uimenu(obj.playbackMenu, 'Label', 'Play at Half Speed', ...
+                                     'Callback', '', ...
+                                     'Accelerator', '', ...
+                                     'Enable', 'off');
+            uimenu(obj.playbackMenu, 'Label', 'Increase Speed', ...
+                                     'Callback', '', ...
+                                     'Accelerator', '', ...
+                                     'Separator', 'on', ...
+                                     'Enable', 'off');
+            uimenu(obj.playbackMenu, 'Label', 'Decrease Speed', ...
+                                     'Callback', '', ...
+                                     'Accelerator', '', ...
+                                     'Enable', 'off');
+            uimenu(obj.playbackMenu, 'Label', 'Play Forwards', ...
+                                     'Callback', '', ...
+                                     'Accelerator', '', ...
+                                     'Separator', 'on', ...
+                                     'Checked', 'on', ...
+                                     'Enable', 'off');
+            uimenu(obj.playbackMenu, 'Label', 'Play Backwards', ...
+                                     'Callback', '', ...
+                                     'Accelerator', '', ...
+                                     'Enable', 'off');
+                                 
+            % TODO: Help menu
         end
         
         
@@ -464,6 +473,9 @@ classdef TempoController < handle
                 end
             end
         end
+        
+        
+        %% Panel management
         
         
         function panels = panelsOfClass(obj, panelClass)
@@ -646,11 +658,314 @@ classdef TempoController < handle
         end
         
         
+        %% File menu callbacks
+        
+        
         function handleNewWorkspace(obj, ~, ~) %#ok<INUSD>
             % Open a new window with a new controller object.
             % TODO: stagger the window so it doesn't land exactly on top of the existing one.
             TempoController();
         end
+        
+        
+        function handleOpenFile(obj, ~, ~)
+            [fileNames, pathName] = uigetfile('*.*', 'Select an audio or video file to open', 'MultiSelect', 'on');
+            
+            if ischar(fileNames)
+                fileNames = {fileNames};
+            elseif isnumeric(fileNames)
+                fileNames = {};
+            end
+            
+            nothingWasOpen = isempty(obj.recordings);
+            somethingOpened = false;
+
+            for i = 1:length(fileNames)
+                fileName = fileNames{i};
+                fullPath = fullfile(pathName, fileName);
+
+                % Handle special characters in the file name.
+                NFD = javaMethod('valueOf', 'java.text.Normalizer$Form','NFD');
+                UTF8=java.nio.charset.Charset.forName('UTF-8');
+                s = java.lang.String(fullPath);
+                sc = java.text.Normalizer.normalize(s,NFD);
+                bs = single(sc.getBytes(UTF8)');
+                bs(bs < 0) = 256 + (bs(bs < 0));
+                fullPath = char(bs);
+                
+                [~, ~, ext] = fileparts(fileName);
+                if strcmp(ext, '.tempo')
+                    if isempty(obj.recordings) && isempty(obj.reporters)
+                        % Nothing has been done in this controller so load the workspace here.
+                        target = obj;
+                    else
+                        % Open the workspace in a new controller.
+                        target = TempoController();
+                    end
+                    target.openWorkspace(fullPath);
+                    somethingOpened = true;
+                    continue
+                end
+                
+                % First check if the file can be imported by one of the feature importers.
+                try
+                    possibleImporters = [];
+                    for j = 1:length(obj.importerClassNames)
+                        if eval([obj.importerClassNames{j} '.canImportFromPath(''' strrep(fullPath, '''', '''''') ''')'])
+                            possibleImporters(end+1) = j; %#ok<AGROW>
+                        end
+                    end
+                    
+                    if ~isempty(possibleImporters)
+                        index = [];
+                        if length(possibleImporters) == 1
+                            index = possibleImporters(1);
+                        else
+                            choice = listdlg('PromptString', 'Choose which importer to use:', ...
+                                             'SelectionMode', 'Single', ...
+                                             'ListString', handles.importerTypeNames(possibleImporters));
+                            if ~isempty(choice)
+                                index = choice(1);
+                            end
+                        end
+                        if ~isempty(index)
+                            obj.importing = true;
+                            constructor = str2func(obj.importerClassNames{index});
+                            importer = constructor(obj, fullPath);
+                            importer.startProgress();
+                            try
+                                n = importer.importFeatures();
+                                importer.endProgress();
+                                obj.importing = false;
+                                
+                                % Open any recordings that the importer queued up.
+                                for recording = obj.recordingsToAdd
+                                    if isa(recording, 'AudioRecording')
+                                        obj.addAudioRecording(recording);
+                                    elseif isa(recording, 'VideoRecording')
+                                        obj.addVideoRecording(recording);
+                                    end
+                                end
+                                obj.recordingsToAdd = {};
+                                
+                                if n == 0
+                                    waitfor(msgbox('No features were imported.', obj.importerTypeNames{index}, 'warn', 'modal'));
+                                else
+                                    obj.reporters{end + 1} = importer;
+                                    obj.timelinePanels{end + 1} = FeaturesPanel(importer);
+                                    
+                                    obj.arrangeTimelinePanels();
+                                    
+                                    somethingOpened = true;
+                                end
+                            catch ME
+                                importer.endProgress();
+                                obj.importing = false;
+                                obj.recordingsToAdd = {};
+                                waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', obj.importerTypeNames{index}, 'error', 'modal'));
+                                rethrow(ME);
+                            end
+
+% TODO                            addContextualMenu(importer);
+                        end
+                    end
+                catch ME
+                    rethrow(ME);
+                end
+
+                % Next check if it's an audio or video file.
+                try
+                    for j = 1:length(obj.recordingClassNames)
+                        if eval([obj.recordingClassNames{j} '.canLoadFromPath(''' strrep(fullPath, '''', '''''') ''')'])
+                            set(obj.figure, 'Pointer', 'watch'); drawnow
+                            constructor = str2func(obj.recordingClassNames{j});
+                            recording = constructor(obj, fullPath);
+                            if isa(recording, 'AudioRecording')
+                                obj.addAudioRecording(recording);
+                                somethingOpened = true;
+                            elseif isa(recording, 'VideoRecording')
+                                obj.addVideoRecording(recording);
+                                somethingOpened = true;
+                            end
+                            set(obj.figure, 'Pointer', 'arrow'); drawnow
+                            break
+                        end
+                    end
+                catch ME
+                    set(obj.figure, 'Pointer', 'arrow'); drawnow
+                    if ~strcmp(ME.identifier, 'Tempo:UserCancelled')
+                        warndlg(sprintf('Error opening media file:\n\n%s', ME.message));
+                        rethrow(ME);
+                    end
+                end
+            end
+            
+            if somethingOpened
+                obj.updateOverallDuration();
+                
+                if nothingWasOpen
+                    if isempty(obj.videoPanels)
+                        % Hide the video half of the splitter.
+                        obj.showVideoPanels(false);
+                    elseif isempty(obj.timelinePanels)
+                        % Hide the video half of the splitter.
+                        obj.showTimelinePanels(false);
+                    end
+                end
+                
+                obj.needsSave = true;
+            elseif ~isempty(fileNames)
+                warndlg('Tempo does not know how to open that kind of file.');
+            end
+        end
+        
+        
+        function saved = handleSaveWorkspace(obj, ~, ~)
+            saved = false;
+            
+            if isempty(obj.savePath)
+                % Figure out a default save location and name.
+                if isempty(obj.recordings)
+                    filePath = '';
+                    fileName = 'Workspace';
+                else
+                    [filePath, fileName, ~] = fileparts(obj.recordings{1}.filePath);
+                end
+                [fileName, filePath] = uiputfile({'*.tempo', 'Tempo Workspace'}, 'Save Tempo Workspace', fullfile(filePath, fileName));
+                if ~eq(fileName, 0)
+                    obj.savePath = fullfile(filePath, fileName);
+                    [~, fileName, ~] = fileparts(fileName); % strip off the extension
+                    set(obj.figure, 'Name', ['Tempo: ' fileName]);
+                end
+            end
+            
+            if ~isempty(obj.savePath)
+                try
+                    obj.saveWorkspace(obj.savePath);
+                    obj.needsSave = false;
+                    saved = true;
+                catch ME
+                    waitfor(warndlg(['Could not save the workspace. (' ME.message ')'], 'Tempo', 'modal'));
+                end
+            end
+        end
+        
+        
+        function saved = handleExportSelection(obj, ~, ~)
+           saved = false;
+            
+            % Figure out a default save location and name.
+            if isempty(obj.recordings)
+                filePath = '';
+                fileName = 'Workspace';
+            else
+                [filePath, fileName, ~] = fileparts(obj.recordings{1}.filePath);
+            end
+            [fileName, filePath] = uiputfile('*.mp4', 'Export Selection', fullfile(filePath, fileName));
+            if ~eq(fileName, 0)
+                exportPath = fullfile(filePath, fileName);
+                [~, fileName, ~] = fileparts(fileName); % strip off the extension
+                set(obj.figure, 'Name', ['Tempo: ' fileName]);
+            end
+            
+            if ~isempty(exportPath)
+                try
+                    h=waitbar(0,'');
+                    c=fileparts(mfilename('fullpath'));
+                    if ismac
+                      c=fullfile(c, 'ThirdParty', 'ffmpeg', 'ffmpeg_mac ');
+                    elseif ispc
+                      c=fullfile(c, 'ThirdParty', 'ffmpeg', 'ffmpeg_win.exe ');
+                    elseif isunix
+                      c=fullfile(c, 'ThirdParty', 'ffmpeg', 'ffmpeg_linux ');
+                    end
+                    f=cell(1,length(obj.recordings));
+                    for i=1:length(obj.recordings)
+                        h=waitbar(i/(length(obj.recordings)+1),h,['Processing ' obj.recordings{i}.name]);
+                        set(findall(h,'type','text'),'Interpreter','none');
+                        f{i}=obj.recordings{i}.saveData;
+                        c=[c '-i ' f{i} ' ']; %#ok<AGROW>
+                    end
+                    c=[c '-acodec copy -vcodec copy ''' exportPath ''''];
+                    waitbar(length(obj.recordings)/(length(obj.recordings)+1),h,['Processing '  exportPath]);
+                    [s,~]=system(c);
+                    if s
+                      close(h);
+                      ME=MException('problem with system(''ffmpeg'')');
+                      throw(ME);
+                    end
+                    waitbar(1,h,'Deleting temporary files');
+                    for i=1:length(obj.recordings)
+                      delete(f{i});
+                    end
+                    close(h);
+                catch ME
+                    waitfor(warndlg(['Could not export the selection. (' ME.message ')'], 'Tempo', 'modal'));
+                end
+            end
+        end
+        
+        
+        function handleSaveScreenshot(obj, ~, ~)
+            % TODO: determine if Ghostscript is installed and reduce choices if not.
+            if isempty(obj.recordings)
+                defaultPath = '';
+                defaultName = 'Screenshot';
+            else
+                [defaultPath, defaultName, ~] = fileparts(obj.recordings{1}.filePath);
+            end
+            [fileName, pathName] = uiputfile({'*.pdf','Portable Document Format (*.pdf)'; ...
+                                              '*.eps','Encapsulated Level 2 Color PostScript (*.eps)'; ...
+                                              '*.png','PNG format (*.png)'; ...
+                                              '*.jpg','JPEG format (*.jpg)'}, ...
+                                             'Save a screen shot', ...
+                                             fullfile(defaultPath, [defaultName '.pdf']));
+
+            if ~isnumeric(fileName)
+                if ismac
+                    % Make sure export_fig can find Ghostscript if it was installed via MacPorts.
+                    prevEnv = getenv('DYLD_LIBRARY_PATH');
+                    setenv('DYLD_LIBRARY_PATH', ['/opt/local/lib:' prevEnv]);
+                end
+                
+                % Determine the list of axes to export.
+                axesToSave = [obj.timeIndicatorPanel.axes];
+                visibleVideoPanels = obj.visibleVideoPanels();
+                for i = 1:length(visibleVideoPanels)
+                    axesToSave(end + 1) = visibleVideoPanels{i}.axes; %#ok<AGROW>
+                end
+                visibleTimelinePanels = obj.visibleTimelinePanels();
+                for i = 1:length(visibleTimelinePanels)
+                    axesToSave(end + 1) = visibleTimelinePanels{i}.axes; %#ok<AGROW>
+%                    visibleTimelinePanels{i}.showSelection(false);
+                end
+                
+                [~,~,e]=fileparts(fileName);
+                switch e
+                  case '.pdf'
+                    print(obj.figure, '-dpdf', '-painters', fullfile(pathName, fileName));
+                  case '.eps'
+                    print(obj.figure, '-depsc2', '-painters', fullfile(pathName, fileName));
+                  case '.png'
+                    print(obj.figure, '-dpng', fullfile(pathName, fileName));
+                  case '.jpg'
+                    print(obj.figure, '-djpeg', fullfile(pathName, fileName));
+                end
+%                export_fig(fullfile(pathName, fileName), '-opengl', '-a1');  %, axesToSave);
+
+                % Show the current selection again.
+                for i = 1:length(visibleTimelinePanels)
+                    visibleTimelinePanels{i}.showSelection(true);
+                end
+                
+                if ismac
+                    setenv('DYLD_LIBRARY_PATH', prevEnv);
+                end
+            end
+        end
+        
+        
+        %% Edit menu callbacks
         
         
         function handleSelectAll(obj, ~, ~)
@@ -663,6 +978,112 @@ classdef TempoController < handle
             % Reduce the selection to just the current time.
             obj.selectedRange = [obj.currentTime obj.currentTime -inf inf];
         end
+        
+        
+        function handleDetectFeatures(obj, hObject, ~)
+            index = get(hObject, 'UserData');
+            
+            if isempty(index)
+                % The user clicked the icon instead of the little pop-up arrow.
+                % We want the pop-up menu to appear in this case as well.
+                jDetect = get(obj.detectPopUpTool,'JavaContainer');
+                if ~isempty(jDetect)
+                    jDetect.showMenu();
+                else
+                    waitfor(warndlg({'Could not automatically pop up the detectors toolbar menu.', '', 'Please click the small arrow next to the icon instead.'}, 'Tempo', 'modal'));
+                end
+            else
+                detectorClassName = obj.detectorClassNames{index};
+                
+                constructor = str2func(detectorClassName);
+                detector = constructor(obj);
+                
+                if detector.editSettings()
+% TODO:               addContextualMenu(detector);
+                    
+                    detector.startProgress();
+                    try
+                        if obj.selectedRange(2) > obj.selectedRange(1)
+                            n = detector.detectFeatures(obj.selectedRange);
+                        else
+                            n = detector.detectFeatures([0.0 obj.duration]);
+                        end
+                        detector.endProgress();
+                        
+                        if n == 0
+                            waitfor(msgbox('No features were detected.', detectorClassName, 'warn', 'modal'));
+                        else
+                            obj.reporters{end + 1} = detector;
+                            obj.timelinePanels{end + 1} = FeaturesPanel(detector);
+                            
+                            obj.arrangeTimelinePanels();
+                            
+                            obj.showTimelinePanels(true);
+                            
+                            obj.needsSave = true;
+                        end
+                        
+% TODO:                   handles = updateFeatureTimes(handles);
+                    catch ME
+                        waitfor(msgbox(['An error occurred while detecting features:' char(10) char(10) ME.message char(10) char(10) '(See the command window for details.)'], ...
+                                       detectorClassName, 'error', 'modal'));
+                        detector.endProgress();
+                        rethrow(ME);
+                    end
+                end
+            end
+        end
+        
+        
+        %% Video menu callbacks
+        
+        
+        function handleShowFrameNumber(obj, ~, ~)
+            % Toggle the display of the frame count in video panels.
+            menuItem = findobj(obj.videoMenu, 'Tag', 'showFrameNumber');
+            curState = get(menuItem, 'Checked');
+            showNumbers = strcmp(curState, 'off');
+            
+            for videoPanel = obj.visibleVideoPanels()
+                videoPanel{1}.showFrameNumber(showNumbers);
+            end
+            
+            if showNumbers
+                set(menuItem, 'Checked', 'on');
+            else
+                set(menuItem, 'Checked', 'off');
+            end
+            
+            setpref('Tempo', 'VideoShowFrameNumber', showNumbers);
+        end
+        
+        
+        %% Timeline menu callbacks
+        
+        
+        function handleZoomIn(obj, ~, ~)
+            obj.setZoom(obj.zoom * 2);
+        end
+        
+        
+        function handleZoomOut(obj, ~, ~)
+            obj.setZoom(obj.zoom / 2);
+        end
+        
+        
+        function handleZoomToSelection(obj, ~, ~)
+            selectionLength = abs(obj.selectedRange(2) - obj.selectedRange(1));
+            if selectionLength > 0
+                % Zoom the timelines so the selection exactly fits in the panels.
+                obj.setZoom(obj.duration / selectionLength);
+            else
+                % Keep the current zoom but center the selection line.
+                obj.centerDisplayAtTime(mean(obj.selectedRange(1:2)));
+            end
+        end
+        
+        
+        %% Playback menu callbacks
         
         
         function handlePlayMedia(obj, ~, ~)
@@ -761,63 +1182,7 @@ classdef TempoController < handle
         end
         
         
-        function handleSaveScreenshot(obj, ~, ~)
-            % TODO: determine if Ghostscript is installed and reduce choices if not.
-            if isempty(obj.recordings)
-                defaultPath = '';
-                defaultName = 'Screenshot';
-            else
-                [defaultPath, defaultName, ~] = fileparts(obj.recordings{1}.filePath);
-            end
-            [fileName, pathName] = uiputfile({'*.pdf','Portable Document Format (*.pdf)'; ...
-                                              '*.eps','Encapsulated Level 2 Color PostScript (*.eps)'; ...
-                                              '*.png','PNG format (*.png)'; ...
-                                              '*.jpg','JPEG format (*.jpg)'}, ...
-                                             'Save a screen shot', ...
-                                             fullfile(defaultPath, [defaultName '.pdf']));
-
-            if ~isnumeric(fileName)
-                if ismac
-                    % Make sure export_fig can find Ghostscript if it was installed via MacPorts.
-                    prevEnv = getenv('DYLD_LIBRARY_PATH');
-                    setenv('DYLD_LIBRARY_PATH', ['/opt/local/lib:' prevEnv]);
-                end
-                
-                % Determine the list of axes to export.
-                axesToSave = [obj.timeIndicatorPanel.axes];
-                visibleVideoPanels = obj.visibleVideoPanels();
-                for i = 1:length(visibleVideoPanels)
-                    axesToSave(end + 1) = visibleVideoPanels{i}.axes; %#ok<AGROW>
-                end
-                visibleTimelinePanels = obj.visibleTimelinePanels();
-                for i = 1:length(visibleTimelinePanels)
-                    axesToSave(end + 1) = visibleTimelinePanels{i}.axes; %#ok<AGROW>
-%                    visibleTimelinePanels{i}.showSelection(false);
-                end
-                
-                [~,~,e]=fileparts(fileName);
-                switch e
-                  case '.pdf'
-                    print(obj.figure, '-dpdf', '-painters', fullfile(pathName, fileName));
-                  case '.eps'
-                    print(obj.figure, '-depsc2', '-painters', fullfile(pathName, fileName));
-                  case '.png'
-                    print(obj.figure, '-dpng', fullfile(pathName, fileName));
-                  case '.jpg'
-                    print(obj.figure, '-djpeg', fullfile(pathName, fileName));
-                end
-%                export_fig(fullfile(pathName, fileName), '-opengl', '-a1');  %, axesToSave);
-
-                % Show the current selection again.
-                for i = 1:length(visibleTimelinePanels)
-                    visibleTimelinePanels{i}.showSelection(true);
-                end
-                
-                if ismac
-                    setenv('DYLD_LIBRARY_PATH', prevEnv);
-                end
-            end
-        end
+        %% Toolbar callbacks
         
         
         function handleToggleWaveforms(obj, hObject, ~)
@@ -873,61 +1238,6 @@ classdef TempoController < handle
                 set(obj.showFeaturesTool, 'State', obj.toolStates{obj.showFeatures + 1});
             else
                 setpref('Tempo', 'ShowFeatures', obj.showFeatures);
-            end
-        end
-        
-        
-        function handleDetectFeatures(obj, hObject, ~)
-            index = get(hObject, 'UserData');
-            
-            if isempty(index)
-                % The user clicked the icon instead of the little pop-up arrow.
-                % We want the pop-up menu to appear in this case as well.
-                jDetect = get(obj.detectPopUpTool,'JavaContainer');
-                if ~isempty(jDetect)
-                    jDetect.showMenu();
-                else
-                    waitfor(warndlg({'Could not automatically pop up the detectors toolbar menu.', '', 'Please click the small arrow next to the icon instead.'}, 'Tempo', 'modal'));
-                end
-            else
-                detectorClassName = obj.detectorClassNames{index};
-                
-                constructor = str2func(detectorClassName);
-                detector = constructor(obj);
-                
-                if detector.editSettings()
-%TODO               addContextualMenu(detector);
-                    
-                    detector.startProgress();
-                    try
-                        if obj.selectedRange(2) > obj.selectedRange(1)
-                            n = detector.detectFeatures(obj.selectedRange);
-                        else
-                            n = detector.detectFeatures([0.0 obj.duration]);
-                        end
-                        detector.endProgress();
-                        
-                        if n == 0
-                            waitfor(msgbox('No features were detected.', detectorClassName, 'warn', 'modal'));
-                        else
-                            obj.reporters{end + 1} = detector;
-                            obj.timelinePanels{end + 1} = FeaturesPanel(detector);
-
-                            obj.arrangeTimelinePanels();
-                            
-                            obj.showTimelinePanels(true);
-                            
-                            obj.needsSave = true;
-                        end
-                        
-%TODO                   handles = updateFeatureTimes(handles);
-                    catch ME
-                        waitfor(msgbox(['An error occurred while detecting features:' char(10) char(10) ME.message char(10) char(10) '(See the command window for details.)'], ...
-                                       detectorClassName, 'error', 'modal'));
-                        detector.endProgress();
-                        rethrow(ME);
-                    end
-                end
             end
         end
         
@@ -1006,28 +1316,6 @@ classdef TempoController < handle
                 set(obj.zoomOutTool, 'Enable', 'on')
             else
                 set(obj.zoomOutTool, 'Enable', 'off')
-            end
-        end
-        
-        
-        function handleZoomIn(obj, ~, ~)
-            obj.setZoom(obj.zoom * 2);
-        end
-        
-        
-        function handleZoomOut(obj, ~, ~)
-            obj.setZoom(obj.zoom / 2);
-        end
-        
-        
-        function handleZoomToSelection(obj, ~, ~)
-            selectionLength = abs(obj.selectedRange(2) - obj.selectedRange(1));
-            if selectionLength > 0
-                % Zoom the timelines so the selection exactly fits in the panels.
-                obj.setZoom(obj.duration / selectionLength);
-            else
-                % Keep the current zoom but center the selection line.
-                obj.centerDisplayAtTime(mean(obj.selectedRange(1:2)));
             end
         end
         
@@ -1327,158 +1615,6 @@ classdef TempoController < handle
         end
         
         
-        function handleOpenFile(obj, ~, ~)
-            [fileNames, pathName] = uigetfile('*.*', 'Select an audio or video file to open', 'MultiSelect', 'on');
-            
-            if ischar(fileNames)
-                fileNames = {fileNames};
-            elseif isnumeric(fileNames)
-                fileNames = {};
-            end
-            
-            nothingWasOpen = isempty(obj.recordings);
-            somethingOpened = false;
-
-            for i = 1:length(fileNames)
-                fileName = fileNames{i};
-                fullPath = fullfile(pathName, fileName);
-
-                % Handle special characters in the file name.
-                NFD = javaMethod('valueOf', 'java.text.Normalizer$Form','NFD');
-                UTF8=java.nio.charset.Charset.forName('UTF-8');
-                s = java.lang.String(fullPath);
-                sc = java.text.Normalizer.normalize(s,NFD);
-                bs = single(sc.getBytes(UTF8)');
-                bs(bs < 0) = 256 + (bs(bs < 0));
-                fullPath = char(bs);
-                
-                [~, ~, ext] = fileparts(fileName);
-                if strcmp(ext, '.tempo')
-                    if isempty(obj.recordings) && isempty(obj.reporters)
-                        % Nothing has been done in this controller so load the workspace here.
-                        target = obj;
-                    else
-                        % Open the workspace in a new controller.
-                        target = TempoController();
-                    end
-                    target.openWorkspace(fullPath);
-                    somethingOpened = true;
-                    continue
-                end
-                
-                % First check if the file can be imported by one of the feature importers.
-                try
-                    possibleImporters = [];
-                    for j = 1:length(obj.importerClassNames)
-                        if eval([obj.importerClassNames{j} '.canImportFromPath(''' strrep(fullPath, '''', '''''') ''')'])
-                            possibleImporters(end+1) = j; %#ok<AGROW>
-                        end
-                    end
-                    
-                    if ~isempty(possibleImporters)
-                        index = [];
-                        if length(possibleImporters) == 1
-                            index = possibleImporters(1);
-                        else
-                            choice = listdlg('PromptString', 'Choose which importer to use:', ...
-                                             'SelectionMode', 'Single', ...
-                                             'ListString', handles.importerTypeNames(possibleImporters));
-                            if ~isempty(choice)
-                                index = choice(1);
-                            end
-                        end
-                        if ~isempty(index)
-                            obj.importing = true;
-                            constructor = str2func(obj.importerClassNames{index});
-                            importer = constructor(obj, fullPath);
-                            importer.startProgress();
-                            try
-                                n = importer.importFeatures();
-                                importer.endProgress();
-                                obj.importing = false;
-                                
-                                % Open any recordings that the importer queued up.
-                                for recording = obj.recordingsToAdd
-                                    if isa(recording, 'AudioRecording')
-                                        obj.addAudioRecording(recording);
-                                    elseif isa(recording, 'VideoRecording')
-                                        obj.addVideoRecording(recording);
-                                    end
-                                end
-                                obj.recordingsToAdd = {};
-                                
-                                if n == 0
-                                    waitfor(msgbox('No features were imported.', obj.importerTypeNames{index}, 'warn', 'modal'));
-                                else
-                                    obj.reporters{end + 1} = importer;
-                                    obj.timelinePanels{end + 1} = FeaturesPanel(importer);
-                                    
-                                    obj.arrangeTimelinePanels();
-                                    
-                                    somethingOpened = true;
-                                end
-                            catch ME
-                                importer.endProgress();
-                                obj.importing = false;
-                                obj.recordingsToAdd = {};
-                                waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', obj.importerTypeNames{index}, 'error', 'modal'));
-                                rethrow(ME);
-                            end
-
-% TODO                            addContextualMenu(importer);
-                        end
-                    end
-                catch ME
-                    rethrow(ME);
-                end
-
-                % Next check if it's an audio or video file.
-                try
-                    for j = 1:length(obj.recordingClassNames)
-                        if eval([obj.recordingClassNames{j} '.canLoadFromPath(''' strrep(fullPath, '''', '''''') ''')'])
-                            set(obj.figure, 'Pointer', 'watch'); drawnow
-                            constructor = str2func(obj.recordingClassNames{j});
-                            recording = constructor(obj, fullPath);
-                            if isa(recording, 'AudioRecording')
-                                obj.addAudioRecording(recording);
-                                somethingOpened = true;
-                            elseif isa(recording, 'VideoRecording')
-                                obj.addVideoRecording(recording);
-                                somethingOpened = true;
-                            end
-                            set(obj.figure, 'Pointer', 'arrow'); drawnow
-                            break
-                        end
-                    end
-                catch ME
-                    set(obj.figure, 'Pointer', 'arrow'); drawnow
-                    if ~strcmp(ME.identifier, 'Tempo:UserCancelled')
-                        warndlg(sprintf('Error opening media file:\n\n%s', ME.message));
-                        rethrow(ME);
-                    end
-                end
-            end
-            
-            if somethingOpened
-                obj.updateOverallDuration();
-                
-                if nothingWasOpen
-                    if isempty(obj.videoPanels)
-                        % Hide the video half of the splitter.
-                        obj.showVideoPanels(false);
-                    elseif isempty(obj.timelinePanels)
-                        % Hide the video half of the splitter.
-                        obj.showTimelinePanels(false);
-                    end
-                end
-                
-                obj.needsSave = true;
-            elseif ~isempty(fileNames)
-                warndlg('Tempo does not know how to open that kind of file.');
-            end
-        end
-        
-        
         function addAudioRecording(obj, recording)
             if obj.importing
                 % There seems to be a bug in MATLAB where you can't create new axes while a waitbar is open.
@@ -1519,6 +1655,7 @@ classdef TempoController < handle
                 obj.recordings{end + 1} = recording;
                 
                 panel = VideoPanel(obj, recording);
+                panel.showFrameNumber(getpref('Tempo', 'VideoShowFrameNumber', true));
                 obj.videoPanels{end + 1} = panel;
                 
                 obj.arrangeVideoPanels();
@@ -1546,92 +1683,6 @@ classdef TempoController < handle
         
         function handleRecordingDurationChanged(obj, ~, ~)
             obj.updateOverallDuration();
-        end
-        
-        
-        function saved = handleExportSelection(obj, ~, ~)
-           saved = false;
-            
-            % Figure out a default save location and name.
-            if isempty(obj.recordings)
-                filePath = '';
-                fileName = 'Workspace';
-            else
-                [filePath, fileName, ~] = fileparts(obj.recordings{1}.filePath);
-            end
-            [fileName, filePath] = uiputfile('*.mp4', 'Export Selection', fullfile(filePath, fileName));
-            if ~eq(fileName, 0)
-                exportPath = fullfile(filePath, fileName);
-                [~, fileName, ~] = fileparts(fileName); % strip off the extension
-                set(obj.figure, 'Name', ['Tempo: ' fileName]);
-            end
-            
-            if ~isempty(exportPath)
-                try
-                    h=waitbar(0,'');
-                    c=fileparts(mfilename('fullpath'));
-                    if ismac
-                      c=fullfile(c, 'ThirdParty', 'ffmpeg', 'ffmpeg_mac ');
-                    elseif ispc
-                      c=fullfile(c, 'ThirdParty', 'ffmpeg', 'ffmpeg_win.exe ');
-                    elseif isunix
-                      c=fullfile(c, 'ThirdParty', 'ffmpeg', 'ffmpeg_linux ');
-                    end
-                    f=cell(1,length(obj.recordings));
-                    for i=1:length(obj.recordings)
-                        h=waitbar(i/(length(obj.recordings)+1),h,['Processing ' obj.recordings{i}.name]);
-                        set(findall(h,'type','text'),'Interpreter','none');
-                        f{i}=obj.recordings{i}.saveData;
-                        c=[c '-i ' f{i} ' ']; %#ok<AGROW>
-                    end
-                    c=[c '-acodec copy -vcodec copy ''' exportPath ''''];
-                    waitbar(length(obj.recordings)/(length(obj.recordings)+1),h,['Processing '  exportPath]);
-                    [s,~]=system(c);
-                    if s
-                      close(h);
-                      ME=MException('problem with system(''ffmpeg'')');
-                      throw(ME);
-                    end
-                    waitbar(1,h,'Deleting temporary files');
-                    for i=1:length(obj.recordings)
-                      delete(f{i});
-                    end
-                    close(h);
-                catch ME
-                    waitfor(warndlg(['Could not export the selection. (' ME.message ')'], 'Tempo', 'modal'));
-                end
-            end
-        end
-        
-        
-        function saved = handleSaveWorkspace(obj, ~, ~)
-            saved = false;
-            
-            if isempty(obj.savePath)
-                % Figure out a default save location and name.
-                if isempty(obj.recordings)
-                    filePath = '';
-                    fileName = 'Workspace';
-                else
-                    [filePath, fileName, ~] = fileparts(obj.recordings{1}.filePath);
-                end
-                [fileName, filePath] = uiputfile({'*.tempo', 'Tempo Workspace'}, 'Save Tempo Workspace', fullfile(filePath, fileName));
-                if ~eq(fileName, 0)
-                    obj.savePath = fullfile(filePath, fileName);
-                    [~, fileName, ~] = fileparts(fileName); % strip off the extension
-                    set(obj.figure, 'Name', ['Tempo: ' fileName]);
-                end
-            end
-            
-            if ~isempty(obj.savePath)
-                try
-                    obj.saveWorkspace(obj.savePath);
-                    obj.needsSave = false;
-                    saved = true;
-                catch ME
-                    waitfor(warndlg(['Could not save the workspace. (' ME.message ')'], 'Tempo', 'modal'));
-                end
-            end
         end
         
         
