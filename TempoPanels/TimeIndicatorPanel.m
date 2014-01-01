@@ -7,7 +7,7 @@ classdef TimeIndicatorPanel < TimelinePanel
         end
         
         
-        function h = hasTitleBar(obj) %#ok<MANU>
+        function h = hasTitleBarControls(obj) %#ok<MANU>
             h = false;
         end
 	    
@@ -15,7 +15,7 @@ classdef TimeIndicatorPanel < TimelinePanel
 	    function createControls(obj, ~)
             set(obj.controller.figure, 'CurrentAxes', obj.axes);
             
-            % Get rid of the default current time and selection indicators.
+            % Get rid of the unneeded current time and selection indicators created by TimelinePanel.
             delete(obj.timeLine);
             obj.timeLine = [];
             delete(obj.selectionPatch);
@@ -33,6 +33,8 @@ classdef TimeIndicatorPanel < TimelinePanel
         function updateAxes(obj, timeRange)
             set(obj.controller.figure, 'CurrentAxes', obj.axes);
             cla;
+            
+            set(obj.axes, 'TickLength', [0 0]);
             
             if isempty(timeRange)
                 timeRange = get(obj.axes, 'XLim');

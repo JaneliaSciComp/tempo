@@ -72,7 +72,7 @@ classdef TempoController < handle
     
     properties (SetObservable)
         % The Tempo panels will listen for changes to these properties.
-        displayRange = []      % The window in time and frequency which all non-video panels should display (in seconds/Hz, [minTime maxTime minFreq maxFreq]).
+        displayRange = [0 300 -inf inf]      % The window in time and frequency which all timeline panels should display (in seconds/Hz, [minTime maxTime minFreq maxFreq]).
         currentTime = 0         % The time point currently being played (in seconds).
         selectedRange = [0 0 -inf inf]    % The range of time and frequency currently selected (in seconds/Hz).  The first two values will be equal if there is a point selection.
         windowSize = 0
@@ -628,11 +628,11 @@ classdef TempoController < handle
                 % The splitter is open, show the panels.
                 set(obj.timelinesPanel, 'Visible', 'on');
                 
-                    % Arrange the other panels, leaving room at the top for the time indicator panel.
-                    % Leave a one pixel gap between panels so there's a visible line between them.
-                    timeIndicatorHeight = 13;
-                    panelsHeight = timelinesPos(4) - timeIndicatorHeight;
-                    numPanels = length(visibleTimelinePanels);
+                % Arrange the other panels, leaving room at the top for the time indicator panel.
+                % Leave a one pixel gap between panels so there's a visible line between them.
+                timeIndicatorHeight = 13;
+                panelsHeight = timelinesPos(4) - timeIndicatorHeight;
+                numPanels = length(visibleTimelinePanels);
                 if numPanels > 0
                     panelHeight = floor(panelsHeight / numPanels);
                     for i = 1:numPanels - 1
@@ -643,9 +643,9 @@ classdef TempoController < handle
                     set(visibleTimelinePanels{end}.panel, 'Position', [4, 2, timelinesPos(3) - 3, lastPanelHeight]);
                     visibleTimelinePanels{end}.handleResize([], []);
                 end
-                    
-                    obj.timeIndicatorPanel.setVisible(true);
-                    set(obj.timeIndicatorPanel.panel, 'Position', [4, timelinesPos(4) - timeIndicatorHeight, timelinesPos(3) - 3, timeIndicatorHeight + 1]);
+                
+                obj.timeIndicatorPanel.setVisible(true);
+                set(obj.timeIndicatorPanel.panel, 'Position', [4, timelinesPos(4) - timeIndicatorHeight, timelinesPos(3) - 3, timeIndicatorHeight + 1]);
                 obj.timeIndicatorPanel.updateAxes(obj.displayRange(1:2));
                 
                 set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 1, 16]);
@@ -1634,8 +1634,8 @@ classdef TempoController < handle
             curMax = get(obj.timelineSlider, 'Max');
             newValue = mean(obj.displayRange(1:2));
             set(obj.timelineSlider, 'SliderStep', [stepSize / 50.0 stepSize], ...
-                                'Value', newValue, ...
-                                'Max', max(curMax, newValue));
+                                    'Value', newValue, ...
+                                    'Max', max(curMax, newValue));
         end
         
         

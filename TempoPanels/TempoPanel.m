@@ -39,14 +39,14 @@ classdef TempoPanel < handle
                 'Position', [-200 -200 100 100], ...
                 'ResizeFcn', @(source, event)handleResize(obj, source, event));
             
-            if obj.hasTitleBar()
-                obj.titlePanel = uipanel(obj.panel, ...
-                    'BorderType', 'none', ...
-                    'BorderWidth', 0, ...
-                    'BackgroundColor', [0.75 0.75 0.75], ...
-                    'SelectionHighlight', 'off', ...
-                    'Units', 'pixels', ...
-                    'Position', [0 0 16 100]);
+            obj.titlePanel = uipanel(obj.panel, ...
+                'BorderType', 'none', ...
+                'BorderWidth', 0, ...
+                'BackgroundColor', [0.75 0.75 0.75], ...
+                'SelectionHighlight', 'off', ...
+                'Units', 'pixels', ...
+                'Position', [0 0 16 100]);
+            if obj.hasTitleBarControls()
                 baseCData = ones(12, 12, 3);
                 baseCData(:, 1, :) = ones(12, 3) * 0.5;
                 baseCData(:, 12, :) = ones(12, 3) * 0.5;
@@ -127,7 +127,7 @@ classdef TempoPanel < handle
         end
         
         
-        function h = hasTitleBar(obj) %#ok<MANU>
+        function h = hasTitleBarControls(obj) %#ok<MANU>
             h = true;
         end
         
@@ -147,9 +147,9 @@ classdef TempoPanel < handle
                 
                 panelPos(4) = panelPos(4) + 1;
                 
-                if obj.hasTitleBar()
-                    titlePos = [0 0 16 panelPos(4)];
-                    set(obj.titlePanel, 'Position', titlePos);
+                titlePos = [0 0 16 panelPos(4)];
+                set(obj.titlePanel, 'Position', titlePos);
+                if obj.hasTitleBarControls()
                     buttonPos = [3, panelPos(4) - 14, 12, 12];
                     set(obj.closeButton, 'Position', buttonPos);
                     buttonPos = [3, panelPos(4) - 28, 12, 12];
