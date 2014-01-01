@@ -173,6 +173,7 @@ classdef TempoController < handle
             addlistener(obj.timelineSlider, 'ContinuousValueChange', @(source, event)handleTimelineSliderChanged(obj, source, event));
             
             % Listen for changes to the displayRange property.
+            addlistener(obj, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
             addlistener(obj, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
             
             obj.arrangeTimelinePanels();
@@ -1622,6 +1623,11 @@ classdef TempoController < handle
         end
         
         
+        function handleCurrentTimeChanged(obj, ~, ~)
+            set(obj.videoSlider, 'Value', obj.currentTime);
+        end
+        
+        
         function handleTimeWindowChanged(obj, ~, ~)
             % Adjust the step and page sizes of the time slider.
             stepSize = 1 / obj.zoom;
@@ -1686,7 +1692,9 @@ classdef TempoController < handle
         function updateOverallDuration(obj)
             obj.duration = max([cellfun(@(r) r.duration, obj.recordings) cellfun(@(r) r.duration, obj.reporters)]);
             
-            set(obj.videoSlider, 'Max', obj.duration);
+            meanFrameRate = mean(cellfun(@(v) v.video.sampleRate, obj.visibleVideoPanels()));
+            set(obj.videoSlider, 'Max', obj.duration, ...
+                                 'SliderStep', [1.0 / meanFrameRate / obj.duration, 5.0 / obj.duration]);
             set(obj.timelineSlider, 'Max', obj.duration);
             
             % Alter the zoom so that the same window of time is visible.
