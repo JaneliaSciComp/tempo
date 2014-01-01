@@ -25,6 +25,7 @@ classdef TempoController < handle
         videoMenu
         timelineMenu
         playbackMenu
+        windowMenu
         
         toolbar
         zoomOutTool
@@ -150,7 +151,9 @@ classdef TempoController < handle
             obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
             
             obj.createMenuBar();
-            obj.createToolbar();
+            if getpref('Tempo', 'WindowShowToolbar', true)
+                obj.createToolbar();
+            end
             
             % Create the scroll bars that let the user scrub through time.
             videosPos = get(obj.videosPanel, 'Position');
@@ -360,8 +363,24 @@ classdef TempoController < handle
                                      'Callback', '', ...
                                      'Accelerator', '', ...
                                      'Enable', 'off');
-                                 
-            % TODO: Window menu
+            
+            obj.windowMenu = uimenu(obj.figure, 'Label', 'Window');
+            uimenu(obj.windowMenu, 'Label', 'Show Toolbar', ...
+                                   'Callback', @(hObject, eventdata)handleShowToolbar(obj, hObject, eventdata), ...
+                                   'Accelerator', '', ...
+                                   'Checked', checked{getpref('Tempo', 'WindowShowToolbar', true) + 1}, ...
+                                   'Tag', 'showToolbar');
+            uimenu(obj.windowMenu, 'Label', 'Arrange Windows Top to Bottom', ...
+                                   'Callback', '', ...
+                                   'Accelerator', '', ...
+                                   'Separator', 'on', ...
+                                   'Enable', 'off');
+            uimenu(obj.windowMenu, 'Label', 'Arrange Windows Left to Right', ...
+                                   'Callback', '', ...
+                                   'Accelerator', '', ...
+                                   'Enable', 'off');
+            % TODO: add/manage the list of open windows
+            
             % TODO: Help menu
         end
         
@@ -1189,6 +1208,28 @@ classdef TempoController < handle
                     obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
                 end
             end
+        end
+        
+        
+        %% Window menu callbacks
+        
+        
+        function handleShowToolbar(obj, ~, ~)
+            % Toggle the display of the toolbar.
+            menuItem = findobj(obj.windowMenu, 'Tag', 'showToolbar');
+            curState = get(menuItem, 'Checked');
+            if strcmp(curState, 'on')
+                set(obj.toolbar, 'Visible', 'off');
+                set(menuItem, 'Checked', 'off');
+            else
+                if isempty(obj.toolbar)
+                    obj.createToolbar();
+                end
+                set(obj.toolbar, 'Visible', 'on');
+                set(menuItem, 'Checked', 'on');
+            end
+            
+            setpref('Tempo', 'WindowShowToolbar', strcmp(curState, 'off'));
         end
         
         
