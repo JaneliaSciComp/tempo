@@ -17,7 +17,8 @@ classdef TempoController < handle
         timelinePanels = {}
         timeIndicatorPanel = []
         
-        timeSlider
+        videoSlider
+        timelineSlider
         
         fileMenu
         editMenu
@@ -133,7 +134,7 @@ classdef TempoController < handle
                 'BackgroundColor', [0.25 0.25 0.25], ...
                 'SelectionHighlight', 'off', ...
                 'Units', 'pixels', ...
-                'Position', [0 16 figurePos(3) figurePos(4) - 16]);
+                'Position', [0 0 figurePos(3) figurePos(4)]);
             [obj.videosPanel, obj.timelinesPanel, obj.splitter] = uisplitpane(obj.splitterPanel, ...
                 'DividerLocation', 0.25, ...
                 'DividerColor', 'red', ...
@@ -151,19 +152,25 @@ classdef TempoController < handle
             obj.createMenuBar();
             obj.createToolbar();
             
-            % Create the scroll bar that lets the user scrub through time.
-            obj.timeSlider = uicontrol(...
-                'Parent', obj.figure, ...
+            % Create the scroll bars that let the user scrub through time.
+            videosPos = get(obj.videosPanel, 'Position');
+            obj.videoSlider = uicontrol(...
+                'Parent', obj.videosPanel, ...
                 'Style', 'slider',... 
                 'Min', 0, ...
                 'Max', obj.duration, ...
                 'Value', 0, ...
-                'Position', [1 1 figurePos(3) 16]);
-            if verLessThan('matlab', '7.12.0')
-                addlistener(obj.timeSlider, 'Action', @(source, event)handleTimeSliderChanged(obj, source, event));
-            else
-                addlistener(obj.timeSlider, 'ContinuousValueChange', @(source, event)handleTimeSliderChanged(obj, source, event));
-            end
+                'Position', [1 1 videosPos(3) 16]);
+            addlistener(obj.videoSlider, 'ContinuousValueChange', @(source, event)handleVideoSliderChanged(obj, source, event));
+            timelinesPos = get(obj.timelinesPanel, 'Position');
+            obj.timelineSlider = uicontrol(...
+                'Parent', obj.timelinesPanel, ...
+                'Style', 'slider',... 
+                'Min', 0, ...
+                'Max', obj.duration, ...
+                'Value', 0, ...
+                'Position', [1 1 timelinesPos(3) 16]);
+            addlistener(obj.timelineSlider, 'ContinuousValueChange', @(source, event)handleTimelineSliderChanged(obj, source, event));
             
             % Listen for changes to the displayRange property.
             addlistener(obj, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
@@ -353,6 +360,7 @@ classdef TempoController < handle
                                      'Accelerator', '', ...
                                      'Enable', 'off');
                                  
+            % TODO: Window menu
             % TODO: Help menu
         end
         
@@ -560,6 +568,8 @@ classdef TempoController < handle
                         % Arrange the videos in a row.
                     end
                 end
+                
+                set(obj.videoSlider, 'Position', [1, 0, videosPos(3) + 1, 16]);
             end
         end
         
@@ -617,16 +627,12 @@ classdef TempoController < handle
                 % The splitter is open, show the panels.
                 set(obj.timelinesPanel, 'Visible', 'on');
                 
-                if isempty(visibleTimelinePanels)
-                    if ~isempty(obj.timeIndicatorPanel)
-                        obj.timeIndicatorPanel.setVisible(false);
-                    end
-                else
                     % Arrange the other panels, leaving room at the top for the time indicator panel.
                     % Leave a one pixel gap between panels so there's a visible line between them.
                     timeIndicatorHeight = 13;
                     panelsHeight = timelinesPos(4) - timeIndicatorHeight;
                     numPanels = length(visibleTimelinePanels);
+                if numPanels > 0
                     panelHeight = floor(panelsHeight / numPanels);
                     for i = 1:numPanels - 1
                         set(visibleTimelinePanels{i}.panel, 'Position', [4, timelinesPos(4) - timeIndicatorHeight - i * panelHeight, timelinesPos(3) - 3, panelHeight - 2]);
@@ -635,10 +641,13 @@ classdef TempoController < handle
                     lastPanelHeight = panelsHeight - panelHeight * (numPanels - 1) - 4;
                     set(visibleTimelinePanels{end}.panel, 'Position', [4, 2, timelinesPos(3) - 3, lastPanelHeight]);
                     visibleTimelinePanels{end}.handleResize([], []);
+                end
                     
                     obj.timeIndicatorPanel.setVisible(true);
                     set(obj.timeIndicatorPanel.panel, 'Position', [4, timelinesPos(4) - timeIndicatorHeight, timelinesPos(3) - 3, timeIndicatorHeight + 1]);
-                end
+                obj.timeIndicatorPanel.updateAxes(obj.displayRange(1:2));
+                
+                set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 1, 16]);
             end
         end
         
@@ -1242,6 +1251,9 @@ classdef TempoController < handle
         end
         
         
+        %% Other callbacks
+        
+        
         function removeFeaturePanel(obj, featurePanel)
             answer = questdlg('Are you sure you wish to remove this reporter?', 'Removing Reporter', 'Cancel', 'Remove', 'Cancel');
             if strcmp(answer, 'Remove')
@@ -1323,8 +1335,7 @@ classdef TempoController < handle
         function handleResize(obj, ~, ~)
             pos = get(obj.figure, 'Position');
             
-            set(obj.splitterPanel, 'Position', [1, 16, pos(3), pos(4) - 16]);
-            set(obj.timeSlider, 'Position', [1, 0, pos(3) + 1, 16]);
+            set(obj.splitterPanel, 'Position', [1, 1, pos(3), pos(4)]);
             
             obj.needsSave = true;
         end
@@ -1597,9 +1608,16 @@ classdef TempoController < handle
         end
         
         
-        function handleTimeSliderChanged(obj, ~, ~)
-            if get(obj.timeSlider, 'Value') ~= obj.displayRange(1)
-                obj.centerDisplayAtTime(get(obj.timeSlider, 'Value'));
+        function handleVideoSliderChanged(obj, ~, ~)
+            % The video slider controls the current time.
+            obj.currentTime = get(obj.videoSlider, 'Value');
+        end
+        
+        
+        function handleTimelineSliderChanged(obj, ~, ~)
+            % The timeline slider controls the window of time being displayed in the timelines.
+            if get(obj.timelineSlider, 'Value') ~= obj.displayRange(1)
+                obj.centerDisplayAtTime(get(obj.timelineSlider, 'Value'));
             end
         end
         
@@ -1607,9 +1625,9 @@ classdef TempoController < handle
         function handleTimeWindowChanged(obj, ~, ~)
             % Adjust the step and page sizes of the time slider.
             stepSize = 1 / obj.zoom;
-            curMax = get(obj.timeSlider, 'Max');
+            curMax = get(obj.timelineSlider, 'Max');
             newValue = mean(obj.displayRange(1:2));
-            set(obj.timeSlider, 'SliderStep', [stepSize / 50.0 stepSize], ...
+            set(obj.timelineSlider, 'SliderStep', [stepSize / 50.0 stepSize], ...
                                 'Value', newValue, ...
                                 'Max', max(curMax, newValue));
         end
@@ -1668,7 +1686,8 @@ classdef TempoController < handle
         function updateOverallDuration(obj)
             obj.duration = max([cellfun(@(r) r.duration, obj.recordings) cellfun(@(r) r.duration, obj.reporters)]);
             
-            set(obj.timeSlider, 'Max', obj.duration);
+            set(obj.videoSlider, 'Max', obj.duration);
+            set(obj.timelineSlider, 'Max', obj.duration);
             
             % Alter the zoom so that the same window of time is visible.
             if isempty(obj.displayRange)
@@ -1784,7 +1803,8 @@ classdef TempoController < handle
             
             obj.duration = max([cellfun(@(r) r.duration, obj.recordings) cellfun(@(r) r.duration, obj.reporters)]);
                 
-            set(obj.timeSlider, 'Max', obj.duration);
+            set(obj.videoSlider, 'Max', obj.duration);
+            set(obj.timelineSlider, 'Max', obj.duration);
                 
             % Alter the zoom so that the same window of time is visible.
             if isempty(obj.displayRange)

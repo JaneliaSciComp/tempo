@@ -1,6 +1,6 @@
 function Tempo()
-    if verLessThan('matlab', '7.9')
-        error 'Tempo requires MATLAB 7.9 (2009b) or later.'
+    if verLessThan('matlab', '7.12')
+        error 'Tempo requires MATLAB 7.12 (2011a) or later.'
     end
     
     % TODO: implement app-level features like window menu, etc.
