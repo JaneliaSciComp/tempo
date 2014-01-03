@@ -197,7 +197,7 @@ classdef FeaturesPanel < TimelinePanel
             end
             
             if timeChange ~= 0
-                newTime = max([0 min([obj.controller.maxMediaTime obj.controller.currentTime + timeChange])]);
+                newTime = max([0 min([obj.controller.duration obj.controller.currentTime + timeChange])]);
                 if shiftDown
                     if obj.controller.currentTime == obj.controller.selectedRange(1)
                         obj.controller.selectedRange = [sort([obj.controller.selectedRange(2) newTime]) obj.selectedRange(3:4)];

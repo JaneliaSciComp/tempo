@@ -49,10 +49,10 @@ classdef TimeIndicatorPanel < TimelinePanel
             textFont = 'FixedWidth';
             redColor = [0.5 0.0 0.0];
             
-            % Draw regular time ticks if we're not playing media.
+            % Draw regular time ticks when paused.
             % Get as close to ten ticks as possible and align to integral (or certain fraction of) times, e.g. 1:40.0 or 1:40.25.
             % Don't draw ticks inside any selection.
-            if ~obj.controller.isPlayingMedia
+            if ~obj.controller.isPlaying
                 displayRange = obj.controller.displayRange(2) - obj.controller.displayRange(1);
                 upperBound = 10.^nextpow10(displayRange);
                 possibleSpacings = upperBound .* [1 / 2, 1 / 4, 1 / 5, 1 / 10, 1 / 20, 1 / 40, 1 / 50];

@@ -29,13 +29,17 @@ classdef TempoController < handle
         
         toolbar
         zoomOutTool
-        playMediaTool
-        pauseMediaTool
+        
+        playSlowerTool
+        playBackwardsTool
+        pauseTool
+        playForwardsTool
+        playFasterTool
+        
         detectPopUpTool
         showWaveformsTool
         showSpectrogramsTool
         showFeaturesTool
-        toolStates = {'off', 'on'}
         
         timeLabelFormat = 1     % default to displaying time in minutes and seconds
         
@@ -45,10 +49,12 @@ classdef TempoController < handle
         originalSelectedRange
         mouseOffset
         
-        isPlayingMedia = false
+        isPlaying = false
+        playRate = 1.0          % positive plays forward, negative plays backwards
         playTimer
-        mediaTimer
-        mediaTimeSync
+        playRange
+        playStartTime
+        fpsFrameCount
         
         recordingClassNames
         recordingTypeNames
@@ -66,8 +72,6 @@ classdef TempoController < handle
         
         needsSave = false
         savePath
-        
-        frameCount
     end
     
     
@@ -114,9 +118,9 @@ classdef TempoController < handle
             addpath(fullfile(parentDir, 'Recordings'));
             addpath(fullfile(parentDir, 'Utility'));
             
-            [obj.recordingClassNames, obj.recordingTypeNames] = findPlugIns(fullfile(parentDir, 'Recordings'));
-            [obj.detectorClassNames, obj.detectorTypeNames] = findPlugIns(fullfile(parentDir, 'Detectors'));
-            [obj.importerClassNames, obj.importerTypeNames] = findPlugIns(fullfile(parentDir, 'Importers'));
+            [obj.recordingClassNames, obj.recordingTypeNames] = obj.findPlugIns(fullfile(parentDir, 'Recordings'));
+            [obj.detectorClassNames, obj.detectorTypeNames] = obj.findPlugIns(fullfile(parentDir, 'Detectors'));
+            [obj.importerClassNames, obj.importerTypeNames] = obj.findPlugIns(fullfile(parentDir, 'Importers'));
             
             % Add the paths to the third-party code.
             addpath(fullfile(parentDir, 'ThirdParty', 'export_fig'));
@@ -181,14 +185,12 @@ classdef TempoController < handle
             
             obj.arrangeTimelinePanels();
             
-            % Set up a timer to fire 30 times per second when the media is being played.
-            obj.mediaTimer = timer('ExecutionMode', 'fixedRate', 'TimerFcn', @(timerObj, event)handleMediaTimer(obj, timerObj, event), 'Period', round(1.0 / 30.0 * 1000) / 1000);
+            % Set up a timer to fire 30 times per second during playback.
+            obj.playTimer = timer('ExecutionMode', 'fixedRate', 'TimerFcn', @(timerObj, event)handlePlayTimer(obj, timerObj, event), 'Period', round(1.0 / 30.0 * 1000) / 1000);
         end
         
         
         function createMenuBar(obj)
-            checked = {'off', 'on'};
-            
             obj.fileMenu = uimenu(obj.figure, 'Label', 'File');
             uimenu(obj.fileMenu, 'Label', 'New', ...
                                  'Callback', @(hObject, eventdata)handleNewWorkspace(obj, hObject, eventdata), ...
@@ -300,7 +302,7 @@ classdef TempoController < handle
                                   'Callback', @(hObject, eventdata)handleShowFrameNumber(obj, hObject, eventdata), ...
                                   'Accelerator', '', ... 
                                   'Separator', 'on', ...
-                                  'Checked', checked{getpref('Tempo', 'VideoShowFrameNumber', true) + 1}, ...
+                                  'Checked', onOff(getpref('Tempo', 'VideoShowFrameNumber', true)), ...
                                   'Tag', 'showFrameNumber');
             
             obj.timelineMenu = uimenu(obj.figure, 'Label', 'Timeline');
@@ -325,50 +327,41 @@ classdef TempoController < handle
             
             obj.playbackMenu = uimenu(obj.figure, 'Label', 'Playback');
             uimenu(obj.playbackMenu, 'Label', 'Play', ...
-                                     'Callback', @(hObject, eventdata)handlePlayMedia(obj, hObject, eventdata), ...
+                                     'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'forewards'), ...
+                                     'Accelerator', ' ');
+            uimenu(obj.playbackMenu, 'Label', 'Play Backwards', ...
+                                     'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'backwards'), ...
                                      'Accelerator', '');
             uimenu(obj.playbackMenu, 'Label', 'Pause', ...
-                                     'Callback', @(hObject, eventdata)handlePauseMedia(obj, hObject, eventdata), ...
+                                     'Callback', @(hObject, eventdata)handlePause(obj, hObject, eventdata), ...
                                      'Accelerator', '');
             uimenu(obj.playbackMenu, 'Label', 'Play at Regular Speed', ...
-                                     'Callback', '', ...
+                                     'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, '1x'), ...
                                      'Accelerator', '1', ...
                                      'Separator', 'on', ...
                                      'Checked', 'on', ...
-                                     'Enable', 'off');
+                                     'Tag', 'regularSpeed');
             uimenu(obj.playbackMenu, 'Label', 'Play at Double Speed', ...
-                                     'Callback', '', ...
+                                     'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, '2x'), ...
                                      'Accelerator', '2', ...
-                                     'Enable', 'off');
+                                     'Tag', 'doubleSpeed');
             uimenu(obj.playbackMenu, 'Label', 'Play at Half Speed', ...
-                                     'Callback', '', ...
+                                     'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, '1/2x'), ...
                                      'Accelerator', '', ...
-                                     'Enable', 'off');
+                                     'Tag', 'halfSpeed');
             uimenu(obj.playbackMenu, 'Label', 'Increase Speed', ...
-                                     'Callback', '', ...
+                                     'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'faster'), ...
                                      'Accelerator', '', ...
-                                     'Separator', 'on', ...
-                                     'Enable', 'off');
+                                     'Separator', 'on');
             uimenu(obj.playbackMenu, 'Label', 'Decrease Speed', ...
-                                     'Callback', '', ...
-                                     'Accelerator', '', ...
-                                     'Enable', 'off');
-            uimenu(obj.playbackMenu, 'Label', 'Play Forwards', ...
-                                     'Callback', '', ...
-                                     'Accelerator', '', ...
-                                     'Separator', 'on', ...
-                                     'Checked', 'on', ...
-                                     'Enable', 'off');
-            uimenu(obj.playbackMenu, 'Label', 'Play Backwards', ...
-                                     'Callback', '', ...
-                                     'Accelerator', '', ...
-                                     'Enable', 'off');
+                                     'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'slower'), ...
+                                     'Accelerator', '');
             
             obj.windowMenu = uimenu(obj.figure, 'Label', 'Window');
             uimenu(obj.windowMenu, 'Label', 'Show Toolbar', ...
                                    'Callback', @(hObject, eventdata)handleShowToolbar(obj, hObject, eventdata), ...
                                    'Accelerator', '', ...
-                                   'Checked', checked{getpref('Tempo', 'WindowShowToolbar', true) + 1}, ...
+                                   'Checked', onOff(getpref('Tempo', 'WindowShowToolbar', true)), ...
                                    'Tag', 'showToolbar');
             uimenu(obj.windowMenu, 'Label', 'Arrange Windows Top to Bottom', ...
                                    'Callback', '', ...
@@ -393,6 +386,8 @@ classdef TempoController < handle
             iconRoot = fullfile(tempoRoot, 'Icons');
             defaultBackground = get(0, 'defaultUicontrolBackgroundColor');
             
+            % Open, save, export
+            
             iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'file_open.png'), 'BackgroundColor', defaultBackground)) / 65535;
             uipushtool(obj.toolbar, ...
                 'Tag', 'openFile', ...
@@ -414,6 +409,8 @@ classdef TempoController < handle
                 'TooltipString', 'Export the selected time window to a movie',...
                 'ClickedCallback', @(hObject, eventdata)handleExportSelection(obj, hObject, eventdata));
             
+            % Zooming
+            
             iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'tool_zoom_in.png'), 'BackgroundColor', defaultBackground)) / 65535;
             uipushtool(obj.toolbar, ...
                 'Tag', 'zoomIn', ...
@@ -428,19 +425,33 @@ classdef TempoController < handle
                 'TooltipString', 'Zoom out',... 
                 'ClickedCallback', @(hObject, eventdata)handleZoomOut(obj, hObject, eventdata));
             
-            iconData = double(imread(fullfile(iconRoot, 'play.png'), 'BackgroundColor', defaultBackground)) / 255;
-            obj.playMediaTool = uipushtool(obj.toolbar, ...
-                'Tag', 'playMedia', ...
-                'CData', iconData, ...
-                'TooltipString', 'Play audio/video recordings',... 
+            % Playback
+            
+            forwardIcon = double(imread(fullfile(iconRoot, 'play.png'), 'BackgroundColor', defaultBackground)) / 255;
+            pauseIcon = double(imread(fullfile(iconRoot, 'pause.png'), 'BackgroundColor', defaultBackground)) / 255;
+            backwardsIcon = flipdim(forwardIcon, 2);
+            obj.playSlowerTool = uipushtool(obj.toolbar, ...
+                'CData', backwardsIcon, ...
                 'Separator', 'on', ...
-                'ClickedCallback', @(hObject, eventdata)handlePlayMedia(obj, hObject, eventdata));
-            iconData = double(imread(fullfile(iconRoot, 'pause.png'), 'BackgroundColor', defaultBackground)) / 255;
-            obj.pauseMediaTool = uipushtool(obj.toolbar, ...
-                'Tag', 'pauseMedia', ...
-                'CData', iconData, ...
-                'TooltipString', 'Pause audio/video recordings',... 
-                'ClickedCallback', @(hObject, eventdata)handlePauseMedia(obj, hObject, eventdata));
+                'TooltipString', 'Decrease the speed of playback',... 
+                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'slower'));
+            obj.playBackwardsTool = uipushtool(obj.toolbar, ...
+                'CData', backwardsIcon, ...
+                'TooltipString', 'Play backwards',... 
+                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'backwards'));
+            obj.pauseTool = uipushtool(obj.toolbar, ...
+                'CData', pauseIcon, ...
+                'TooltipString', 'Pause playback',... 
+                'ClickedCallback', @(hObject, eventdata)handlePause(obj, hObject, eventdata), ...
+                'Enable', 'off');
+            obj.playForwardsTool = uipushtool(obj.toolbar, ...
+                'CData', forwardIcon, ...
+                'TooltipString', 'Play forewards',... 
+                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'forewards'));
+            obj.playFasterTool = uipushtool(obj.toolbar, ...
+                'CData', forwardIcon, ...
+                'TooltipString', 'Increase the speed of playback',... 
+                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'faster'));
             
             iconData = double(imread(fullfile(iconRoot, 'detect.png'), 'BackgroundColor', defaultBackground)) / 255;
             obj.detectPopUpTool = uisplittool('Parent', obj.toolbar, ...
@@ -450,6 +461,8 @@ classdef TempoController < handle
                 'Separator', 'on', ...
                 'ClickedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata));
             
+            % Screen shot
+            
             iconData = double(imread(fullfile(iconRoot, 'screenshot.png'), 'BackgroundColor', defaultBackground)) / 255;
             uipushtool(obj.toolbar, ...
                 'Tag', 'saveScreenshot', ...
@@ -457,11 +470,13 @@ classdef TempoController < handle
                 'TooltipString', 'Save a screenshot',...
                 'ClickedCallback', @(hObject, eventdata)handleSaveScreenshot(obj, hObject, eventdata));
             
+            % Panel visibility
+            
             iconData = double(imread(fullfile(iconRoot, 'waveform.png'), 'BackgroundColor', defaultBackground)) / 255;
             obj.showWaveformsTool = uitoggletool(obj.toolbar, ...
                 'Tag', 'showHideWaveforms', ...
                 'CData', iconData, ...
-                'State', obj.toolStates{obj.showWaveforms + 1}, ...
+                'State', onOff(obj.showWaveforms), ...
                 'TooltipString', 'Show/hide the waveform(s)',... 
                 'Separator', 'on', ...
                 'OnCallback', @(hObject, eventdata)handleToggleWaveforms(obj, hObject, eventdata), ...
@@ -470,7 +485,7 @@ classdef TempoController < handle
             obj.showSpectrogramsTool = uitoggletool(obj.toolbar, ...
                 'Tag', 'showHideSpectrograms', ...
                 'CData', iconData, ...
-                'State', obj.toolStates{obj.showSpectrograms + 1}, ...
+                'State', onOff(obj.showSpectrograms), ...
                 'TooltipString', 'Show/hide the spectrogram(s)',... 
                 'OnCallback', @(hObject, eventdata)handleToggleSpectrograms(obj, hObject, eventdata), ...
                 'OffCallback', @(hObject, eventdata)handleToggleSpectrograms(obj, hObject, eventdata));
@@ -478,7 +493,7 @@ classdef TempoController < handle
             obj.showFeaturesTool = uitoggletool(obj.toolbar, ...
                 'Tag', 'showHideFeatures', ...
                 'CData', iconData, ...
-                'State', obj.toolStates{obj.showFeatures + 1}, ...
+                'State', onOff(obj.showFeatures), ...
                 'TooltipString', 'Show/hide the features',... 
                 'OnCallback', @(hObject, eventdata)handleToggleFeatures(obj, hObject, eventdata), ...
                 'OffCallback', @(hObject, eventdata)handleToggleFeatures(obj, hObject, eventdata));
@@ -823,7 +838,7 @@ classdef TempoController < handle
                 catch ME
                     set(obj.figure, 'Pointer', 'arrow'); drawnow
                     if ~strcmp(ME.identifier, 'Tempo:UserCancelled')
-                        warndlg(sprintf('Error opening media file:\n\n%s', ME.message));
+                        warndlg(sprintf('Error opening recording:\n\n%s', ME.message));
                         rethrow(ME);
                     end
                 end
@@ -1115,57 +1130,110 @@ classdef TempoController < handle
         %% Playback menu callbacks
         
         
-        function handlePlayMedia(obj, ~, ~)
-            set(obj.playMediaTool, 'Enable', 'off');
-            set(obj.pauseMediaTool, 'Enable', 'on');
+        function handlePlay(obj, ~, ~, playRate)
+            % Start playing the recordings or change the speed of playback.
             
-            if obj.selectedRange(1) ~= obj.selectedRange(2)
-                % Only play within the selected range.
-                if obj.currentTime >= obj.selectedRange(1) && obj.currentTime < obj.selectedRange(2) - 0.1
-                    idealRange = [obj.currentTime obj.selectedRange(2)];
-                else
-                    idealRange = [obj.selectedRange(1) obj.selectedRange(2)];
-                end
+            startPlaying = false;
+            if strcmp(playRate, 'forewards')
+                newRate = abs(obj.playRate);
+                startPlaying = true;
+            elseif strcmp(playRate, 'backwards')
+                newRate = -abs(obj.playRate);
+                startPlaying = true;
+            elseif strcmp(playRate, '1x')
+                newRate = 1.0;
+            elseif strcmp(playRate, '2x')
+                newRate = 2.0;
+            elseif strcmp(playRate, '1/2x')
+                newRate = 0.5;
+            elseif strcmp(playRate, 'faster')
+                newRate = obj.playRate * 2.0;
+            elseif strcmp(playRate, 'slower')
+                newRate = obj.playRate / 2.0;
             else
-                % Play the whole song, starting at the current time unless it's at the end.
-                if obj.currentTime < obj.duration
-                    idealRange = [obj.currentTime obj.duration];
+                warning('Tempo:UnknownPlayMode', 'Don''t know how to play ''%s''.', num2str(playRate));
+            end
+            obj.playRate = newRate;
+            
+            % Update the checked status of the play rate menu items.
+            set(obj.menuItem(obj.playbackMenu, 'regularSpeed'), 'Checked', onOff(abs(obj.playRate) == 1.0));
+            set(obj.menuItem(obj.playbackMenu, 'doubleSpeed'), 'Checked', onOff(abs(obj.playRate) == 2.0));
+            set(obj.menuItem(obj.playbackMenu, 'halfSpeed'), 'Checked', onOff(abs(obj.playRate) == 0.5));
+            
+            % TODO: show the play rate in the toolbar icon
+            
+            if startPlaying && (~obj.isPlaying || newRate ~= obj.playRate)
+                % TODO: if already playing then things need to be done differently...
+                
+                set(obj.playBackwardsTool, 'Enable', onOff(obj.playRate > 0));
+                set(obj.pauseTool, 'Enable', 'on');
+                set(obj.playForwardsTool, 'Enable', onOff(obj.playRate < 0));
+                
+                % Determine what range of time to play.
+                if obj.selectedRange(1) ~= obj.selectedRange(2)
+                    % Only play within the selected range.
+                    if obj.currentTime >= obj.selectedRange(1) && obj.currentTime < obj.selectedRange(2) - 0.1
+                        idealRange = [obj.currentTime obj.selectedRange(2)];
+                    else
+                        idealRange = [obj.selectedRange(1) obj.selectedRange(2)];
+                    end
                 else
+                    % Play starting at the current time unless it's at the end/beginning.
                     idealRange = [0.0 obj.duration];
-                end
-            end
-            
-            obj.isPlayingMedia = true;
-            
-            % Start all of the audio players.
-            for i = 1:length(obj.recordings)
-                recording = obj.recordings{i};
-                if isa(recording, 'AudioRecording') && ~recording.muted
-                    playRange = round((idealRange + recording.timeOffset) * recording.sampleRate);
-                    if playRange(1) == 0
-                        playRange(1) = 1;
-                    end
-                    if playRange(2) > recording.duration * recording.sampleRate
-                        playRange(2) = floor(recording.duration * recording.sampleRate);
-                    end
-                    player = recording.player();
-                    if ~isempty(player)
-                        play(player, playRange);
+                    if obj.playRate > 0 && obj.currentTime < obj.duration
+                        idealRange(1) = obj.currentTime;
+                    elseif obj.playRate < 0 && obj.currentTime > 0
+                        idealRange(2) = obj.currentTime;
                     end
                 end
+                
+                obj.isPlaying = true;
+                
+                if obj.playRate > 0
+                    % Start all of the audio players if we're playing forward.
+                    % TODO: Alter their sample rate when obj.playRate isn't 1.0.
+                    % TODO: Would there ever be any value to hearing the audio backwards?
+                    for i = 1:length(obj.recordings)
+                        recording = obj.recordings{i};
+                        if isa(recording, 'AudioRecording') && ~recording.muted
+                            audioRange = round((idealRange + recording.timeOffset) * recording.sampleRate);
+                            if audioRange(1) == 0
+                                audioRange(1) = 1;
+                            end
+                            if audioRange(2) > recording.duration * recording.sampleRate
+                                audioRange(2) = floor(recording.duration * recording.sampleRate);
+                            end
+                            player = recording.player();
+                            if ~isempty(player)
+                                play(player, audioRange);
+                            end
+                        end
+                    end
+                end
+                
+                obj.fpsFrameCount = 0;
+                obj.playRange = idealRange;
+                obj.playStartTime = now;
+                start(obj.playTimer);
             end
-            
-            obj.frameCount = 0;
-            obj.mediaTimeSync = [idealRange now];
-            start(obj.mediaTimer);
         end
         
         
-        function handleMediaTimer(obj, ~, ~)
-            offset = (now - obj.mediaTimeSync(3)) * 24 * 60 * 60;
-            newTime = obj.mediaTimeSync(1) + offset;
-            if newTime >= obj.mediaTimeSync(2)
-                obj.handlePauseMedia([], []);
+        function handlePlayTimer(obj, ~, ~)
+            % Determine how much time has passed since playback started.
+            offset = (now - obj.playStartTime) * 24 * 60 * 60;
+            
+            % Now determine what the new time should be based on the play rate.
+            if obj.playRate >= 0
+                newTime = obj.playRange(1) + offset * obj.playRate;
+            else
+                newTime = obj.playRange(2) + offset * obj.playRate;
+            end
+            
+            if (obj.playRate >= 0 && newTime >= obj.playRange(2)) || ...
+               (obj.playRate <= 0 && newTime <= obj.playRange(1))
+                % Don't go beyond the intended range.
+                obj.handlePause([], []);
             else
                 obj.currentTime = newTime;
                 obj.centerDisplayAtTime(newTime);
@@ -1173,10 +1241,11 @@ classdef TempoController < handle
         end
         
         
-        function handlePauseMedia(obj, hObject, ~)
-            if obj.isPlayingMedia
-                set(obj.playMediaTool, 'Enable', 'on');
-                set(obj.pauseMediaTool, 'Enable', 'off');
+        function handlePause(obj, hObject, ~)
+            if obj.isPlaying
+                set(obj.playForwardsTool, 'Enable', 'on');
+                set(obj.pauseTool, 'Enable', 'off');
+                set(obj.playBackwardsTool, 'Enable', 'on');
 
                 % Stop all of the audio players.
                 for i = 1:length(obj.recordings)
@@ -1188,15 +1257,15 @@ classdef TempoController < handle
                         end
                     end
                 end
-                stop(obj.mediaTimer);
+                stop(obj.playTimer);
 
-                obj.isPlayingMedia = false;
+                obj.isPlaying = false;
                 
-                elapsedTime = (now - obj.mediaTimeSync(end)) * (24*60*60);
-                fprintf('FPS: %g (%d/%g)\n', obj.frameCount / elapsedTime, obj.frameCount, elapsedTime);
+                elapsedTime = (now - obj.playStartTime) * (24*60*60);
+                fprintf('FPS: %g (%d/%g)\n', obj.fpsFrameCount / elapsedTime, obj.fpsFrameCount, elapsedTime);
                 
                 if isempty(hObject)
-                    % The media played to the end without the user clicking the pause button.
+                    % The recordings played to the end without the user clicking the pause button.
                     if obj.selectedRange(1) ~= obj.selectedRange(2)
                         obj.currentTime = obj.selectedRange(2);
                     else
@@ -1248,7 +1317,7 @@ classdef TempoController < handle
             obj.arrangeTimelinePanels();
             
             if isempty(hObject)
-                set(obj.showWaveformsTool, 'State', obj.toolStates{obj.showWaveforms + 1});
+                set(obj.showWaveformsTool, 'State', onOff(obj.showWaveforms));
             else
                 setpref('Tempo', 'ShowWaveforms', obj.showWaveforms);
             end
@@ -1267,7 +1336,7 @@ classdef TempoController < handle
             obj.arrangeTimelinePanels();
             
             if isempty(hObject)
-                set(obj.showSpectrogramsTool, 'State', obj.toolStates{obj.showSpectrograms + 1});
+                set(obj.showSpectrogramsTool, 'State', onOff(obj.showSpectrograms));
             else
                 setpref('Tempo', 'ShowSpectrograms', obj.showSpectrograms);
             end
@@ -1286,7 +1355,7 @@ classdef TempoController < handle
             obj.arrangeTimelinePanels();
             
             if isempty(hObject)
-                set(obj.showFeaturesTool, 'State', obj.toolStates{obj.showFeatures + 1});
+                set(obj.showFeaturesTool, 'State', onOff(obj.showFeatures));
             else
                 setpref('Tempo', 'ShowFeatures', obj.showFeatures);
             end
@@ -1633,10 +1702,18 @@ classdef TempoController < handle
         
         function handleKeyRelease(obj, source, keyEvent)
             if strcmp(keyEvent.Key, 'space')
-                if obj.isPlayingMedia
-                    obj.handlePauseMedia(source, keyEvent);
+                % The space bar toggles play/pause of the recordings at the current play rate.
+                % If the shift key is down then playback is backwards.
+                
+                if obj.isPlaying
+                    obj.handlePause(source, keyEvent);
                 else
-                    obj.handlePlayMedia(source, keyEvent);
+                    shiftDown = any(ismember(keyEvent.Modifier, 'shift'));
+                    if shiftDown
+                        obj.handlePlay(source, keyEvent, 'backwards');
+                    else
+                        obj.handlePlay(source, keyEvent, 'forewards');
+                    end
                 end
             else
                 % Let one of the panels handle the event.
@@ -1872,7 +1949,7 @@ classdef TempoController < handle
         
         
         function handleClose(obj, ~, ~)
-            obj.handlePauseMedia([]);
+            obj.handlePause([]);
             
             if obj.needsSave
                 button = questdlg('Do you want to save the changes to the Tempo workspace?', 'Tempo', 'Don''t Save', 'Cancel', 'Save', 'Save');
@@ -1887,7 +1964,7 @@ classdef TempoController < handle
                 end
             end
             
-            delete(obj.mediaTimer);
+            delete(obj.playTimer);
             
             % Remember the window position.
             setpref('Tempo', 'MainWindowPosition', get(obj.figure, 'Position'));
@@ -1919,41 +1996,51 @@ classdef TempoController < handle
         
     end
     
-end
-
-
-function [classNames, typeNames] = findPlugIns(pluginsDir)
-    pluginDirs = dir(pluginsDir);
-    classNames = cell(length(pluginDirs), 1);
-    typeNames = cell(length(pluginDirs), 1);
-    pluginCount = 0;
-    for i = 1:length(pluginDirs)
-        if pluginDirs(i).isdir && pluginDirs(i).name(1) ~= '.'
-            % Directory plug-in
-            className = pluginDirs(i).name;
-            try
-                addpath(fullfile(pluginsDir, filesep, className));
-                eval([className '.initialize()'])
-                pluginCount = pluginCount + 1;
-                classNames{pluginCount} = className;
-                typeNames{pluginCount} = eval([className '.typeName()']);
-            catch ME
-                waitfor(warndlg(['Could not load ' pluginDirs(i).name ': ' ME.message]));
-                rmpath(fullfile(pluginsDir, filesep, pluginDirs(i).name));
+    
+    methods (Static)
+        
+        function [classNames, typeNames] = findPlugIns(pluginsDir)
+            pluginDirs = dir(pluginsDir);
+            classNames = cell(length(pluginDirs), 1);
+            typeNames = cell(length(pluginDirs), 1);
+            pluginCount = 0;
+            for i = 1:length(pluginDirs)
+                if pluginDirs(i).isdir && pluginDirs(i).name(1) ~= '.'
+                    % Directory plug-in
+                    className = pluginDirs(i).name;
+                    try
+                        addpath(fullfile(pluginsDir, filesep, className));
+                        eval([className '.initialize()'])
+                        pluginCount = pluginCount + 1;
+                        classNames{pluginCount} = className;
+                        typeNames{pluginCount} = eval([className '.typeName()']);
+                    catch ME
+                        waitfor(warndlg(['Could not load ' pluginDirs(i).name ': ' ME.message]));
+                        rmpath(fullfile(pluginsDir, filesep, pluginDirs(i).name));
+                    end
+                elseif ~pluginDirs(i).isdir && strcmp(pluginDirs(i).name(end-1:end), '.m')
+                    % Single file plug-in
+                    className = pluginDirs(i).name(1:end-2);
+                    try
+                        eval([className '.initialize()'])
+                        pluginCount = pluginCount + 1;
+                        classNames{pluginCount} = className;
+                        typeNames{pluginCount} = className;
+                    catch
+                        % It's a .m file but not a plug-in.
+                    end
+                end
             end
-        elseif ~pluginDirs(i).isdir && strcmp(pluginDirs(i).name(end-1:end), '.m')
-            % Single file plug-in
-            className = pluginDirs(i).name(1:end-2);
-            try
-                eval([className '.initialize()'])
-                pluginCount = pluginCount + 1;
-                classNames{pluginCount} = className;
-                typeNames{pluginCount} = className;
-            catch
-                % It's a .m file but not a plug-in.
-            end
+            classNames = classNames(1:pluginCount);
+            typeNames = typeNames(1:pluginCount);
         end
+        
+        
+        function item = menuItem(menu, tag)
+            % Look up a menu item from its tag.
+            item = findobj(menu, 'Tag', tag);
+        end
+        
     end
-    classNames = classNames(1:pluginCount);
-    typeNames = typeNames(1:pluginCount);
+    
 end

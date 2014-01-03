@@ -117,8 +117,8 @@ classdef SpectrogramPanel < TimelinePanel
             P = zeros(100, 100);
             freqRange=[1 100];
             set(obj.axes, 'CLim', [-1 9]);
-            if obj.controller.isPlayingMedia
-                set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'No spectrogram while media is playing');
+            if obj.controller.isPlaying
+                set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'No spectrogram during playback');
             elseif fullLength > 1000000
                 % It will take too long to compute the spectrogram for this much data.
                 set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'Zoom in to see the spectrogram');
