@@ -28,6 +28,7 @@ classdef TempoController < handle
         windowMenu
         
         toolbar
+        jToolbar
         zoomOutTool
         
         playSlowerTool
@@ -327,8 +328,8 @@ classdef TempoController < handle
             
             obj.playbackMenu = uimenu(obj.figure, 'Label', 'Playback');
             uimenu(obj.playbackMenu, 'Label', 'Play', ...
-                                     'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'forewards'), ...
-                                     'Accelerator', ' ');
+                                     'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'forwards'), ...
+                                     'Accelerator', '');
             uimenu(obj.playbackMenu, 'Label', 'Play Backwards', ...
                                      'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'backwards'), ...
                                      'Accelerator', '');
@@ -446,8 +447,8 @@ classdef TempoController < handle
                 'Enable', 'off');
             obj.playForwardsTool = uipushtool(obj.toolbar, ...
                 'CData', forwardIcon, ...
-                'TooltipString', 'Play forewards',... 
-                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'forewards'));
+                'TooltipString', 'Play forwards',... 
+                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'forwards'));
             obj.playFasterTool = uipushtool(obj.toolbar, ...
                 'CData', forwardIcon, ...
                 'TooltipString', 'Increase the speed of playback',... 
@@ -500,20 +501,62 @@ classdef TempoController < handle
             
             drawnow;
             
-            jToolbar = get(get(obj.toolbar, 'JavaContainer'), 'ComponentPeer');
-            if ~isempty(jToolbar)
+            obj.jToolbar = get(get(obj.toolbar, 'JavaContainer'), 'ComponentPeer');
+            if ~isempty(obj.jToolbar)
+                oldWarn = warning('off', 'MATLAB:hg:JavaSetHGProperty');
+                oldWarn2 = warning('off', 'MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');
+                
+                % Add the detector options to the pop-up menu.
                 jDetect = get(obj.detectPopUpTool,'JavaContainer');
                 jMenu = get(jDetect,'MenuComponent');
                 jMenu.removeAll;
                 for actionIdx = 1:length(obj.detectorTypeNames)
                     jActionItem = jMenu.add(obj.detectorTypeNames(actionIdx));
-                    oldWarn = warning('off', 'MATLAB:hg:JavaSetHGProperty');
-                    oldWarn2 = warning('off', 'MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');
                     set(jActionItem, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
                         'UserData', actionIdx);
-                    warning(oldWarn);
-                    warning(oldWarn2);
                 end
+                
+                % Try to replace the playback tools with Java buttons that can display the play rate, etc.
+                obj.replaceToolbarTool(8, 'playSlowerTool', 'PlaySlower');
+                obj.replaceToolbarTool(9, 'playBackwardsTool', 'PlayBackwards');
+                obj.replaceToolbarTool(10, 'pauseTool');
+                if isjava(obj.pauseTool)
+                    obj.pauseTool.setText('1x');
+                end
+                obj.replaceToolbarTool(11, 'playForwardsTool', 'PlayForwards');
+                obj.replaceToolbarTool(12, 'playFasterTool', 'PlayFaster');
+
+                try
+                    obj.jToolbar(1).repaint;
+                    obj.jToolbar(1).revalidate;
+                catch
+                end
+                
+                warning(oldWarn);
+                warning(oldWarn2);
+            end
+        end
+        
+        
+        function replaceToolbarTool(obj, position, toolName, iconName)
+            % Try to replace the tool with a Java button.
+            try
+                if nargin < 4
+                    jButton = javax.swing.JButton('');
+                    jButton.setMargin(java.awt.Insets(1, 2, 1, 2));
+                else
+                    jButton = javax.swing.JButton(javax.swing.ImageIcon(fullfile('icons', [iconName '.png'])));
+                end
+                callback = get(obj.(toolName), 'ClickedCallback');
+                tooltip = get(obj.(toolName), 'TooltipString');
+                set(jButton, 'ActionPerformedCallback', callback, ...
+                             'ToolTipText', tooltip);
+                delete(obj.(toolName));
+                obj.jToolbar(1).add(jButton, position);
+                obj.(toolName) = jButton;
+            catch ME
+                rethrow(ME);
+                % Oh well, leave it alone.
             end
         end
         
@@ -1134,7 +1177,7 @@ classdef TempoController < handle
             % Start playing the recordings or change the speed of playback.
             
             startPlaying = false;
-            if strcmp(playRate, 'forewards')
+            if strcmp(playRate, 'forwards')
                 newRate = abs(obj.playRate);
                 startPlaying = true;
             elseif strcmp(playRate, 'backwards')
@@ -1160,14 +1203,24 @@ classdef TempoController < handle
             set(obj.menuItem(obj.playbackMenu, 'doubleSpeed'), 'Checked', onOff(abs(obj.playRate) == 2.0));
             set(obj.menuItem(obj.playbackMenu, 'halfSpeed'), 'Checked', onOff(abs(obj.playRate) == 0.5));
             
-            % TODO: show the play rate in the toolbar icon
+            % Show the play rate in the toolbar icon
+            if isjava(obj.pauseTool)
+                if obj.playRate < 1
+                    obj.pauseTool.setText(sprintf('1/%dx', 1.0 / obj.playRate));
+                else
+                    obj.pauseTool.setText(sprintf('%dx', obj.playRate));
+                end
+            end
             
             if startPlaying && (~obj.isPlaying || newRate ~= obj.playRate)
                 % TODO: if already playing then things need to be done differently...
                 
+                oldwarn = warning('query', 'MATLAB:hg:JavaSetHGPropertyParamValue');
+                warning('off', 'MATLAB:hg:JavaSetHGPropertyParamValue');
                 set(obj.playBackwardsTool, 'Enable', onOff(obj.playRate > 0));
                 set(obj.pauseTool, 'Enable', 'on');
                 set(obj.playForwardsTool, 'Enable', onOff(obj.playRate < 0));
+                warning(oldwarn.state, 'MATLAB:hg:JavaSetHGPropertyParamValue');
                 
                 % Determine what range of time to play.
                 if obj.selectedRange(1) ~= obj.selectedRange(2)
@@ -1712,7 +1765,7 @@ classdef TempoController < handle
                     if shiftDown
                         obj.handlePlay(source, keyEvent, 'backwards');
                     else
-                        obj.handlePlay(source, keyEvent, 'forewards');
+                        obj.handlePlay(source, keyEvent, 'forwards');
                     end
                 end
             else
@@ -1978,18 +2031,33 @@ classdef TempoController < handle
             
             % Fix a Java memory leak that prevents this object from ever being deleted.
             % TODO: there's probably a better way to do this...
+            oldWarn = warning('off', 'MATLAB:hg:JavaSetHGProperty');
+            oldWarn2 = warning('off', 'MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');
             jDetect = get(obj.detectPopUpTool, 'JavaContainer');
             jMenu = get(jDetect, 'MenuComponent');
             if ~isempty(jMenu)
                 jMenuItems = jMenu.getSubElements();
                 for i = 1:length(jMenuItems)
-                    oldWarn = warning('off', 'MATLAB:hg:JavaSetHGProperty');
-                    oldWarn2 = warning('off', 'MATLAB:hg:PossibleDeprecatedJavaSetHGProperty');
                     set(jMenuItems(i), 'ActionPerformedCallback', []);
-                    warning(oldWarn);
-                    warning(oldWarn2);
                 end
             end
+            if isjava(obj.playSlowerTool)
+                set(obj.playSlowerTool, 'ActionPerformedCallback', []);
+            end
+            if isjava(obj.playBackwardsTool)
+                set(obj.playBackwardsTool, 'ActionPerformedCallback', []);
+            end
+            if isjava(obj.pauseTool)
+                set(obj.pauseTool, 'ActionPerformedCallback', []);
+            end
+            if isjava(obj.playForwardsTool)
+                set(obj.playForwardsTool, 'ActionPerformedCallback', []);
+            end
+            if isjava(obj.playFasterTool)
+                set(obj.playFasterTool, 'ActionPerformedCallback', []);
+            end
+            warning(oldWarn);
+            warning(oldWarn2);
             
             delete(obj.figure);
         end
