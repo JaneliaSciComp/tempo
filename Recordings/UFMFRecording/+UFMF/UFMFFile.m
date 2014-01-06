@@ -5,7 +5,7 @@ classdef UFMFFile < handle
     end
     
     properties
-        path
+        path                    % The path to the UFMF file.
         
         % TODO: these four should come in as parameters to createFile()
         numMeans = 1
@@ -13,11 +13,11 @@ classdef UFMFFile < handle
     	bgInitialMeans = 0
     	bgThreshold = 10
         
-        frameRate = []
-        frameCount = 0
+        frameRate = []          % The frame rate for fixed rate movies.
+        frameCount = 0          % The number of frames in the movie.
         
         printStats = false
-        showBoxes = false       % TODO: should be a parameter to getFrame
+        showBoxes = false       % TODO: should be a parameter to getFrame?
     end
     
     properties (Access=private)
@@ -61,14 +61,41 @@ classdef UFMFFile < handle
     methods
         
         function obj = UFMFFile(filePath, mode, varargin)
-            obj.path = filePath;
+            % Use a UFMFFile instance to read from or write to a UFMF file.
+            % 
+            % To read from an existing UFMF file:
+            % 
+            % >> ufmfFile = UFMF.openFile('my.ufmf');
+            % >> frameImage = ufmfFile.getFrame();              % Get the first frame of the movie.
+            % >> frameImage = ufmfFile.getFrame();              % Get the second frame of the movie.
+            % >> frameImage = ufmfFile.getFrame(100);           % Get the 100th frame of the movie.
+            % >> frameImage = ufmfFile.getFrameAtTime(12.4);    % Get the frame at 12.4 seconds into the movie.
+            % >> [coding, colorsPerPixel, ...
+            %         bytesPerPixel] = ufmfFile.coding();       % Get information about the image format used in the movie.
+            % 
+            % To create a new UFMF file:
+            % 
+            % >> ufmfFile = UFMF.createFile('my.ufmf');
+            % >> ufmfFile.frameRate = 30;                       % Set a fixed frame rate.
+            % >> ufmfFile.sampleFrame(sample);                  % Optionally add a sample for the background image.
+            % >> ufmfFile.addFrame(frame1);                     % Add a frame to the movie.
+            % >> ufmfFile.addFrame(frame2);                     % Add another one.
+            % >> ufmfFile.close();                              % Complete writing the file.
             
-            if nargin < 2
-                % If a file exists at the path then read it, otherwise write to it.
-                if exist(filePath, 'file')
-                    mode = 'read';
-                else
-                    mode = 'write';
+            if nargin < 1
+                % This can happen when an empty matrix of UFMFFile's gets auto-populated by MATLAB.
+                % Just create a dummy object with the expectation that it will get replaced by a real instance.
+                mode = 'empty';
+            else
+                obj.path = filePath;
+                
+                if nargin < 2
+                    % Auto-detect the mode: if a file exists at the path then read it, otherwise write to it.
+                    if exist(filePath, 'file')
+                        mode = 'read';
+                    else
+                        mode = 'write';
+                    end
                 end
             end
             
@@ -84,6 +111,7 @@ classdef UFMFFile < handle
                 obj.readHeader();
             elseif strcmp(mode, 'write')
                 % Open a new UFMF file for writing.
+                % TODO: should be able to specify frame rate at creation.
                 parser = inputParser;
                 parser.addParamValue('FixedSizeBoxes', 'on', @(x) ismember(x, {'on', 'off'}));
                 parser.addParamValue('MinimizeBoxes', 'on', @(x) ismember(x, {'on', 'off'}));
@@ -102,6 +130,9 @@ classdef UFMFFile < handle
                 end
                 obj.isReadOnly = false;
                 obj.isWritable = true;
+            elseif strcmp(mode, 'empty')
+                obj.isReadOnly = true;
+                obj.isWritable = false;
             else
                 error('UFMF:ValueError', 'Invalid mode given for opening a UFMF file: %s', mode);
             end
@@ -109,9 +140,19 @@ classdef UFMFFile < handle
         
         
         function [im, frameNum] = getFrame(obj, frameNum)
-            % Read in a frame
-            % TODO: cache frames
+            % Read in a frame from the UFMF file by specifying a frame number or just getting the next one.
+            % If the last frame has been read or there is no frame at the given number then an empty matrix will be returned.
+            %
+            % >> ufmfFile = UFMF.openFile('my.ufmf');
+            % >> im = ufmfFile.getFrame();              % Get the next frame.
+            % >> im = ufmfFile.getFrame(132);           % Get a specific frame.
+            % >> [im, frameNum] = ufmfFile.getFrame();  % Get the next frame and which number it is.
             
+            % TODO: Cache recent frames to speed up video scrubbing.
+            
+            if isempty(obj.path)
+                error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to read from.');
+            end
             if ~ismember(lower(obj.pixelCoding), {'mono8','rgb8'})
                 error('UFMF:UnsupportedColorspace', 'Colorspace ''%s'' is not yet supported.  Only MONO8 and RGB8 allowed.', obj.pixelCoding);
             end
@@ -128,7 +169,21 @@ classdef UFMFFile < handle
         
         
         function [im, frameNum] = getFrameAtTime(obj, frameTime)
+            % Read in a frame from the UFMF file at a specific time.
+            %
+            % >> ufmfFile = UFMF.openFile('my.ufmf');
+            % >> im = ufmfFile.getFrame(33.3);              % Get the frame at 33.3 seconds into the movie.
+            % >> [im, frameNum] = ufmfFile.getFrame(33.3);	% Also return the frame number.
+            
             % TODO: this assumes a constant frame rate, would be better to lookup the index from the time stamps but it will be slow...
+            
+            if isempty(obj.path)
+                error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to read from.');
+            end
+            if ~ismember(lower(obj.pixelCoding), {'mono8','rgb8'})
+                error('UFMF:UnsupportedColorspace', 'Colorspace ''%s'' is not yet supported.  Only MONO8 and RGB8 allowed.', obj.pixelCoding);
+            end
+            
             if frameTime == 0.0
                 frameNum = 1;
             else
@@ -143,12 +198,36 @@ classdef UFMFFile < handle
         end
         
         
-        function addFrame(obj, frameImage, frameTime)
+        function [frameNum, frameTime] = addFrame(obj, frameImage, frameTime)
+            % Add a new frame (image) to the UFMF file.
+            % The image should be an RxCx3 RGB or RxC grayscale matrix with values from 0-255.
+            %
+            % For fixed rate video:
+            % >> ufmfFile = UFMF.createFile('my.ufmf');
+            % >> ufmfFile.frameRate = 30;                       % Set the frame rate.
+            % >> im = rand(100, 100, 3) * 256;                  % Create a random 100x100 RGB image.
+            % >> ufmfFile.addFrame(im);                         % Add the frame at the frame rate.
+            % >> [frameNum, frameTime] = ufmfFile.addFrame(im); % Also get the frame number and time used.
+            % >> ufmfFile.close();                              % Close the file after all frames have been added.
+            %
+            % For variable rate video:
+            % >> ufmfFile = UFMF.createFile('my.ufmf');
+            % >> ufmfFile.addFrame(im1, 5.0);               % Add an image at a specific time.
+            % >> ufmfFile.addFrame(im2, 5.3);               % Add an image at a specific time.
+            % >> frameNum = ufmfFile.addFrame(im3, 5.7);    % Also get the frame number used.
+            % >> ufmfFile.close();                          % Close the file after all frames have been added.
+            
+            if isempty(obj.path)
+                error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to write to.');
+            end
             if obj.isReadOnly
                 error('UFMF:ReadOnly', 'This UFMF file is only available for reading.');
             end
             if ~obj.isWritable
                 error('UFMF:FileIsClosed', 'This UFMF file has been closed.');
+            end
+            if (ndims(frameImage) == 3 && size(frameImage, 3) ~= 3) || ndims(frameImage) < 2 || ndims(frameImage) > 3
+                error('UFMF:UnsupportedImageFormat', 'The frame image provided is not in the right format.');
             end
             
             frameNum = obj.frameCount + 1;
@@ -157,7 +236,7 @@ classdef UFMFFile < handle
                 % Determine the frame index and time automatically from frame rate, etc.
                 
                 if isempty(obj.frameRate)
-                    error('UFMF:UnknownFrameTimeStamp', 'You cannot add a frame without indicating the overall frame rate or indidividual frame time stamps.');
+                    error('UFMF:UnknownFrameTimeStamp', 'You cannot add a frame without indicating the overall frame rate or the frame''s time stamp.');
                 end
                 
                 frameTime = frameNum / obj.frameRate;
@@ -195,6 +274,21 @@ classdef UFMFFile < handle
         
         
         function sampleFrame(obj, frameImage)
+            % Use the provided image to produce an initial background image.
+            % The frame image should be an RxCx3 RGB or RxC grayscale matrix with values from 0-255.
+            % Sampling frames is optional, a background image will be created automatically otherwise
+            % but sampling can produce better results.
+            % Once a frame image has been added to a movie then no more sampling is allowed.
+            % 
+            % >> ufmfFile = UFMF.createFile('my.ufmf');
+            % >> ufmfFile.sampleFrame(sample1);     % Sample the first image.
+            % >> ufmfFile.sampleFrame(sample2);     % Sample a second image.
+            % >> ufmfFile.addFrame(im);             % Start adding frames.
+            % >> ufmfFile.close();                  % Close the file after all frames have been added.
+            
+            if isempty(obj.path)
+                error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to write to.');
+            end
             if obj.isReadOnly
                 error('UFMF:ReadOnly', 'This UFMF file is only available for reading.');
             end
@@ -203,6 +297,9 @@ classdef UFMFFile < handle
             end
             if obj.frameCount > 0
                 error('UFMF:NoMoreSamples', 'Additional frames cannot be sampled once frames have been added.');
+            end
+            if (ndims(frameImage) == 3 && size(frameImage, 3) ~= 3) || ndims(frameImage) < 2 || ndims(frameImage) > 3
+                error('UFMF:UnsupportedImageFormat', 'The frame image provided is not in the right format.');
             end
             
             if isempty(obj.frameIndex)
@@ -215,6 +312,30 @@ classdef UFMFFile < handle
         
         
         function [coding, colorsPerPixel, bytesPerPixel] = coding(obj)
+            % Return the coding being used for the pixels in the frame images.
+            % 
+            % >> ufmfFile = UFMF.openFile('my.ufmf');
+            % >> [coding, colorsPerPixel, bytesPerPixel] = ufmfFile.coding()
+            % 
+            % coding =
+            % 
+            % RGB8
+            % 
+            % 
+            % colorsPerPixel =
+            % 
+            %      3
+            % 
+            % 
+            % bytesPerPixel =
+            % 
+            %      3
+            
+            if isempty(obj.path)
+                error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to write to.');
+            end
+            % TODO: are there times when writing when this will fail or return bad data?
+            
             coding = obj.pixelCoding;
             if nargout > 1
                 colorsPerPixel = obj.colorsPerPixel;
@@ -226,6 +347,13 @@ classdef UFMFFile < handle
         
         
         function close(obj)
+            % Don't allow any further reading or writing of the file.
+            % Only required when writing to a file.
+            % 
+            % >> ufmfFile = UFMF.createFile('my.ufmf');
+            % >> ufmfFile.addFrame(im);
+            % >> ufmfFile.close();
+            
             if ~isempty(obj.fileID)
                 if ~obj.isReadOnly && obj.isWritable
                     % Finish writing to the file.
@@ -251,6 +379,11 @@ classdef UFMFFile < handle
         
         function delete(obj)
             if ~isempty(obj.fileID)
+                if ~obj.isReadOnly && obj.isWritable
+                    % The user forgot to call close(), finish writing to the file.
+                    obj.writeIndex();
+                end
+                
                 fclose(obj.fileID);
             end
         end
@@ -536,6 +669,7 @@ classdef UFMFFile < handle
     
     
     %% UFMF Writing
+    
     
     methods (Access = private)
         
