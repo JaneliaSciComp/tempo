@@ -73,6 +73,9 @@ classdef TempoController < handle
         
         needsSave = false
         savePath
+        
+        undoStack
+        undoIndex
     end
     
     
@@ -225,11 +228,11 @@ classdef TempoController < handle
             
             obj.editMenu = uimenu(obj.figure, 'Label', 'Edit');
             uimenu(obj.editMenu, 'Label', 'Undo', ...
-                                 'Callback', '', ...
+                                 'Callback', @(hObject, eventdata)handleUndo(obj, hObject, eventdata), ...
                                  'Accelerator', 'z', ...
                                  'Enable', 'off');
             uimenu(obj.editMenu, 'Label', 'Redo...', ...
-                                 'Callback', '', ...
+                                 'Callback', @(hObject, eventdata)handleRedo(obj, hObject, eventdata), ...
                                  'Accelerator', 'Z', ...
                                  'Enable', 'off');
             uimenu(obj.editMenu, 'Label', 'Cut', ...
@@ -1999,6 +2002,89 @@ classdef TempoController < handle
             
             set(obj.figure, 'Pointer', 'arrow'); drawnow
         end
+        
+        
+        %% Undo management
+        
+        
+        function addUndoableAction(obj, actionName, undoAction, redoAction)
+            % Create a new action.
+            action.name = actionName;
+            action.undoAction = undoAction;
+            action.redoAction = redoAction;
+            
+            % Add the action to the stack.
+            % TODO: should there be a maximum size to the stack?
+            obj.undoStack(obj.undoIndex:end) = [];
+            obj.undoIndex = obj.undoIndex + 1;
+            obj.undoStack(obj.undoIndex) = action;
+            
+            % Update the menu items.
+            set(obj.menuItem(obj.editMenu, 'undo'), 'String', ['Undo ' actionName], 'Enable', 'on');
+            set(obj.menuItem(obj.editMenu, 'redo'), 'String', 'Redo', 'Enable', 'off');
+        end
+        
+        
+        function handleUndo(obj, ~, ~)
+            if obj.undoIndex == 0
+                % There is nothing to undo.
+                beep
+            else
+                % Perform the undo action.
+                obj.undoStack(obj.undoIndex).undoAction();
+                
+                % Move one place back in the stack.
+                obj.undoIndex = obj.undoIndex - 1;
+                
+                % Update the menu items.
+                if obj.undoIndex > 0
+                    set(obj.menuItem(obj.editMenu, 'undo'), ...
+                        'String', ['Undo ' obj.undoStack(obj.undoIndex).name], ...
+                        'Enable', 'on');
+                else
+                    % Nothing left to undo.
+                    set(obj.menuItem(obj.editMenu, 'undo'), 'String', 'Undo', 'Enable', 'off');
+                end
+                set(obj.menuItem(obj.editMenu, 'redo'), ....
+                    'String', ['Redo ' obj.undoStack(obj.undoIndex + 1).name], ...
+                    'Enable', 'on');
+            end
+        end
+        
+        
+        function handleRedo(obj, ~, ~)
+            if obj.undoIndex == length(obj.undoStack)
+                % There is nothing to redo.
+                beep
+            else
+                % Perform the redo action.
+                obj.undoStack(obj.undoIndex + 1).redoAction();
+                
+                % Move one place forward in the stack.
+                obj.undoIndex = obj.undoIndex + 1;
+                
+                % Update the menu items.
+                set(obj.menuItem(obj.editMenu, 'undo'), ...
+                    'String', ['Undo ' obj.undoStack(obj.undoIndex).name], ...
+                    'Enable', 'on');
+                if obj.undoIndex < length(obj.undoStack)
+                    set(obj.menuItem(obj.editMenu, 'redo'), ....
+                        'String', ['Redo ' obj.undoStack(obj.undoIndex + 1).name], ...
+                        'Enable', 'on');
+                else
+                    % Nothing left to redo.
+                    set(obj.menuItem(obj.editMenu, 'undo'), 'String', 'Undo', 'Enable', 'off');
+                end
+            end
+        end
+        
+        
+        function clearUndoableActions(obj)
+            obj.undoStack = [];
+        end
+        
+        
+        %%
         
         
         function handleClose(obj, ~, ~)
