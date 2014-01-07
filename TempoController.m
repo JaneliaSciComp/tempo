@@ -2014,6 +2014,8 @@ classdef TempoController < handle
             action.name = actionName;
             action.undo = undoAction;
             action.redo = redoAction;
+            action.displayRange = obj.displayRange;
+            action.selectedRange = obj.selectedRange;
             
             % Add the action to the stack.
             % TODO: should there be a maximum size to the stack?
@@ -2051,6 +2053,10 @@ classdef TempoController < handle
                 set(obj.menuItem(obj.editMenu, 'redo'), ....
                     'Label', ['Redo ' obj.undoStack{obj.undoIndex + 1}.name], ...
                     'Enable', 'on');
+                
+                % Reset the display and selection to where it was when the action was performed.
+                obj.displayRange = action.displayRange;
+                obj.selectedRange = action.selectedRange;
             end
         end
         
@@ -2079,6 +2085,10 @@ classdef TempoController < handle
                     % Nothing left to redo.
                     set(obj.menuItem(obj.editMenu, 'redo'), 'Label', 'Redo', 'Enable', 'off');
                 end
+                
+                % Reset the display and selection to where it was when the action was performed.
+                obj.displayRange = action.displayRange;
+                obj.selectedRange = action.selectedRange;
             end
         end
         
