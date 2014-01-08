@@ -1085,45 +1085,68 @@ classdef TempoController < handle
                     waitfor(warndlg({'Could not automatically pop up the detectors toolbar menu.', '', 'Please click the small arrow next to the icon instead.'}, 'Tempo', 'modal'));
                 end
             else
+                % Create a new detector.
                 detectorClassName = obj.detectorClassNames{index};
-                
                 constructor = str2func(detectorClassName);
                 detector = constructor(obj);
                 
+                % Let the user tweak its settings.
                 if detector.editSettings()
-% TODO:               addContextualMenu(detector);
+                    % If there is a selection then only detect features within it, otherwise check everywhere.
+                    if obj.selectedRange(2) > obj.selectedRange(1)
+                        timeRange = obj.selectedRange;
+                    else
+                        timeRange = [0.0 obj.duration];
+                    end
                     
-                    detector.startProgress();
-                    try
-                        if obj.selectedRange(2) > obj.selectedRange(1)
-                            n = detector.detectFeatures(obj.selectedRange);
-                        else
-                            n = detector.detectFeatures([0.0 obj.duration]);
-                        end
-                        detector.endProgress();
+                    % Have the detector look for features in the time range.
+                    if isempty(obj.detectFeatures(detector, timeRange))
+                        waitfor(msgbox('No features were detected.', detector.typeName, 'warn', 'modal'));
+                    else
+                        % Create a panel to show the features that were found.
                         
-                        if n == 0
-                            waitfor(msgbox('No features were detected.', detectorClassName, 'warn', 'modal'));
-                        else
-                            obj.reporters{end + 1} = detector;
-                            obj.timelinePanels{end + 1} = FeaturesPanel(detector);
-                            
-                            obj.arrangeTimelinePanels();
-                            
-                            obj.showTimelinePanels(true);
-                            
-                            obj.needsSave = true;
-                        end
+                        obj.reporters{end + 1} = detector;
+                        obj.timelinePanels{end + 1} = FeaturesPanel(detector);
                         
-% TODO:                   handles = updateFeatureTimes(handles);
-                    catch ME
-                        waitfor(msgbox(['An error occurred while detecting features:' char(10) char(10) ME.message char(10) char(10) '(See the command window for details.)'], ...
-                                       detectorClassName, 'error', 'modal'));
-                        detector.endProgress();
-                        rethrow(ME);
+                        obj.arrangeTimelinePanels();
+                        
+                        obj.showTimelinePanels(true);
                     end
                 end
             end
+        end
+        
+        
+        function features = detectFeatures(obj, detector, timeRange)
+            % Detect features using the given detector in the given time range.
+            % TODO: don't add duplicate features if selection overlaps already detected region?
+            %       or reduce selection to not overlap before detection?
+            
+            % TODO: startProgress() should be a controller method.
+            
+            % Have the detector look for features and report its progress.
+            detector.startProgress();
+            try
+                features = detector.detectFeatures(timeRange);
+                detector.endProgress();
+            catch ME
+                detector.endProgress();
+                waitfor(msgbox(['An error occurred while detecting features:' char(10) char(10) ME.message char(10) char(10) '(See the command window for details.)'], ...
+                               detector.typeName, 'error', 'modal'));
+                rethrow(ME);
+            end
+            
+            if ~isempty(features)
+                % Add the found features to the detector's list of features.
+                detector.addFeaturesInTimeRange(features, timeRange);
+                
+                obj.addUndoableAction(['Detect ' detector.typeName], ...
+                                      @() detector.removeFeaturesInTimeRange(features, timeRange), ...
+                                      @() detector.addFeaturesInTimeRange(features, timeRange));
+                obj.needsSave = true;
+            end
+            
+% TODO:         handles = updateFeatureTimes(handles);
         end
         
         

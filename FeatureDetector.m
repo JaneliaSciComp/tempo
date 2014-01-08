@@ -100,7 +100,7 @@ classdef FeatureDetector < FeatureReporter
         end
         
         
-        function timeRangeDetected(obj, timeRange)
+        function addFeaturesInTimeRange(obj, features, timeRange)
             % Merge the new time range with the existing time ranges.
             % The new range can intersect or completely replace existing ranges.
             
@@ -128,6 +128,17 @@ classdef FeatureDetector < FeatureReporter
                 end
                 obj.detectedTimeRanges(firstRange,:) = timeRange;
             end
+            
+            % Add the features after updating the time ranges so they get drawn correctly.
+            obj.addFeatures(features);
+        end
+        
+        
+        function removeFeaturesInTimeRange(obj, features, timeRange)
+            obj.removeFeatures(features);
+            
+            % TODO: remove the time range from obj.detectedTimeRanges.
+            %       may require truncating or splitting a range.
         end
         
     end
@@ -136,7 +147,7 @@ classdef FeatureDetector < FeatureReporter
     methods (Abstract)
         
         % Subclasses must define this method.
-        n = detectFeatures(obj, timeRange)
+        features = detectFeatures(obj, timeRange)
         
     end
     

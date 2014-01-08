@@ -241,28 +241,8 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function detectFeaturesInSelection(obj, ~, ~)
-            % Detect features in the current selection using an existing detector.
-            % TODO: don't add duplicate features if selection overlaps already detected region?
-            %       or reduce selection to not overlap before detection?
-            
-            obj.reporter.startProgress();
-            obj.featureChangeListener.Enabled = false;
-            try
-                n = obj.reporter.detectFeatures(obj.controller.selectedRange);
-                obj.featureChangeListener.Enabled = true;
-                obj.reporter.endProgress();
-                
-                if n == 0
-                    waitfor(msgbox('No additional features were detected.', obj.reporter.typeName(), 'warn', 'modal'));
-                else
-                    obj.featureHandles=obj.populateFeatures();
-                end
-                
-% TODO:                handles = updateFeatureTimes(handles);
-            catch ME
-                obj.featureChangeListener.Enabled = true;
-                obj.reporter.endProgress();
-                rethrow(ME);
+            if isempty(obj.controller.detectFeatures(obj.reporter, obj.controller.selectedRange))
+                waitfor(msgbox('No additional features were detected.', detector.typeName, 'warn', 'modal'));
             end
         end
         

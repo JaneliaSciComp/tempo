@@ -71,16 +71,8 @@ classdef FlySongDetector < FeatureDetector
         end
         
         
-        function n = detectFeatures(obj, timeRange)
-            % Performance for a 15 minute sample:
-            %
-            %   MT analysis of signal:   322 seconds
-            %   Calculate noise:          33 seconds
-            %   MT analysis of noise:     15 seconds
-            %   Putative sine and pulse:  <1 second
-            %   Pulse segmentation:      153 seconds
-            
-            n = 0;
+        function features = detectFeatures(obj, timeRange)
+            features = {};
             
             dataRange = round(timeRange * obj.recording.sampleRate);
             if dataRange(1) < 1
@@ -200,14 +192,15 @@ classdef FlySongDetector < FeatureDetector
                     x_start = timeRange(1) + winnowedSine.start(i);
                     x_stop = timeRange(1) + winnowedSine.stop(i);
                     if isfield(winnowedSine, 'MeanFundFreq')
-                        obj.addFeature(Feature('Sine Song', [x_start x_stop], ...
-                                               'meanFundFreq', winnowedSine.MeanFundFreq(i), ...
-                                               'medianFundFreq', winnowedSine.MedianFundFreq(i)));
+                        feature = Feature('Sine Song', [x_start x_stop], ...
+                                          'meanFundFreq', winnowedSine.MeanFundFreq(i), ...
+                                          'medianFundFreq', winnowedSine.MedianFundFreq(i));
+                        features{end + 1} = feature; %#ok<AGROW>
                     else
-                        obj.addFeature(Feature('Sine Song', [x_start x_stop]));
+                        feature = Feature('Sine Song', [x_start x_stop]);
+                        features{end + 1} = feature; %#ok<AGROW>
                     end
                 end
-                n = n + size(winnowedSine.start, 1);
             end
             
             if isfield(pulses, 'wc')
@@ -216,16 +209,14 @@ classdef FlySongDetector < FeatureDetector
                     x = timeRange(1) + double(pulses.wc(i)) / obj.recording.sampleRate;
                     a = timeRange(1) + double(pulses.w0(i)) / obj.recording.sampleRate;
                     b = timeRange(1) + double(pulses.w1(i)) / obj.recording.sampleRate;
-                    obj.addFeature(Feature('Pulse', x, ...
-                                           'pulseWindow', [a b], ...
-                                           'dogOrder', pulses.dog(i), ...
-                                           'frequencyAtMax', pulses.fcmx(i), ...
-                                           'scaleAtMax', pulses.scmx(i)));
+                    feature = Feature('Pulse', x, ...
+                                      'pulseWindow', [a b], ...
+                                      'dogOrder', pulses.dog(i), ...
+                                      'frequencyAtMax', pulses.fcmx(i), ...
+                                      'scaleAtMax', pulses.scmx(i));
+                    features{end + 1} = feature; %#ok<AGROW>
                 end
-                n = n + pulseCount;
             end
-            
-            obj.timeRangeDetected(timeRange);
         end
         
     end

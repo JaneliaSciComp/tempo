@@ -37,16 +37,20 @@ classdef ManualDetector < FeatureDetector
         end
         
         
-        function n = detectFeatures(~, ~)
+        function features = detectFeatures(~, ~)
             % Nothing to do.
-            n = [];
+            features = [];
         end
         
         
         function handled = keyWasPressed(obj, keyEvent)
             if keyEvent.Character == obj.hotKey     % or .Key?
-                obj.addFeature(Feature(obj.featureType, obj.controller.selectedRange));
+                features = {Feature(obj.featureType, obj.controller.selectedRange)};
+                obj.addFeatures(features);
                 
+                obj.controller.addUndoableAction(['Add ' obj.featureType], ...
+                                                  @() obj.removeFeatures(features), ...
+                                                  @() obj.addFeatures(features));
                 obj.controller.needsSave = true;
                 
                 handled = true;
