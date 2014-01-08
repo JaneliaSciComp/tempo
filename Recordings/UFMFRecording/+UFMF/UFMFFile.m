@@ -728,7 +728,7 @@ classdef UFMFFile < handle
                 % TODO: If imlincomb here and imabsdiff just below could be replace with standard MATLAB calls then
                 %       the image toolbox would not be needed to create fixed size UFMFs.
                 obj.bgModel.meanImage = imlincomb((n-1)/n, obj.bgModel.meanImage, ...
-                                                      1/n, frameImage);
+                                                      1/n, uint8(frameImage));
             end
             
             if obj.printStats && frameNum >= obj.bgInitialMeans
@@ -739,7 +739,7 @@ classdef UFMFFile < handle
         
         function [boundingBoxes, diffImage] = subtractBackground(obj, frameImage)
             % Perform background substraction.
-            diffImage = imabsdiff(frameImage, obj.bgModel.meanImage);
+            diffImage = imabsdiff(uint8(frameImage), obj.bgModel.meanImage);
             
             % Convert to grayscale if needed.
             ncolors = size(diffImage, 3);
