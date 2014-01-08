@@ -84,7 +84,7 @@ classdef UFMFFile < handle
             % >> ufmfFile.sampleFrame(sample);                  % Optionally add a sample for the background image.
             % >> ufmfFile.addFrame(frame1);                     % Add a frame to the movie.
             % >> ufmfFile.addFrame(frame2);                     % Add another one.
-            % >> ufmfFile.close();                              % Complete writing the file.
+            % >> ufmfFile.close();                              % Finish writing the file.
             
             if nargin < 1
                 % This can happen when an empty matrix of UFMFFile's gets auto-populated by MATLAB.
@@ -172,6 +172,9 @@ classdef UFMFFile < handle
             if isempty(obj.path)
                 error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to read from.');
             end
+            if ~obj.isReadOnly && ~obj.isWritable
+                error('UFMF:FileIsClosed', 'This UFMF file has been closed.');
+            end
             if ~ismember(lower(obj.pixelCoding), {'mono8','rgb8'})
                 error('UFMF:UnsupportedColorspace', 'Colorspace ''%s'' is not yet supported.  Only MONO8 and RGB8 allowed.', obj.pixelCoding);
             end
@@ -198,6 +201,9 @@ classdef UFMFFile < handle
             
             if isempty(obj.path)
                 error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to read from.');
+            end
+            if ~obj.isReadOnly && ~obj.isWritable
+                error('UFMF:FileIsClosed', 'This UFMF file has been closed.');
             end
             if ~ismember(lower(obj.pixelCoding), {'mono8','rgb8'})
                 error('UFMF:UnsupportedColorspace', 'Colorspace ''%s'' is not yet supported.  Only MONO8 and RGB8 allowed.', obj.pixelCoding);
@@ -352,6 +358,9 @@ classdef UFMFFile < handle
             
             if isempty(obj.path)
                 error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to write to.');
+            end
+            if ~obj.isReadOnly && ~obj.isWritable
+                error('UFMF:FileIsClosed', 'This UFMF file has been closed.');
             end
             % TODO: are there times when writing when this will fail or return bad data?
             
