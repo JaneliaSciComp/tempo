@@ -20,6 +20,10 @@ classdef UFMFFile < handle
         showBoxes = false       % TODO: should be a parameter to getFrame?
     end
     
+    properties (Dependent)
+        duration
+    end
+    
     properties (Access=private)
         fileID
         isReadOnly
@@ -135,6 +139,21 @@ classdef UFMFFile < handle
                 obj.isWritable = false;
             else
                 error('UFMF:ValueError', 'Invalid mode given for opening a UFMF file: %s', mode);
+            end
+        end
+        
+        
+        function d = get.duration(obj)
+            if isempty(obj.frameRate)
+                % Get the time stamp of the last frame.
+                if obj.isWritable || ~isempty(obj.frameIndex)
+                    d = obj.frameIndex.frame.timestamp(end);
+                else
+                    d = obj.frames(end).timeStamp;
+                end
+            else
+                % Use the frame count and rate.
+                d = obj.frameCount / obj.frameRate;
             end
         end
         
