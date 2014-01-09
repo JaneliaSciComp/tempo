@@ -232,7 +232,7 @@ classdef TempoController < handle
                                  'Accelerator', 'z', ...
                                  'Enable', 'off', ...
                                  'Tag', 'undo');
-            uimenu(obj.editMenu, 'Label', 'Redo...', ...
+            uimenu(obj.editMenu, 'Label', 'Redo', ...
                                  'Callback', @(hObject, eventdata)handleRedo(obj, hObject, eventdata), ...
                                  'Accelerator', 'y', ...
                                  'Enable', 'off', ...
@@ -1100,20 +1100,19 @@ classdef TempoController < handle
                     end
                     
                     % Have the detector look for features in the time range.
-                    if isempty(obj.detectFeatures(detector, timeRange))
+                    if ~isa(detector, 'ManualDetector') && isempty(obj.detectFeatures(detector, timeRange))
                         waitfor(msgbox('No features were detected.', detector.typeName, 'warn', 'modal'));
-                    else
-                        % Create a panel to show the features that were found.
-                        
-                        obj.addReporter(detector);
-                        
-                        obj.addUndoableAction(['Detect ' detector.typeName], ...
-                                              @() obj.removeReporter(detector), ...
-                                              @() obj.addReporter(detector));
-                        obj.needsSave = true;
-            
-% TODO:                 handles = updateFeatureTimes(handles);
                     end
+                    
+                    % Create a panel to show the features that were found.
+                    obj.addReporter(detector);
+                    
+                    obj.addUndoableAction(['Detect ' detector.typeName], ...
+                                          @() obj.removeReporter(detector), ...
+                                          @() obj.addReporter(detector));
+                    obj.needsSave = true;
+                    
+% TODO:                 handles = updateFeatureTimes(handles);
                 end
             end
         end

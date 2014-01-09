@@ -28,7 +28,7 @@ classdef ManualDetector < FeatureDetector
             
             % TODO: Is there some way to set this based off of what the user has seen?  Add (or extend to) the displayRange every time a feature is added?
             %       If so then it would be a way for users to keep track of what they have worked on.
-            obj.timeRangeDetected([0 controller.duration]);
+            obj.addFeaturesInTimeRange([], [0 controller.duration]);
         end
         
         
