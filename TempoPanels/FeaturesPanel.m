@@ -43,14 +43,14 @@ classdef FeaturesPanel < TimelinePanel
             if isempty(obj.contextualMenu)
                 obj.contextualMenu = uicontextmenu('Callback', @(source, event)enableReporterMenuItems(obj, source, event));
                 uimenu(obj.contextualMenu, 'Label', obj.reporter.name, 'Enable', 'off');
-                obj.showReporterSettingsMenuItem = uimenu(obj.contextualMenu, 'Label', 'Show Reporter Settings', 'Callback', @(source, event)showReporterSettings(obj, source, event), 'Separator', 'on');
+                obj.showReporterSettingsMenuItem = uimenu(obj.contextualMenu, 'Label', 'Show Reporter Settings', 'Callback', @(source, event)handleShowReporterSettings(obj, source, event), 'Separator', 'on');
                 if isa(obj.reporter, 'FeatureDetector')
-                    obj.detectFeaturesInSelectionMenuItem = uimenu(obj.contextualMenu, 'Label', 'Detect Features in Selection', 'Callback', @(source, event)detectFeaturesInSelection(obj, source, event));
+                    obj.detectFeaturesInSelectionMenuItem = uimenu(obj.contextualMenu, 'Label', 'Detect Features in Selection', 'Callback', @(source, event)handleDetectFeaturesInSelection(obj, source, event));
                 end
                 uimenu(obj.contextualMenu, 'Label', 'Export Features...', 'Callback', @(source, event)exportFeatures(obj.reporter));
-                uimenu(obj.contextualMenu, 'Label', 'Set Features Color...', 'Callback', @(source, event)setFeaturesColor(obj, source, event));
+                uimenu(obj.contextualMenu, 'Label', 'Set Features Color...', 'Callback', @(source, event)handleSetFeaturesColor(obj, source, event));
                 uimenu(obj.contextualMenu, 'Label', 'Draw/Clear Bounding Boxes', 'Callback', @(source, event)handleBoundingBoxes(obj, source, event), 'Separator', 'off');
-                uimenu(obj.contextualMenu, 'Label', 'Remove Reporter...', 'Callback', @(source, event)removeReporter(obj, source, event), 'Separator', 'on');
+                uimenu(obj.contextualMenu, 'Label', 'Remove Reporter...', 'Callback', @(source, event)handleRemoveReporter(obj, source, event), 'Separator', 'on');
                 set(obj.axes, 'UIContextMenu', obj.contextualMenu);
             end
             
@@ -110,8 +110,8 @@ classdef FeaturesPanel < TimelinePanel
                     end
                     feature.contextualMenu = uicontextmenu();
                     uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
-                    uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', @(source, event)showFeatureProperties(obj, source, event), 'Separator', 'on');
-                    uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)removeFeature(obj, source, event), 'Separator', 'off');
+                    uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', @(source, event)handleShowFeatureProperties(obj, source, event), 'Separator', 'on');
+                    uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)handleRemoveFeature(obj, source, event), 'Separator', 'off');
                 end
                 yCen = (length(featureTypes) - y + 0.5) * spacing;
                 if feature.startTime == feature.endTime
@@ -120,7 +120,7 @@ classdef FeaturesPanel < TimelinePanel
                            'VerticalAlignment', 'middle', ...
                            'UIContextMenu', feature.contextualMenu, ...
                            'Color', obj.reporter.featuresColor, ...
-                           'ButtonDownFcn', @(source, event)selectFeature(obj, source, event), ...
+                           'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
                            'UserData', feature);
                     hh=[hh h];
                 else
@@ -145,7 +145,7 @@ classdef FeaturesPanel < TimelinePanel
                     h=patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
                             'EdgeColor', obj.reporter.featuresColor, ...
                             'UIContextMenu', feature.contextualMenu, ...
-                            'ButtonDownFcn', @(source, event)selectFeature(obj, source, event), ...
+                            'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
                             'UserData', feature);
                     hh=[hh h];
                 end
@@ -235,23 +235,32 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function showReporterSettings(obj, ~, ~)
+        function handleShowReporterSettings(obj, ~, ~)
             obj.reporter.showSettings();
         end
         
         
-        function detectFeaturesInSelection(obj, ~, ~)
-            if isempty(obj.controller.detectFeatures(obj.reporter, obj.controller.selectedRange))
-                waitfor(msgbox('No additional features were detected.', detector.typeName, 'warn', 'modal'));
+        function handleDetectFeaturesInSelection(obj, ~, ~)
+            timeRange = obj.controller.selectedRange;
+            features = obj.controller.detectFeatures(obj.reporter, timeRange);
+            if isempty(features)
+                waitfor(msgbox('No additional features were detected.', obj.reporter.typeName, 'warn', 'modal'));
+            else
+                % Create a new reference to the reporter object so it doesn't get destroyed when this panel does.
+                reporterHandle = obj.reporter;
+                
+                obj.controller.addUndoableAction(['Detect ' obj.reporter.typeName], ...
+                                                  @() reporterHandle.removeFeaturesInTimeRange(features, timeRange), ...
+                                                  @() reporterHandle.addFeaturesInTimeRange(features, timeRange));
+                obj.controller.needsSave = true;
             end
         end
         
         
-        function setFeaturesColor(obj, ~, ~)
+        function handleSetFeaturesColor(obj, ~, ~)
             newColor = uisetcolor(obj.reporter.featuresColor);
             if length(newColor) == 3
                 obj.reporter.featuresColor = newColor;
-%                 syncGUIWithTime(handles);
                 fillColor = obj.reporter.featuresColor;
                 fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
                 set(obj.featureHandles(strcmp(get(obj.featureHandles, 'Type'), 'patch')), 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor);
@@ -266,8 +275,21 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function removeReporter(obj, ~, ~)
-            obj.controller.removeFeaturePanel(obj);
+        function handleRemoveReporter(obj, ~, ~)
+            answer = questdlg('Are you sure you wish to remove this reporter?', 'Removing Reporter', 'Cancel', 'Remove', 'Cancel');
+            if strcmp(answer, 'Remove')
+                % Create new references to the controller and reporter objects 
+                % so they don't get destroyed when this panel does.
+                controllerHandle = obj.controller;
+                reporterHandle = obj.reporter;
+                
+                obj.controller.addUndoableAction(['Remove ' obj.reporter.typeName], ...
+                                                  @() controllerHandle.addReporter(reporterHandle), ...
+                                                  @() controllerHandle.removeReporter(reporterHandle));
+                obj.controller.needsSave = true;
+                
+                obj.controller.removeReporter(obj.reporter);
+            end
         end
         
         
@@ -282,7 +304,7 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function showFeatureProperties(obj, ~, ~) %#ok<INUSD>
+        function handleShowFeatureProperties(obj, ~, ~) %#ok<INUSD>
             feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
             
             msg = ['Type: ' feature.type char(10) char(10)];
@@ -319,7 +341,7 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function removeFeature(obj, ~, ~)
+        function handleRemoveFeature(obj, ~, ~)
             feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
             
             answer = questdlg('Are you sure you wish to remove this feature?', 'Removing Feature', 'Cancel', 'Remove', 'Cancel');
@@ -329,7 +351,7 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function selectFeature(obj, ~, ~)
+        function handleSelectFeature(obj, ~, ~)
             feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
             
             obj.controller.selectRange(feature.range);

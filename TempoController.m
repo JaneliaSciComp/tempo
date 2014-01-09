@@ -1105,19 +1105,21 @@ classdef TempoController < handle
                     else
                         % Create a panel to show the features that were found.
                         
-                        obj.reporters{end + 1} = detector;
-                        obj.timelinePanels{end + 1} = FeaturesPanel(detector);
+                        obj.addReporter(detector);
                         
-                        obj.arrangeTimelinePanels();
-                        
-                        obj.showTimelinePanels(true);
+                        obj.addUndoableAction(['Detect ' detector.typeName], ...
+                                              @() obj.removeReporter(detector), ...
+                                              @() obj.addReporter(detector));
+                        obj.needsSave = true;
+            
+% TODO:                 handles = updateFeatureTimes(handles);
                     end
                 end
             end
         end
         
         
-        function features = detectFeatures(obj, detector, timeRange)
+        function features = detectFeatures(obj, detector, timeRange) %#ok<INUSL>
             % Detect features using the given detector in the given time range.
             % TODO: don't add duplicate features if selection overlaps already detected region?
             %       or reduce selection to not overlap before detection?
@@ -1139,14 +1141,7 @@ classdef TempoController < handle
             if ~isempty(features)
                 % Add the found features to the detector's list of features.
                 detector.addFeaturesInTimeRange(features, timeRange);
-                
-                obj.addUndoableAction(['Detect ' detector.typeName], ...
-                                      @() detector.removeFeaturesInTimeRange(features, timeRange), ...
-                                      @() detector.addFeaturesInTimeRange(features, timeRange));
-                obj.needsSave = true;
             end
-            
-% TODO:         handles = updateFeatureTimes(handles);
         end
         
         
@@ -1446,30 +1441,37 @@ classdef TempoController < handle
         %% Other callbacks
         
         
-        function removeFeaturePanel(obj, featurePanel)
-            answer = questdlg('Are you sure you wish to remove this reporter?', 'Removing Reporter', 'Cancel', 'Remove', 'Cancel');
-            if strcmp(answer, 'Remove')
-                reporter = featurePanel.reporter;
-                
-                % Remove the panel.
-                obj.timelinePanels(cellfun(@(x) x == featurePanel, obj.timelinePanels)) = [];
-                delete(featurePanel);
-                obj.arrangeTimelinePanels();
-                
-                % Remove the panel's reporter.
-                obj.reporters(cellfun(@(x) x == reporter, obj.reporters)) = [];
-                delete(reporter);
-                
-% TODO:                handles = updateFeatureTimes(handles);
-
-                for j = 1:length(obj.timelinePanels)
-                    panel = obj.timelinePanels{j};
-                    if isa(panel, 'SpectrogramPanel')
-                        panel.deleteAllReporters();
-                    end
+        function addReporter(obj, reporter)
+            obj.reporters{end + 1} = reporter;
+            
+            % Open a features panel for the reporter.
+            obj.timelinePanels{end + 1} = FeaturesPanel(reporter);
+            obj.arrangeTimelinePanels();
+            obj.showTimelinePanels(true);
+        end
+        
+        
+        function removeReporter(obj, reporter)
+            % Remove the reporter's panel if it has one.
+            for featurePanel = obj.panelsOfClass('FeaturesPanel')
+                if featurePanel{1}.reporter == reporter
+                    obj.timelinePanels(cellfun(@(x) x == featurePanel{1}, obj.timelinePanels)) = [];
+                    delete(featurePanel{1});
+                    obj.arrangeTimelinePanels();
+                    break
                 end
-                
-                obj.needsSave = true;
+            end
+            
+            % Remove the reporter.
+            obj.reporters(cellfun(@(x) x == reporter, obj.reporters)) = [];
+            
+% TODO:     handles = updateFeatureTimes(handles);
+            
+            for j = 1:length(obj.timelinePanels)
+                panel = obj.timelinePanels{j};
+                if isa(panel, 'SpectrogramPanel')
+                    panel.deleteAllReporters();
+                end
             end
         end
         
