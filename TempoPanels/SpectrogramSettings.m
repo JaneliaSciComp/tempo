@@ -46,7 +46,7 @@ function edited = SpectrogramSettings(spectrogramPanel, varargin)
         'HorizontalAlignment', 'center', ...
         'Position', [195 6 65 26], ...
         'String',  num2str(spectrogramPanel.controller.displayRange(4), '%d'), ...
-        'Callback', @(hObject,eventdata)handleFrequencyRangeEditChanged(hObject,eventdata,guidata(hObject)), ...
+        'Callback', @(hObject,eventdata)handleFrequencyRangeEditValueChanged(hObject,eventdata,guidata(hObject)), ...
         'Style', 'edit');
     
     % Create the "FFT" panel.
@@ -218,7 +218,7 @@ function edited = SpectrogramSettings(spectrogramPanel, varargin)
 end
 
 
-function handleFrequencyRangeEditChanged(~, ~, handles)
+function handleFrequencyRangeEditValueChanged(~, ~, handles)
     minValue = str2double(get(handles.frequencyMinEdit, 'String'));
     maxValue = str2double(get(handles.frequencyMaxEdit, 'String'));
     

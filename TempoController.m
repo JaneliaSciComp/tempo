@@ -80,10 +80,10 @@ classdef TempoController < handle
     
     properties (SetObservable)
         % The Tempo panels will listen for changes to these properties.
-        displayRange = [0 300 -inf inf]      % The window in time and frequency which all timeline panels should display (in seconds/Hz, [minTime maxTime minFreq maxFreq]).
+        displayRange = [0 300 0 100000]      % The window in time and frequency which all timeline panels should display (in seconds/Hz, [minTime maxTime minFreq maxFreq]).
         currentTime = 0         % The time point currently being played (in seconds).
         selectedRange = [0 0 -inf inf]    % The range of time and frequency currently selected (in seconds/Hz).  The first two values will be equal if there is a point selection.
-        windowSize = 0
+        windowSize = 0.01
     end
     
     
@@ -1071,8 +1071,8 @@ classdef TempoController < handle
                 for i = 1:length(obj.timelinePanels)
                     if ~obj.timelinePanels{i}.isHidden
                         axesToSave(end + 1) = obj.timelinePanels{i}.axes; %#ok<AGROW>
-%                    visibleTimelinePanels{i}.showSelection(false);
-                end
+%                        visibleTimelinePanels{i}.showSelection(false);
+                    end
                 end
                 
                 [~,~,e]=fileparts(fileName);
@@ -1491,9 +1491,11 @@ classdef TempoController < handle
         end
         
         
+        %% Other callbacks
+        
+        
         function centerDisplayAtTime(obj, timeCenter)
             if isempty(obj.displayRange) && ~isempty(obj.recordings)
-                obj.windowSize = 0.001;
                 newRange = [0 obj.recordings{1}.duration 0 floor(obj.recordings{1}.sampleRate / 2)];
             else
                 newRange = obj.displayRange;
@@ -1907,8 +1909,8 @@ classdef TempoController < handle
             
             if ~isempty(obj.videoPanels)
                 meanFrameRate = mean(cellfun(@(v) v.video.sampleRate, obj.videoPanels));
-            set(obj.videoSlider, 'Max', obj.duration, ...
-                                 'SliderStep', [1.0 / meanFrameRate / obj.duration, 5.0 / obj.duration]);
+                set(obj.videoSlider, 'Max', obj.duration, ...
+                                     'SliderStep', [1.0 / meanFrameRate / obj.duration, 5.0 / obj.duration]);
             end
             set(obj.timelineSlider, 'Max', obj.duration);
             
