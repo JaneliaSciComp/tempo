@@ -29,7 +29,7 @@ classdef TimelinePanel < TempoPanel
         
         
         function handleSelectedRangeChanged(obj, ~, ~)
-            if obj.visible
+            if ~obj.isHidden
                 if obj.showsFrequencyRange
                     % Hide the current time indicator if the user has chosen a range of frequencies.
                     if isinf(obj.controller.selectedRange(3))
@@ -71,7 +71,7 @@ classdef TimelinePanel < TempoPanel
         
         
         function handleTimeWindowChanged(obj, ~, ~)
-            if obj.visible && ~isempty(obj.controller.displayRange)
+            if ~obj.isHidden && ~isempty(obj.controller.displayRange)
                 % For performance only update the axes if the time range has changed.
                 % The spectogram needs to update even when playback stops and the range doesn't change so it's special cased.
                 if ~isempty(obj.controller.displayRange) && (any(obj.axesXLim ~= obj.controller.displayRange(1:2)) || isa(obj, 'SpectrogramPanel'))
@@ -87,14 +87,14 @@ classdef TimelinePanel < TempoPanel
         
         function handleResize(obj, source, event)
             handleResize@TempoPanel(obj, source, event);
-            if obj.visible
+            if ~obj.isHidden
                 obj.handleTimeWindowChanged(source, event);
             end
         end
         
         
         function showSelection(obj, flag)
-            if obj.visible
+            if ~obj.isHidden
                 % Show or hide the current time line and selected time indicators.
                 if flag
                     if ~obj.showsFrequencyRange && ~isinf(obj.controller.selectedRange(3))
@@ -120,6 +120,17 @@ classdef TimelinePanel < TempoPanel
             % In case new features, etc. have been added.
             if ~obj.controller.isPlaying
                 uistack([obj.timeLine, obj.selectionPatch], 'top');
+            end
+        end
+        
+        
+        function setHidden(obj, hidden)
+			setHidden@TempoPanel(obj, hidden);
+            
+            if ~obj.isHidden
+                % Make sure everything is in sync.
+                obj.handleSelectedRangeChanged([], []);
+                obj.handleTimeWindowChanged([], []);
             end
         end
         

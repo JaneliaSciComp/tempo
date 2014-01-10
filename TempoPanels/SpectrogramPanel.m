@@ -3,7 +3,7 @@ classdef SpectrogramPanel < TimelinePanel
 	properties
         audio
         
-        infoMenuItem
+        actionMenuItem
         
         imageHandle
         
@@ -26,10 +26,13 @@ classdef SpectrogramPanel < TimelinePanel
 		function obj = SpectrogramPanel(controller, recording)
 			obj = obj@TimelinePanel(controller);
             
+            obj.panelType = 'Spectrogram';
+            
             obj.showsFrequencyRange = true;
             
             obj.audio = recording;
-            set(obj.infoMenuItem, 'Label', ['Audio file: ' obj.audio.name]);
+            set(obj.actionMenuItem, 'Label', ['Audio file: ' obj.audio.name]);
+            obj.setTitle(obj.audio.name);
             
             obj.listeners{end + 1} = addlistener(obj.controller, 'windowSize', 'PostSet', ...
                 @(source, event)handleSpectrogramParametersChanged(obj, source, event));
@@ -39,7 +42,7 @@ classdef SpectrogramPanel < TimelinePanel
         
         
         function handleSpectrogramParametersChanged(obj, ~, ~)
-            if ~isempty(obj.controller.displayRange) && obj.visible
+            if ~isempty(obj.controller.displayRange) && ~obj.isHidden
                 obj.updateAxes(obj.controller.displayRange);
             end
         end
@@ -73,22 +76,22 @@ classdef SpectrogramPanel < TimelinePanel
         end
         
         
-        function addInfoMenuItems(obj, infoMenu)
+        function addActionMenuItems(obj, actionMenu)
             % Add recording name, "Audio Settings..." and "Spectrogram Settings..." menu items
-            obj.infoMenuItem = uimenu(infoMenu, 'Label', 'Audio file: ', 'Enable', 'off');
-            uimenu(infoMenu, ...
+            obj.actionMenuItem = uimenu(actionMenu, 'Label', 'Audio file: ', 'Enable', 'off');
+            uimenu(actionMenu, ...
                 'Label', 'Audio settings...', ...
                 'Separator', 'on', ...
                 'Callback', @(hObject,eventdata)showAudioSettings(obj, hObject, eventdata));
-            uimenu(infoMenu, ...
+            uimenu(actionMenu, ...
                 'Label', 'Spectrogram setings...', ...
                 'Callback', @(hObject,eventdata)showSpectrogramSettings(obj, hObject, eventdata));
             
             % Move the recording's name item above the default items.
-            menuItems = get(infoMenu, 'Children');
+            menuItems = get(actionMenu, 'Children');
             set(menuItems(end), 'Separator', 'on');
             menuItems = vertcat(menuItems(1:end-3), menuItems(end-1:end), menuItems(end-2));
-            set(infoMenu, 'Children', menuItems);
+            set(actionMenu, 'Children', menuItems);
         end
         
         

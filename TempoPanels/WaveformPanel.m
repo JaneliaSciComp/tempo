@@ -6,7 +6,7 @@ classdef WaveformPanel < TimelinePanel
         plotHandle
         sampleCount
         
-        infoMenuItem
+        actionMenuItem
         
 	    verticalScalingMethod = 1;      % 1 = whole recording, 2 = displayed portion of recording, 3 = manual
         verticalScalingValue = 1.0;
@@ -22,9 +22,12 @@ classdef WaveformPanel < TimelinePanel
 		function obj = WaveformPanel(controller, recording)
 			obj = obj@TimelinePanel(controller);
             
+            obj.panelType = 'Waveform';
+            
             obj.audio = recording;
-            set(obj.infoMenuItem, 'Label', ['Audio file: ' obj.audio.name]);
+            set(obj.actionMenuItem, 'Label', ['Audio file: ' obj.audio.name]);
             % TODO: use Java to show the full path as a tooltip
+            obj.setTitle(obj.audio.name);
             
 %             addlistener(obj, 'verticalScalingMethod', 'PostSet', @(source, event)handleVerticalScalingChanged(obj, source, event));
 %             addlistener(obj, 'verticalScalingValue', 'PostSet', @(source, event)handleVerticalScalingChanged(obj, source, event));
@@ -32,21 +35,21 @@ classdef WaveformPanel < TimelinePanel
         end
         
         
-        function addInfoMenuItems(obj, infoMenu)
-            obj.infoMenuItem = uimenu(infoMenu, 'Label', 'Audio file: ', 'Enable', 'off');
-            uimenu(infoMenu, ...
+        function addActionMenuItems(obj, actionMenu)
+            obj.actionMenuItem = uimenu(actionMenu, 'Label', 'Audio file: ', 'Enable', 'off');
+            uimenu(actionMenu, ...
                 'Label', 'Audio settings...', ...
                 'Separator', 'on', ...
                 'Callback', @(hObject,eventdata)showAudioSettings(obj, hObject, eventdata));
-            uimenu(infoMenu, ...
+            uimenu(actionMenu, ...
                 'Label', 'Waveform setings...', ...
                 'Callback', @(hObject,eventdata)showWaveformSettings(obj, hObject, eventdata));
             
             % Move our first item above the default items.
-            menuItems = get(infoMenu, 'Children');
+            menuItems = get(actionMenu, 'Children');
             set(menuItems(end), 'Separator', 'on');
             menuItems = vertcat(menuItems(1:end-3), menuItems(end-1:end), menuItems(end-2));
-            set(infoMenu, 'Children', menuItems);
+            set(actionMenu, 'Children', menuItems);
         end
 	    
         

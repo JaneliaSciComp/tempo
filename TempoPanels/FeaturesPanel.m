@@ -19,9 +19,12 @@ classdef FeaturesPanel < TimelinePanel
 		function obj = FeaturesPanel(reporter)
 			obj = obj@TimelinePanel(reporter.controller);
             
-            obj.reporter = reporter;
+            obj.panelType = 'Features';
             
-            obj.featureHandles=obj.populateFeatures();
+            obj.reporter = reporter;
+            obj.setTitle(reporter.name);
+            
+            obj.featureHandles = obj.populateFeatures();
             
             % Listen for whenever the reporter changes its features.
             obj.featureChangeListener = addlistener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));

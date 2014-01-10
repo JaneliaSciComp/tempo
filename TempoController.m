@@ -17,6 +17,8 @@ classdef TempoController < handle
         timelinePanels = {}
         timeIndicatorPanel = []
         
+        panelHandlingKeyPress
+        
         videoSlider
         timelineSlider
         
@@ -143,7 +145,6 @@ classdef TempoController < handle
                 'Position', [0 0 figurePos(3) figurePos(4)]);
             [obj.videosPanel, obj.timelinesPanel, obj.splitter] = uisplitpane(obj.splitterPanel, ...
                 'DividerLocation', 0.25, ...
-                'DividerColor', 'red', ...
                 'DividerWidth', 5);
             set(obj.videosPanel, ...
                 'BackgroundColor', 'black', ...
@@ -151,7 +152,6 @@ classdef TempoController < handle
             set(obj.timelinesPanel, ...
                 'BackgroundColor', 'white', ...
                 'ResizeFcn', @(source, event)arrangeTimelinePanels(obj, source, event));
-            set(obj.splitter, 'DividerColor', 'red');
             
             obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
             
@@ -597,7 +597,7 @@ classdef TempoController < handle
                 panels = obj.videoPanels;
                 for i = 1:length(panels)
                     panel = panels{i};
-                    if panel.visible
+                    if ~panel.isHidden
                         vp{end + 1} = panel; %#ok<AGROW>
                     end
                 end
@@ -667,65 +667,72 @@ classdef TempoController < handle
         end
         
         
-        function vp = visibleTimelinePanels(obj)
-            vp = {};
+        function to = timelinesAreOpen(obj)
+            % Get the size of the top-level panel.
+            set(obj.timelinesPanel, 'Units', 'pixels');
+            timelinesPos = get(obj.timelinesPanel, 'Position');
+            set(obj.timelinesPanel, 'Units', 'normalized');
             
+            to = timelinesPos(3) > 15;
+        end
+        
+        
+        function arrangeTimelinePanels(obj, ~, ~)
             % Get the size of the top-level panel.
             set(obj.timelinesPanel, 'Units', 'pixels');
             timelinesPos = get(obj.timelinesPanel, 'Position');
             set(obj.timelinesPanel, 'Units', 'normalized');
             
             if timelinesPos(3) > 15
-                % The splitter is open, check the panels.
-                panels = obj.timelinePanels;
-                for i = 1:length(panels)
-                    panel = panels{i};
-                    if panel.visible
-                        vp{end + 1} = panel; %#ok<AGROW>
-                    end
-                end
-            end
-        end
-        
-        
-        function arrangeTimelinePanels(obj, ~, ~)
-            set(obj.splitter, 'DividerColor', 'red');
-            
-            visibleTimelinePanels = obj.visibleTimelinePanels();
-            
-            % Get the size of the top-level panel.
-            set(obj.timelinesPanel, 'Units', 'pixels');
-            timelinesPos = get(obj.timelinesPanel, 'Position');
-            set(obj.timelinesPanel, 'Units', 'normalized');
-            
-            if timelinesPos(3) < 15
-                % The splitter has been collapsed, don't show the timeline panels.
-                set(obj.timelinesPanel, 'Visible', 'off');
-            else
                 % The splitter is open, show the panels.
                 set(obj.timelinesPanel, 'Visible', 'on');
                 
-                % Arrange the other panels, leaving room at the top for the time indicator panel.
-                % Leave a one pixel gap between panels so there's a visible line between them.
+                % Position the time indicator panel at the top.
                 timeIndicatorHeight = 13;
-                panelsHeight = timelinesPos(4) - timeIndicatorHeight;
-                numPanels = length(visibleTimelinePanels);
-                if numPanels > 0
-                    panelHeight = floor(panelsHeight / numPanels);
-                    for i = 1:numPanels - 1
-                        set(visibleTimelinePanels{i}.panel, 'Position', [4, timelinesPos(4) - timeIndicatorHeight - i * panelHeight, timelinesPos(3) - 3, panelHeight - 2]);
-                        visibleTimelinePanels{i}.handleResize([], []);
-                    end
-                    lastPanelHeight = panelsHeight - panelHeight * (numPanels - 1) - 4;
-                    set(visibleTimelinePanels{end}.panel, 'Position', [4, 2, timelinesPos(3) - 3, lastPanelHeight]);
-                    visibleTimelinePanels{end}.handleResize([], []);
-                end
-                
-                obj.timeIndicatorPanel.setVisible(true);
+                obj.timeIndicatorPanel.setHidden(false);
                 set(obj.timeIndicatorPanel.panel, 'Position', [4, timelinesPos(4) - timeIndicatorHeight, timelinesPos(3) - 3, timeIndicatorHeight + 1]);
                 obj.timeIndicatorPanel.updateAxes(obj.displayRange(1:2));
                 
+                % Figure out how many panels are hidden.
+                numPanels = length(obj.timelinePanels);
+                numHidden = 0;
+                for i = 1:numPanels
+                    if obj.timelinePanels{i}.isHidden
+                        numHidden = numHidden + 1;
+                    end
+                end
+                numShown = numPanels - numHidden;
+                
+                % Arrange the panels.
+                % TODO: allow open panels to be resized.
+                shownPanelsHeight = timelinesPos(4) - timeIndicatorHeight - numHidden * 16 - 16;
+                shownPanelHeight = floor(shownPanelsHeight / numShown);
+                curY = timelinesPos(4) - timeIndicatorHeight;
+                for i = 1:numPanels
+                    if obj.timelinePanels{i}.isHidden
+                        % Hidden panels are 16 pixels tall.
+                        curY = curY - 16;
+                        panelHeight = 16;
+                    elseif i < numPanels
+                        % Open panels get an even fraction of the available space.
+                        % Leave a one pixel gap between panels so there's a visible line between them.
+                        curY = curY - shownPanelHeight;
+                        panelHeight = shownPanelHeight - 2;
+                    else
+                        % The last open panel gets whatever is left.
+                        panelHeight = curY - (2 + 16);
+                        curY = 2 + 16;
+                    end
+                    set(obj.timelinePanels{i}.panel, 'Position', [4, curY, timelinesPos(3) - 3, panelHeight]);
+                    obj.timelinePanels{i}.handleResize([], []);
+                end
+                
+                % Position the timeline slider at the bottom.
+                % It has a different parent 
                 set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 1, 16]);
+            else
+                % The splitter has been collapsed, don't show the timeline panels.
+                set(obj.timelinesPanel, 'Visible', 'off');
             end
         end
         
@@ -741,6 +748,45 @@ classdef TempoController < handle
                 catch
                     % oh well?
                 end
+            end
+        end
+        
+        
+        function hidePanel(obj, panel)
+            panel.setHidden(true);
+            if isa(panel, 'VideoPanel')
+                obj.arrangeVideoPanels();
+            else
+                obj.arrangeTimelinePanels();
+            end
+        end
+        
+        
+        function showPanel(obj, panel)
+            panel.setHidden(false);
+            if isa(panel, 'VideoPanel')
+                obj.arrangeVideoPanels();
+            else
+                obj.arrangeTimelinePanels();
+            end
+        end
+        
+        
+        function closePanel(obj, panel)
+            if isa(panel, 'VideoPanel')
+                % Let the panel do what it needs to before closing.
+                panel.close();
+                
+                % Remove the panel.
+                obj.videoPanels(cellfun(@(x) x == panel, obj.videoPanels)) = [];
+                obj.arrangeVideoPanels();
+            else
+                % Let the panel do what it needs to before closing.
+                panel.close();
+                
+                % Remove the panel.
+                obj.timelinePanels(cellfun(@(x) x == panel, obj.timelinePanels)) = [];
+                obj.arrangeTimelinePanels();
             end
         end
         
@@ -1017,14 +1063,16 @@ classdef TempoController < handle
                 
                 % Determine the list of axes to export.
                 axesToSave = [obj.timeIndicatorPanel.axes];
-                visibleVideoPanels = obj.visibleVideoPanels();
-                for i = 1:length(visibleVideoPanels)
-                    axesToSave(end + 1) = visibleVideoPanels{i}.axes; %#ok<AGROW>
+                for i = 1:length(obj.videoPanels)
+                    if ~obj.videoPanels{i}.isHidden
+                        axesToSave(end + 1) = obj.videoPanels{i}.axes; %#ok<AGROW>
+                    end
                 end
-                visibleTimelinePanels = obj.visibleTimelinePanels();
-                for i = 1:length(visibleTimelinePanels)
-                    axesToSave(end + 1) = visibleTimelinePanels{i}.axes; %#ok<AGROW>
+                for i = 1:length(obj.timelinePanels)
+                    if ~obj.timelinePanels{i}.isHidden
+                        axesToSave(end + 1) = obj.timelinePanels{i}.axes; %#ok<AGROW>
 %                    visibleTimelinePanels{i}.showSelection(false);
+                end
                 end
                 
                 [~,~,e]=fileparts(fileName);
@@ -1041,8 +1089,10 @@ classdef TempoController < handle
 %                export_fig(fullfile(pathName, fileName), '-opengl', '-a1');  %, axesToSave);
 
                 % Show the current selection again.
-                for i = 1:length(visibleTimelinePanels)
-                    visibleTimelinePanels{i}.showSelection(true);
+                for i = 1:length(obj.timelinePanels)
+                    if ~obj.timelinePanels{i}.isHidden
+                        obj.timelinePanels{i}.showSelection(true);
+                    end
                 end
                 
                 if ismac
@@ -1131,7 +1181,7 @@ classdef TempoController < handle
             curState = get(menuItem, 'Checked');
             showNumbers = strcmp(curState, 'off');
             
-            for videoPanel = obj.visibleVideoPanels()
+            for videoPanel = obj.videoPanels
                 videoPanel{1}.showFrameNumber(showNumbers);
             end
             
@@ -1363,7 +1413,7 @@ classdef TempoController < handle
             for i = 1:length(obj.timelinePanels)
                 panel = obj.timelinePanels{i};
                 if isa(panel, 'WaveformPanel')
-                    panel.setVisible(obj.showWaveforms);
+                    panel.setHidden(~obj.showWaveforms);
                 end
             end
             
@@ -1382,7 +1432,7 @@ classdef TempoController < handle
             for i = 1:length(obj.timelinePanels)
                 panel = obj.timelinePanels{i};
                 if isa(panel, 'SpectrogramPanel')
-                    panel.setVisible(obj.showSpectrograms);
+                    panel.setHidden(~obj.showSpectrograms);
                 end
             end
             
@@ -1401,7 +1451,7 @@ classdef TempoController < handle
             for i = 1:length(obj.timelinePanels)
                 panel = obj.timelinePanels{i};
                 if isa(panel, 'FeaturesPanel')
-                    panel.setVisible(obj.showFeatures);
+                    panel.setHidden(~obj.showFeatures);
                 end
             end
             
@@ -1415,18 +1465,13 @@ classdef TempoController < handle
         end
         
         
-        %% Other callbacks
-        
-        
         function removeFeaturePanel(obj, featurePanel)
             answer = questdlg('Are you sure you wish to remove this reporter?', 'Removing Reporter', 'Cancel', 'Remove', 'Cancel');
             if strcmp(answer, 'Remove')
                 reporter = featurePanel.reporter;
                 
                 % Remove the panel.
-                obj.timelinePanels(cellfun(@(x) x == featurePanel, obj.timelinePanels)) = [];
-                delete(featurePanel);
-                obj.arrangeTimelinePanels();
+                obj.closePanel(featurePanel);
                 
                 % Remove the panel's reporter.
                 obj.reporters(cellfun(@(x) x == reporter, obj.reporters)) = [];
@@ -1743,9 +1788,11 @@ classdef TempoController < handle
             if ~strcmp(keyEvent.Key, 'space')
                 % Let one of the panels handle the event.
                 % If the video panels are open they get first dibs.
-                visiblePanels = horzcat(obj.visibleVideoPanels(), obj.visibleTimelinePanels());
-                for i = 1:length(visiblePanels)
-                    if visiblePanels{i}.keyWasPressed(keyEvent)
+                panels = horzcat(obj.videoPanels, obj.timelinePanels);
+                obj.panelHandlingKeyPress = [];
+                for i = 1:length(panels)
+                    if ~panels{i}.isHidden && panels{i}.keyWasPressed(keyEvent)
+                        obj.panelHandlingKeyPress = panels{i};
                         break
                     end
                 end
@@ -1768,14 +1815,9 @@ classdef TempoController < handle
                         obj.handlePlay(source, keyEvent, 'forwards');
                     end
                 end
-            else
-                % Let one of the panels handle the event.
-                visiblePanels = horzcat(obj.visibleTimelinePanels(), obj.visibleVideoPanels());
-                for i = 1:length(visiblePanels)
-                    if visiblePanels{i}.keyWasReleased(keyEvent)
-                        break
-                    end
-                end
+            elseif ~isempty(obj.panelHandlingKeyPress)
+                % Let the panel that handled the key press handle this key release as well.
+                obj.panelHandlingKeyPress.keyWasReleased(keyEvent);
             end
         end
         
@@ -1824,11 +1866,11 @@ classdef TempoController < handle
                 
                 panel = WaveformPanel(obj, recording);
                 obj.timelinePanels{end + 1} = panel;
-                panel.setVisible(obj.showWaveforms);
+                panel.setHidden(~obj.showWaveforms);
                 
                 panel = SpectrogramPanel(obj, recording);
                 obj.timelinePanels{end + 1} = panel;
-                panel.setVisible(obj.showSpectrograms);
+                panel.setHidden(~obj.showSpectrograms);
                 
                 obj.arrangeTimelinePanels();
                 
@@ -1863,9 +1905,11 @@ classdef TempoController < handle
         function updateOverallDuration(obj)
             obj.duration = max([cellfun(@(r) r.duration, obj.recordings) cellfun(@(r) r.duration, obj.reporters)]);
             
-            meanFrameRate = mean(cellfun(@(v) v.video.sampleRate, obj.visibleVideoPanels()));
+            if ~isempty(obj.videoPanels)
+                meanFrameRate = mean(cellfun(@(v) v.video.sampleRate, obj.videoPanels));
             set(obj.videoSlider, 'Max', obj.duration, ...
                                  'SliderStep', [1.0 / meanFrameRate / obj.duration, 5.0 / obj.duration]);
+            end
             set(obj.timelineSlider, 'Max', obj.duration);
             
             % Alter the zoom so that the same window of time is visible.
@@ -1953,11 +1997,11 @@ classdef TempoController < handle
                 if isa(recording, 'AudioRecording')
                     panel = WaveformPanel(obj, recording);
                     obj.timelinePanels{end + 1} = panel;
-                    panel.setVisible(obj.showWaveforms);
+                    panel.setHidden(~obj.showWaveforms);
 
                     panel = SpectrogramPanel(obj, recording);
                     obj.timelinePanels{end + 1} = panel;
-                    panel.setVisible(obj.showSpectrograms);
+                    panel.setHidden(~obj.showSpectrograms);
                 elseif isa(recording, 'VideoRecording')
                     panel = VideoPanel(obj, recording);
                     obj.videoPanels{end + 1} = panel;
@@ -1971,7 +2015,7 @@ classdef TempoController < handle
                     reporter = obj.reporters{i};
                     reporter.controller = obj;
                     obj.timelinePanels{end + 1} = FeaturesPanel(reporter);
-                    obj.timelinePanels{end}.setVisible(obj.showFeatures);
+                    obj.timelinePanels{end}.setHidden(~obj.showFeatures);
                 end
             end
             

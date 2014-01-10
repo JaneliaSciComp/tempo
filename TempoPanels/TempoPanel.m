@@ -5,14 +5,22 @@ classdef TempoPanel < handle
         panel
         
         titlePanel
-        closeButton
         hideButton
-        infoButton
-        infoMenu
+        closeButton
+        actionButton
+        actionMenu
+        
+        panelType = ''
+        title = ''
+        
+        hiddenTitlePanel
+        showButton
+        hiddenCloseButton
+        hiddenTitleText
         
         axes
         
-        visible = true
+        isHidden = false
         
         axesBorder = [16 0 0 0]  % left, bottom, right, top
         
@@ -30,6 +38,8 @@ classdef TempoPanel < handle
                 parentPanel = obj.controller.timelinesPanel;
             end
             
+            titleColor = [0.75 0.75 0.75];
+            
             obj.panel = uipanel(parentPanel, ...
                 'BorderType', 'none', ...
                 'BorderWidth', 0, ...
@@ -42,72 +52,90 @@ classdef TempoPanel < handle
             obj.titlePanel = uipanel(obj.panel, ...
                 'BorderType', 'none', ...
                 'BorderWidth', 0, ...
-                'BackgroundColor', [0.75 0.75 0.75], ...
+                'BackgroundColor', titleColor, ...
                 'SelectionHighlight', 'off', ...
                 'Units', 'pixels', ...
                 'Position', [0 0 16 100]);
+            
+            obj.hiddenTitlePanel = uipanel(obj.panel, ...
+                'BorderType', 'none', ...
+                'BorderWidth', 0, ...
+                'BackgroundColor', titleColor, ...
+                'SelectionHighlight', 'off', ...
+                'Units', 'pixels', ...
+                'Position', [0 0 100 16], ...
+                'Visible', 'off');
+            
+            [tempoRoot, ~, ~] = fileparts(mfilename('fullpath'));
+            [tempoRoot, ~, ~] = fileparts(tempoRoot);
+            iconRoot = fullfile(tempoRoot, 'Icons');
+            
             if obj.hasTitleBarControls()
-                baseCData = ones(12, 12, 3);
-                baseCData(:, 1, :) = ones(12, 3) * 0.5;
-                baseCData(:, 12, :) = ones(12, 3) * 0.5;
-                baseCData(1, :, :) = ones(12, 3) * 0.5;
-                baseCData(12, :, :) = ones(12, 3) * 0.5;
-                
-                closeCData = baseCData;
-                iconColor = 0.9;
-                shadeColor = 0.7;
-                for i = 3:10
-                    if i < 10
-                        closeCData(12 - i, i, :) = ones(1, 3) * iconColor;
-                        closeCData(13 - i, i + 1, :) = ones(1, 3) * iconColor;
-                        closeCData(i, i + 1, :) = ones(1, 3) * iconColor;
-                        closeCData(i + 1, i, :) = ones(1, 3) * iconColor;
-                    end
-                    closeCData(i, i, :) = ones(1, 3) * shadeColor;
-                    closeCData(13 - i, i, :) = ones(1, 3) * shadeColor;
-                end
-                obj.closeButton = uicontrol(...
-                    'Parent', obj.titlePanel, ...
-                    'Style', 'pushbutton', ...
-                    'CData', closeCData, ...
-                    'Units', 'pixels', ...
-                    'Position', [3 86 12 12], ...
-                    'Callback', @(hObject,eventdata)handleClosePanel(obj, hObject, eventdata), ...
-                    'Tag', 'closeButton');
-                
-                hideCData = baseCData;
-                hideColor = 0.75;
-                hideCData(6:7, 3:10, :) = ones(2, 8, 3) * hideColor;
                 obj.hideButton = uicontrol(...
                     'Parent', obj.titlePanel, ...
                     'Style', 'pushbutton', ...
-                    'CData', hideCData, ...
+                    'CData', double(imread(fullfile(iconRoot, 'PanelHide.png'))) / 255.0, ...
                     'Units', 'pixels', ...
-                    'Position', [3 72 12 12], ...
+                    'Position', [3 86 12 12], ...
                     'Callback', @(hObject,eventdata)handleHidePanel(obj, hObject, eventdata), ...
                     'Tag', 'hideButton');
                 
-                infoCData = baseCData;
-                infoColor = 0.75;
-                infoCData(3:4, 6:7, :) = ones(2, 2, 3) * infoColor;
-                infoCData(6:10, 6:7, :) = ones(5, 2, 3) * infoColor;
-                obj.infoMenu = uicontextmenu;
-                uimenu(obj.infoMenu, ...
-                    'Label', 'Hide', ...
-                    'Callback', @(hObject,eventdata)handleHidePanel(obj, hObject, eventdata));
-                uimenu(obj.infoMenu, ...
-                    'Label', 'Close', ...
-                    'Callback', @(hObject,eventdata)handleClosePanel(obj, hObject, eventdata));
-                obj.addInfoMenuItems(obj.infoMenu);
-                obj.infoButton = uicontrol(...
+                obj.closeButton = uicontrol(...
                     'Parent', obj.titlePanel, ...
                     'Style', 'pushbutton', ...
-                    'CData', infoCData, ...
+                    'CData', double(imread(fullfile(iconRoot, 'PanelClose.png'))) / 255.0, ...
+                    'Units', 'pixels', ...
+                    'Position', [3 72 12 12], ...
+                    'Callback', @(hObject,eventdata)handleClosePanel(obj, hObject, eventdata), ...
+                    'Tag', 'closeButton');
+                
+                obj.actionMenu = uicontextmenu;
+                uimenu(obj.actionMenu, ...
+                    'Label', 'Hide', ...
+                    'Callback', @(hObject,eventdata)handleHidePanel(obj, hObject, eventdata));
+                uimenu(obj.actionMenu, ...
+                    'Label', 'Close', ...
+                    'Callback', @(hObject,eventdata)handleClosePanel(obj, hObject, eventdata));
+                obj.addActionMenuItems(obj.actionMenu);
+                obj.actionButton = uicontrol(...
+                    'Parent', obj.titlePanel, ...
+                    'Style', 'pushbutton', ...
+                    'CData', double(imread(fullfile(iconRoot, 'PanelAction.png'))) / 255.0, ...
                     'Units', 'pixels', ...
                     'Position', [3 58 12 12], ...
-                    'Callback', @(hObject,eventdata)handleShowInfo(obj, hObject, eventdata), ...
-                    'UIContextMenu', obj.infoMenu, ...
-                    'Tag', 'infoButton');
+                    'Callback', @(hObject,eventdata)handleShowActionMenu(obj, hObject, eventdata), ...
+                    'UIContextMenu', obj.actionMenu, ...
+                    'Tag', 'actionButton');
+                
+                obj.showButton = uicontrol(...
+                    'Parent', obj.hiddenTitlePanel, ...
+                    'Style', 'pushbutton', ...
+                    'CData', double(imread(fullfile(iconRoot, 'PanelShow.png'))) / 255.0, ...
+                    'Units', 'pixels', ...
+                    'Position', [3 2 12 12], ...
+                    'Callback', @(hObject,eventdata)handleShowPanel(obj, hObject, eventdata), ...
+                    'Tag', 'hideButton');
+                
+                obj.hiddenCloseButton = uicontrol(...
+                    'Parent', obj.hiddenTitlePanel, ...
+                    'Style', 'pushbutton', ...
+                    'CData', double(imread(fullfile(iconRoot, 'PanelClose.png'))) / 255.0, ...
+                    'Units', 'pixels', ...
+                    'Position', [17 2 12 12], ...
+                    'Callback', @(hObject,eventdata)handleClosePanel(obj, hObject, eventdata), ...
+                    'Tag', 'hiddenCloseButton');
+                
+                obj.hiddenTitleText = uicontrol(...
+                    'Parent', obj.hiddenTitlePanel, ...
+                    'Style', 'text', ...
+                    'String', [obj.panelType ': ' obj.title], ...
+                    'Units', 'pixels', ...
+                    'Position', [21 2 100 12], ...
+                    'HorizontalAlignment', 'left', ...
+                    'ForegroundColor', titleColor * 0.5, ...
+                    'BackgroundColor', titleColor, ...
+                    'HitTest', 'off', ...
+                    'Tag', 'hiddenTitleText');
             end
             
             obj.axes = axes('Parent', obj.panel, ...
@@ -118,7 +146,7 @@ classdef TempoPanel < handle
                 'YLim', [0 1], ...
                 'YTick', []); %#ok<CPROP>
             
-            obj.createControls([100 - 16 100]);
+            obj.createControls([100 - 16, 100]);
             
             % Add listeners so we know when the current time and selection change.
             obj.listeners{end + 1} = addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
@@ -132,30 +160,38 @@ classdef TempoPanel < handle
         end
         
         
-        function addInfoMenuItems(obj, infoMenu) %#ok<INUSD>
-            % Sub-classes can override to add additional items to the info menu.
+        function addActionMenuItems(obj, actionMenu) %#ok<INUSD>
+            % Sub-classes can override to add additional items to the action menu.
         end
         
         
         function handleResize(obj, ~, ~)
-            if obj.visible
+            % Get the pixel size of the whole panel.
+            prevUnits = get(obj.panel, 'Units');
+            set(obj.panel, 'Units', 'pixels');
+            panelPos = get(obj.panel, 'Position');
+            set(obj.panel, 'Units', prevUnits);
+            
+            panelPos(4) = panelPos(4) + 1;
+            
+            if obj.isHidden
+                % Position the panel.
+                titlePos = [0 0 panelPos(3) 16];
+                set(obj.hiddenTitlePanel, 'Position', titlePos);
+                
+                % Resize the text box.
+                set(obj.hiddenTitleText, 'Position', [34, 2, titlePos(3) - 34 - 5,  12]);
+            else
                 % Position the axes within the panel, leaving enough room for any controls needed by subclasses.
-                prevUnits = get(obj.panel, 'Units');
-                set(obj.panel, 'Units', 'pixels');
-                panelPos = get(obj.panel, 'Position');
-                set(obj.panel, 'Units', prevUnits);
-                
-                panelPos(4) = panelPos(4) + 1;
-                
                 titlePos = [0 0 16 panelPos(4)];
                 set(obj.titlePanel, 'Position', titlePos);
                 if obj.hasTitleBarControls()
                     buttonPos = [3, panelPos(4) - 14, 12, 12];
-                    set(obj.closeButton, 'Position', buttonPos);
-                    buttonPos = [3, panelPos(4) - 28, 12, 12];
                     set(obj.hideButton, 'Position', buttonPos);
+                    buttonPos = [3, panelPos(4) - 28, 12, 12];
+                    set(obj.closeButton, 'Position', buttonPos);
                     buttonPos = [3, panelPos(4) - 42, 12, 12];
-                    set(obj.infoButton, 'Position', buttonPos);
+                    set(obj.actionButton, 'Position', buttonPos);
                 end
                 
                 axesPos = [obj.axesBorder(1), ...
@@ -172,19 +208,26 @@ classdef TempoPanel < handle
         
         
         function handleClosePanel(obj, ~, ~)
-            % TODO
+            % TODO: How to undo this?  The uipanel gets deleted...
+            
+            obj.controller.closePanel(obj);
         end
         
         
         function handleHidePanel(obj, ~, ~)
-            % TODO
+            obj.controller.hidePanel(obj);
         end
         
         
-        function handleShowInfo(obj, ~, ~)
+        function handleShowPanel(obj, ~, ~)
+            obj.controller.showPanel(obj);
+        end
+        
+        
+        function handleShowActionMenu(obj, ~, ~)
             % Show the contextual menu at
             mousePos = get(obj.controller.figure, 'CurrentPoint');
-            set(obj.infoMenu, ...
+            set(obj.actionMenu, ...
                 'Position', mousePos, ...
                 'Visible', 'on');
         end
@@ -198,20 +241,32 @@ classdef TempoPanel < handle
         end
         
         
-        function setVisible(obj, visible)
-            if obj.visible ~= visible
-                obj.visible = visible;
+        function setHidden(obj, hidden)
+            if obj.isHidden ~= hidden
+                obj.isHidden = hidden;
                 
-                if obj.visible
-                    set(obj.panel, 'Visible', 'on');
+                if obj.isHidden
+                    set(obj.titlePanel, 'Visible', 'off');
+                    set(obj.axes, 'Visible', 'off');
+                    set(allchild(obj.axes), 'Visible', 'off');
+                    set(obj.hiddenTitlePanel, 'Visible', 'on');
+                else
+                    set(obj.titlePanel, 'Visible', 'on');
+                    set(obj.axes, 'Visible', 'on');
+                    set(allchild(obj.axes), 'Visible', 'on');
+                    set(obj.hiddenTitlePanel, 'Visible', 'off');
                     
                     % Make sure everything is in sync.
                     obj.handleCurrentTimeChanged([], []);
-                    obj.handleSelectedRangeChanged([], []);
-                    obj.handleTimeWindowChanged([], []);
-                else
-                    set(obj.panel, 'Visible', 'off');
                 end
+            end
+        end
+        
+        
+        function setTitle(obj, title)
+            obj.title = title;
+            if ~isempty(obj.hiddenTitleText)
+                set(obj.hiddenTitleText, 'String', [obj.panelType ': ' obj.title]);
             end
         end
         
@@ -227,7 +282,7 @@ classdef TempoPanel < handle
         
         
         function handleCurrentTimeChanged(obj, ~, ~)
-            if obj.visible
+            if ~obj.isHidden
                 obj.currentTimeChanged();
             end
         end
@@ -238,9 +293,13 @@ classdef TempoPanel < handle
         end
         
         
-        function delete(obj)
+        function close(obj)
+            % Subclasses can override this if they need to do anything more.
+            
+            % Delete any listeners.
             cellfun(@(x) delete(x), obj.listeners);
             
+            % Remove the uipanel from the figure.
             if ishandle(obj.panel)
                 delete(obj.panel);
             end

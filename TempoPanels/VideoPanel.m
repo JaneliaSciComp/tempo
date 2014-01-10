@@ -22,7 +22,10 @@ classdef VideoPanel < TempoPanel
 		function obj = VideoPanel(controller, recording)
 			obj = obj@TempoPanel(controller);
             
+            obj.panelType = 'Video';
+            
             obj.video = recording;
+            obj.setTitle(obj.video.name);
             
             [obj.currentFrameImage, obj.currentFrameNum] = obj.frameAtTime(obj.controller.currentTime);
             
