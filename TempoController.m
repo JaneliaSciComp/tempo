@@ -584,30 +584,48 @@ classdef TempoController < handle
         end
         
         
-        function vp = visibleVideoPanels(obj)
-            vp = {};
+        function arrangePanels(obj, panels, parentSize, margin)  %#ok<INUSL>
+            % Arrange a set of panels within the given parent size (W, H) and margins (T, R, B, L).
             
-            % Get the size of the top-level panel.
-            set(obj.videosPanel, 'Units', 'pixels');
-            videosPos = get(obj.videosPanel, 'Position');
-            set(obj.videosPanel, 'Units', 'normalized');
-            
-            if videosPos(3) > 5
-                % The splitter is open, check the panels.
-                panels = obj.videoPanels;
-                for i = 1:length(panels)
-                    panel = panels{i};
-                    if ~panel.isHidden
-                        vp{end + 1} = panel; %#ok<AGROW>
-                    end
+            % Figure out how many panels are hidden.
+            numPanels = length(panels);
+            numHidden = 0;
+            for i = 1:numPanels
+                if panels{i}.isHidden
+                    numHidden = numHidden + 1;
                 end
+            end
+            numShown = numPanels - numHidden;
+            
+            % Arrange the panels.
+            % Open panels share the full height of the area minus room for hidden panels and top and bottom margins.
+            % TODO: allow left to right
+            % TODO: allow panels to specify a fixed height/width.
+            shownPanelsHeight = parentSize(2) - margin(1) - numHidden * 16 - margin(3);
+            shownPanelHeight = floor(shownPanelsHeight / numShown);
+            curY = parentSize(2) - margin(1);
+            for i = 1:numPanels
+                if panels{i}.isHidden
+                    % Hidden panels are 16 pixels tall.
+                    curY = curY - 16;
+                    panelHeight = 16;
+                elseif i < numPanels
+                    % Open panels get an even fraction of the available space.
+                    % Leave a one pixel gap between panels so there's a visible line between them.
+                    curY = curY - shownPanelHeight;
+                    panelHeight = shownPanelHeight - 2;
+                else
+                    % The last open panel gets whatever is left.
+                    panelHeight = curY - (2 + 16);
+                    curY = 2 + 16;
+                end
+                set(panels{i}.panel, 'Position', [margin(4), curY, parentSize(1) - margin(2), panelHeight]);
+                panels{i}.handleResize([], []);
             end
         end
         
         
         function arrangeVideoPanels(obj, ~, ~)
-            visibleVideoPanels = obj.visibleVideoPanels();
-            
             % Get the size of the top-level panel.
             set(obj.videosPanel, 'Units', 'pixels');
             videosPos = get(obj.videosPanel, 'Position');
@@ -620,32 +638,7 @@ classdef TempoController < handle
                 % The splitter is open, show the panels.
                 set(obj.videosPanel, 'Visible', 'on');
                 
-                if ~isempty(visibleVideoPanels)
-                    numPanels = length(visibleVideoPanels);
-                    
-                    % TODO: toolbar icon to allow column vs. row layout?
-                    if true %visibleVideoPanels{1}.video.videoSize(1) < visibleVideoPanels{1}.video.videoSize(2)
-                        % Arrange the videos in a column.
-                        if true %isempty(visibleTimelinePanels)
-                            panelHeight = floor(videosPos(4) / numPanels);
-                            videoPanelWidth = videosPos(3);
-                        else
-                            panelHeight = floor(videosPos(4) / numPanels);
-                            videoPanelWidth = floor(max(cellfun(@(panel) panelHeight / panel.video.videoSize(1) * panel.video.videoSize(2), visibleVideoPanels)));
-                            videoWidth = max(cellfun(@(panel) panel.video.videoSize(1), visibleVideoPanels));
-                            if videoWidth < videoPanelWidth
-                                videoPanelWidth = videoWidth;
-                            end
-                        end
-                        
-                        for i = 1:numPanels
-                            set(visibleVideoPanels{i}.panel, 'Position', [1, videosPos(4) - i * panelHeight, videoPanelWidth, panelHeight]);
-                            visibleVideoPanels{i}.handleResize([], []);
-                        end
-                    else
-                        % Arrange the videos in a row.
-                    end
-                end
+                obj.arrangePanels(obj.videoPanels, videosPos(3:4), [0 3 16 4]);
                 
                 set(obj.videoSlider, 'Position', [1, 0, videosPos(3) + 1, 16]);
             end
@@ -693,42 +686,9 @@ classdef TempoController < handle
                 set(obj.timeIndicatorPanel.panel, 'Position', [4, timelinesPos(4) - timeIndicatorHeight, timelinesPos(3) - 3, timeIndicatorHeight + 1]);
                 obj.timeIndicatorPanel.updateAxes(obj.displayRange(1:2));
                 
-                % Figure out how many panels are hidden.
-                numPanels = length(obj.timelinePanels);
-                numHidden = 0;
-                for i = 1:numPanels
-                    if obj.timelinePanels{i}.isHidden
-                        numHidden = numHidden + 1;
-                    end
-                end
-                numShown = numPanels - numHidden;
-                
-                % Arrange the panels.
-                % TODO: allow open panels to be resized.
-                shownPanelsHeight = timelinesPos(4) - timeIndicatorHeight - numHidden * 16 - 16;
-                shownPanelHeight = floor(shownPanelsHeight / numShown);
-                curY = timelinesPos(4) - timeIndicatorHeight;
-                for i = 1:numPanels
-                    if obj.timelinePanels{i}.isHidden
-                        % Hidden panels are 16 pixels tall.
-                        curY = curY - 16;
-                        panelHeight = 16;
-                    elseif i < numPanels
-                        % Open panels get an even fraction of the available space.
-                        % Leave a one pixel gap between panels so there's a visible line between them.
-                        curY = curY - shownPanelHeight;
-                        panelHeight = shownPanelHeight - 2;
-                    else
-                        % The last open panel gets whatever is left.
-                        panelHeight = curY - (2 + 16);
-                        curY = 2 + 16;
-                    end
-                    set(obj.timelinePanels{i}.panel, 'Position', [4, curY, timelinesPos(3) - 3, panelHeight]);
-                    obj.timelinePanels{i}.handleResize([], []);
-                end
+                obj.arrangePanels(obj.timelinePanels, timelinesPos(3:4), [timeIndicatorHeight 3 16 4]);
                 
                 % Position the timeline slider at the bottom.
-                % It has a different parent 
                 set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 1, 16]);
             else
                 % The splitter has been collapsed, don't show the timeline panels.
