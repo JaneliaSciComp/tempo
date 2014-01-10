@@ -85,7 +85,7 @@ classdef VideoPanel < TempoPanel
             
             % Position the frame count label in the lower-left corner.
             axesPos = get(obj.axes, 'Position');
-            set(obj.frameNumHandle, 'Position', [axesPos(1), axesPos(2) + 17, 80, 14]);
+            set(obj.frameNumHandle, 'Position', [axesPos(1), axesPos(2), 80, 14]);
         end
         
         
