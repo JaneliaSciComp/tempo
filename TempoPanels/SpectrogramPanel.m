@@ -49,8 +49,6 @@ classdef SpectrogramPanel < TimelinePanel
         
         
         function createControls(obj, panelSize)
-            panelSize(1) = panelSize(1) - obj.axesBorder(3);
-            
             obj.imageHandle = image(panelSize(1), panelSize(2), zeros(panelSize), ...
                 'CDataMapping', 'scaled', ...
                 'HitTest', 'off');
@@ -66,8 +64,6 @@ classdef SpectrogramPanel < TimelinePanel
         
         
         function resizeControls(obj, panelSize)
-            panelSize(1) = panelSize(1) - obj.axesBorder(3);
-            
             % Update the positions of the labels.
             set(obj.freqMaxLabel, 'Position', [panelSize(1) - 1, panelSize(2)]);
             set(obj.freqMinLabel, 'Position', [panelSize(1) - 1, 4]);
