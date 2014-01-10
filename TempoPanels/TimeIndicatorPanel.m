@@ -15,6 +15,8 @@ classdef TimeIndicatorPanel < TimelinePanel
 	    function createControls(obj, ~)
             set(obj.controller.figure, 'CurrentAxes', obj.axes);
             
+            set(obj.axes, 'Color', [0.9 0.9 0.9]);
+            
             % Get rid of the unneeded current time and selection indicators created by TimelinePanel.
             delete(obj.timeLine);
             obj.timeLine = [];
@@ -45,7 +47,7 @@ classdef TimeIndicatorPanel < TimelinePanel
             charPixelWidth = 6;
             labelWidth = charPixelWidth * 8 * timePixels;
             
-            textY = 0.13;
+            textY = 0.10;
             textFont = 'FixedWidth';
             redColor = [0.5 0.0 0.0];
             
@@ -69,7 +71,7 @@ classdef TimeIndicatorPanel < TimelinePanel
                         line([tickTime tickTime], [0 1], 'Color', 'black');
                         text(tickTime, textY, secondstr(tickTime, obj.controller.timeLabelFormat, 2), ...
                             'VerticalAlignment', 'baseline', 'HorizontalAlignment', 'center', ...
-                            'FontName', textFont, 'Color', 'black', 'BackgroundColor', 'white', 'Margin', 1, 'Clipping', 'on');
+                            'FontName', textFont, 'Color', 'black', 'BackgroundColor', [0.9 0.9 0.9], 'Margin', 1, 'Clipping', 'on');
                     end
                 end
             end
