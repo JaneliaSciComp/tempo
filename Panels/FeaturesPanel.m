@@ -2,7 +2,9 @@ classdef FeaturesPanel < TimelinePanel
 
 	properties
         reporter
-        
+    end
+    
+    properties (Transient)
         featureTypeLabels
         featureTypeShadows
         featureHandles
@@ -12,7 +14,8 @@ classdef FeaturesPanel < TimelinePanel
         showReporterSettingsMenuItem
         
         featureChangeListener
-	end
+    end
+    
 	
 	methods
 	
@@ -32,7 +35,8 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function createControls(obj, ~) %#ok<INUSD>
+        function createControls(obj, ~)
+            obj.featureHandles = obj.populateFeatures();
         end
         
         
@@ -55,6 +59,10 @@ classdef FeaturesPanel < TimelinePanel
                 uimenu(obj.contextualMenu, 'Label', 'Draw/Clear Bounding Boxes', 'Callback', @(source, event)handleBoundingBoxes(obj, source, event), 'Separator', 'off');
                 uimenu(obj.contextualMenu, 'Label', 'Remove Reporter...', 'Callback', @(source, event)removeReporter(obj, source, event), 'Separator', 'on');
                 set(obj.axes, 'UIContextMenu', obj.contextualMenu);
+            end
+            
+            if isempty(obj.reporter)
+                return;
             end
             
             axes(obj.axes);

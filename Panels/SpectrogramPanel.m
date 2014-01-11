@@ -3,6 +3,12 @@ classdef SpectrogramPanel < TimelinePanel
 	properties
         audio
         
+        % The frequency range is shared by all panels and is stored in the second half of obj.controller.displayRange.
+        % The FFT window shared by all panels and is stored in obj.controller.windowSize.
+        saturation = [0.01 0.99]
+    end
+    
+    properties (Transient)
         actionMenuItem
         
         imageHandle
@@ -15,12 +21,9 @@ classdef SpectrogramPanel < TimelinePanel
 
         reporter
         bounding_boxes
-        
-        % The frequency range is shared by all panels and is stored in the second half of obj.controller.displayRange.
-        % The FFT window shared by all panels and is stored in obj.controller.windowSize.
-        saturation = [0.01 0.99]
-	end
+    end
 	
+    
 	methods
 	
 		function obj = SpectrogramPanel(controller, recording)

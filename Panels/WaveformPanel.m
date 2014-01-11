@@ -3,13 +3,14 @@ classdef WaveformPanel < TimelinePanel
 	properties
         audio
         
-        plotHandle
-        sampleCount
-        
-        actionMenuItem
-        
 	    verticalScalingMethod = 1;      % 1 = whole recording, 2 = displayed portion of recording, 3 = manual
         verticalScalingValue = 1.0;
+    end
+    
+    properties (Transient)
+        plotHandle
+        
+        actionMenuItem
         
         leftGrayRect
         rightGrayRect
@@ -17,6 +18,7 @@ classdef WaveformPanel < TimelinePanel
         axesYLim = [0 0];               % cached copy of the axes YLim property for performance
     end
 	
+    
 	methods
 	
 		function obj = WaveformPanel(controller, recording)

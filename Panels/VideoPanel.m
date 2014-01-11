@@ -6,7 +6,7 @@ classdef VideoPanel < TempoPanel
         showFrameNum = true
     end
     
-    properties (Access = private)
+    properties (Access = private, Transient)
         currentFrameImage
         currentFrameNum
         

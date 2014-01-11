@@ -1777,13 +1777,13 @@ classdef TempoController < handle
                 obj.recordings{end + 1} = recording;
                 
                 if getpref('Tempo', 'ShowWaveforms')
-                panel = WaveformPanel(obj, recording);
-                obj.timelinePanels{end + 1} = panel;
+                    panel = WaveformPanel(obj, recording);
+                    obj.timelinePanels{end + 1} = panel;
                 end
                 
                 if getpref('Tempo', 'ShowSpectrograms')
-                panel = SpectrogramPanel(obj, recording);
-                obj.timelinePanels{end + 1} = panel;
+                    panel = SpectrogramPanel(obj, recording);
+                    obj.timelinePanels{end + 1} = panel;
                 end
                 
                 obj.arrangeTimelinePanels();
@@ -1849,9 +1849,13 @@ classdef TempoController < handle
             s.windowSize = obj.windowSize;
             
             s.recordings = obj.recordings;
-
+            
             s.reporters = obj.reporters;
-
+            
+            % Remember which panels are open and their settings.
+            s.videoPanels = obj.videoPanels;
+            s.timelinePanels = obj.timelinePanels;
+            
             s.windowPosition = get(obj.figure, 'Position');
             s.mainSplitter.orientation = get(obj.splitter, 'Orientation');
             s.mainSplitter.location = get(obj.splitter, 'DividerLocation');
@@ -1864,7 +1868,8 @@ classdef TempoController < handle
             % TODO: Create a new controller if the current one has recordings open?
             %       Allow "importing" a workspace to add it to the current one?
             
-            set(obj.figure, 'Pointer', 'watch'); drawnow
+            set(obj.figure, 'Pointer', 'watch');
+            drawnow
             
             obj.savePath = filePath;
             [~, fileName, ~] = fileparts(filePath);
@@ -1888,23 +1893,25 @@ classdef TempoController < handle
                 end
             end
             
+            havePanels = isfield(s, 'videoPanels');
+            
             % Load the recordings.
             obj.recordings = s.recordings;
             for i = 1:length(obj.recordings)
                 recording = obj.recordings{i};
                 recording.controller = obj;
                 recording.loadData();
-                if isa(recording, 'AudioRecording')
-                    panel = WaveformPanel(obj, recording);
-                    obj.timelinePanels{end + 1} = panel;
-                    panel.setHidden(~obj.showWaveforms);
+                if ~havePanels
+                    if isa(recording, 'AudioRecording')
+                        panel = WaveformPanel(obj, recording);
+                        obj.timelinePanels{end + 1} = panel;
 
-                    panel = SpectrogramPanel(obj, recording);
-                    obj.timelinePanels{end + 1} = panel;
-                    panel.setHidden(~obj.showSpectrograms);
-                elseif isa(recording, 'VideoRecording')
-                    panel = VideoPanel(obj, recording);
-                    obj.videoPanels{end + 1} = panel;
+                        panel = SpectrogramPanel(obj, recording);
+                        obj.timelinePanels{end + 1} = panel;
+                    elseif isa(recording, 'VideoRecording')
+                        panel = VideoPanel(obj, recording);
+                        obj.videoPanels{end + 1} = panel;
+                    end
                 end
             end
             
@@ -1914,8 +1921,22 @@ classdef TempoController < handle
                 for i = 1:length(obj.reporters)
                     reporter = obj.reporters{i};
                     reporter.controller = obj;
-                    obj.timelinePanels{end + 1} = FeaturesPanel(reporter);
-                    obj.timelinePanels{end}.setHidden(~obj.showFeatures);
+                    
+                    if ~havePanels
+                        obj.timelinePanels{end + 1} = FeaturesPanel(reporter);
+                        obj.timelinePanels{end}.setHidden(~obj.showFeatures);
+                    end
+                end
+            end
+            
+            % Load the panels if they're in the file.  (Older versions didn't store them.)
+            if havePanels
+                obj.videoPanels = s.videoPanels;
+                obj.timelinePanels = s.timelinePanels;
+                
+                for panel = {obj.videoPanels{:}, obj.timelinePanels{:}}
+                    panel{1}.controller = obj;
+                    panel{1}.createUI();
                 end
             end
             
@@ -1941,7 +1962,8 @@ classdef TempoController < handle
             obj.arrangeVideoPanels();
             obj.arrangeTimelinePanels();
             
-            set(obj.figure, 'Pointer', 'arrow'); drawnow
+            set(obj.figure, 'Pointer', 'arrow');
+            drawnow
         end
         
         

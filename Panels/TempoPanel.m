@@ -1,10 +1,16 @@
 classdef TempoPanel < handle
     
     properties
+        panelType = ''
+        title = ''
+        titleColor = [0.75 0.75 0.75]
+        isHidden = false
+    end
+    
+    properties (Transient)
         controller
         panel
         
-        titleColor = [0.75 0.75 0.75]
         titlePanel
         closeButton
         showHideButton
@@ -14,21 +20,24 @@ classdef TempoPanel < handle
         actionMenu
         titleText
         
-        panelType = ''
-        title = ''
-        
         axes
-        
-        isHidden = false
         
         listeners = {}
     end
+    
     
     methods
         
         function obj = TempoPanel(controller)
             obj.controller = controller;
             
+            obj.createUI();
+            
+            obj.handleCurrentTimeChanged([], []);
+        end
+        
+        
+        function createUI(obj)
             if isa(obj, 'VideoPanel')
                 parentPanel = obj.controller.videosPanel;
             else
@@ -68,13 +77,20 @@ classdef TempoPanel < handle
                 
                 obj.showIcon = double(imread(fullfile(iconRoot, 'PanelShow.png'))) / 255.0;
                 obj.hideIcon = double(imread(fullfile(iconRoot, 'PanelHide.png'))) / 255.0;
+                if obj.isHidden
+                    icon = obj.showIcon;
+                    callback = @(hObject,eventdata)handleShowPanel(obj, hObject, eventdata);
+                else
+                    icon = obj.hideIcon;
+                    callback = @(hObject,eventdata)handleHidePanel(obj, hObject, eventdata);
+                end
                 obj.showHideButton = uicontrol(...
                     'Parent', obj.titlePanel, ...
                     'Style', 'pushbutton', ...
-                    'CData', obj.hideIcon, ...
+                    'CData', icon, ...
                     'Units', 'pixels', ...
                     'Position', [20 3 12 12], ...
-                    'Callback', @(hObject,eventdata)handleHidePanel(obj, hObject, eventdata), ...
+                    'Callback', callback, ...
                     'Tag', 'hideButton');
                 
                 obj.actionMenu = uicontextmenu;
@@ -120,8 +136,6 @@ classdef TempoPanel < handle
             
             % Add listeners so we know when the current time and selection change.
             obj.listeners{end + 1} = addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
-            
-            obj.handleCurrentTimeChanged([], []);
         end
         
         
