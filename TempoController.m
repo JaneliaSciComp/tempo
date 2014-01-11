@@ -314,14 +314,18 @@ classdef TempoController < handle
                                      'Callback', @(hObject, eventdata)handleZoomToSelection(obj, hObject, eventdata), ...
                                      'Accelerator', '');
             uimenu(obj.timelineMenu, 'Label', 'Open Waveform for New Recordings', ...
-                                     'Callback', '', ...
+                                     'Callback', @(hObject, eventdata)handleShowWaveformOnOpen(obj, hObject, eventdata), ...
                                      'Separator', 'on', ...
-                                     'Checked', 'on', ...
-                                     'Enable', 'off');
+                                     'Checked', onOff(getpref('Tempo', 'ShowWaveforms', true) && ~getpref('Tempo', 'ShowSpectrograms', true)), ...
+                                     'Tag', 'showWaveformOnOpen');
             uimenu(obj.timelineMenu, 'Label', 'Open Spectrogram for New Recordings', ...
-                                     'Callback', '', ...
-                                     'Checked', 'on', ...
-                                     'Enable', 'off');
+                                     'Callback', @(hObject, eventdata)handleShowSpectrogramOnOpen(obj, hObject, eventdata), ...
+                                     'Checked', onOff(~getpref('Tempo', 'ShowWaveforms', true) && getpref('Tempo', 'ShowSpectrograms', true)), ...
+                                     'Tag', 'showSpectrogramOnOpen');
+            uimenu(obj.timelineMenu, 'Label', 'Open Both for New Recordings', ...
+                                     'Callback', @(hObject, eventdata)handleShowBothOnOpen(obj, hObject, eventdata), ...
+                                     'Checked', onOff(getpref('Tempo', 'ShowWaveforms', true) && getpref('Tempo', 'ShowSpectrograms', true)), ...
+                                     'Tag', 'showBothOnOpen');
             
             obj.playbackMenu = uimenu(obj.figure, 'Label', 'Playback');
             uimenu(obj.playbackMenu, 'Label', 'Play', ...
@@ -1147,6 +1151,42 @@ classdef TempoController < handle
         end
         
         
+        function handleShowWaveformOnOpen(obj, ~, ~)
+            % Update the menu items.
+            set(findobj(obj.timelineMenu, 'Tag', 'showWaveformOnOpen'), 'Checked', 'on');
+            set(findobj(obj.timelineMenu, 'Tag', 'showSpectrogramOnOpen'), 'Checked', 'off');
+            set(findobj(obj.timelineMenu, 'Tag', 'showBothOnOpen'), 'Checked', 'off');
+            
+            % Remember the user's choice.
+            setpref('Tempo', 'ShowWaveforms', true);
+            setpref('Tempo', 'ShowSpectrograms', false);
+        end
+        
+        
+        function handleShowSpectrogramOnOpen(obj, ~, ~)
+            % Update the menu items.
+            set(findobj(obj.timelineMenu, 'Tag', 'showWaveformOnOpen'), 'Checked', 'off');
+            set(findobj(obj.timelineMenu, 'Tag', 'showSpectrogramOnOpen'), 'Checked', 'on');
+            set(findobj(obj.timelineMenu, 'Tag', 'showBothOnOpen'), 'Checked', 'off');
+            
+            % Remember the user's choice.
+            setpref('Tempo', 'ShowWaveforms', false);
+            setpref('Tempo', 'ShowSpectrograms', true);
+        end
+        
+        
+        function handleShowBothOnOpen(obj, ~, ~)
+            % Update the menu items.
+            set(findobj(obj.timelineMenu, 'Tag', 'showWaveformOnOpen'), 'Checked', 'off');
+            set(findobj(obj.timelineMenu, 'Tag', 'showSpectrogramOnOpen'), 'Checked', 'off');
+            set(findobj(obj.timelineMenu, 'Tag', 'showBothOnOpen'), 'Checked', 'on');
+            
+            % Remember the user's choice.
+            setpref('Tempo', 'ShowWaveforms', true);
+            setpref('Tempo', 'ShowSpectrograms', true);
+        end
+        
+        
         %% Playback menu callbacks
         
         
@@ -1736,13 +1776,15 @@ classdef TempoController < handle
                 
                 obj.recordings{end + 1} = recording;
                 
+                if getpref('Tempo', 'ShowWaveforms')
                 panel = WaveformPanel(obj, recording);
                 obj.timelinePanels{end + 1} = panel;
-                panel.setHidden(~obj.showWaveforms);
+                end
                 
+                if getpref('Tempo', 'ShowSpectrograms')
                 panel = SpectrogramPanel(obj, recording);
                 obj.timelinePanels{end + 1} = panel;
-                panel.setHidden(~obj.showSpectrograms);
+                end
                 
                 obj.arrangeTimelinePanels();
                 
@@ -1814,10 +1856,6 @@ classdef TempoController < handle
             s.mainSplitter.orientation = get(obj.splitter, 'Orientation');
             s.mainSplitter.location = get(obj.splitter, 'DividerLocation');
             
-            s.showWaveforms = obj.showWaveforms;
-            s.showSpectrograms = obj.showSpectrograms;
-            s.showFeatures = obj.showFeatures;
-
             save(filePath, '-struct', 's');
         end
         
@@ -1848,16 +1886,6 @@ classdef TempoController < handle
                     obj.showTimelinePanels(true);
                     set(obj.splitter, 'DividerLocation', s.mainSplitter.location);
                 end
-            end
-            
-            if obj.showWaveforms ~= s.showWaveforms
-                obj.handleToggleWaveforms([])
-            end
-            if obj.showSpectrograms ~= s.showSpectrograms
-                obj.handleToggleSpectrograms([])
-            end
-            if obj.showFeatures ~= s.showFeatures
-                obj.handleToggleFeatures([])
             end
             
             % Load the recordings.
