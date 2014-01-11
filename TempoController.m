@@ -114,7 +114,7 @@ classdef TempoController < handle
                 parentDir = fileparts(tempoPath);
             end
             
-            addpath(fullfile(parentDir, 'TempoPanels'));
+            addpath(fullfile(parentDir, 'Panels'));
             addpath(fullfile(parentDir, 'Recordings'));
             addpath(fullfile(parentDir, 'Utility'));
             
