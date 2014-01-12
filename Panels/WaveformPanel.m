@@ -22,7 +22,7 @@ classdef WaveformPanel < TimelinePanel
 	methods
 	
 		function obj = WaveformPanel(controller, recording)
-			obj = obj@TimelinePanel(controller);
+			obj = obj@TimelinePanel(controller, recording);
             
             obj.panelType = 'Waveform';
             
@@ -30,10 +30,6 @@ classdef WaveformPanel < TimelinePanel
             set(obj.actionMenuItem, 'Label', ['Audio file: ' obj.audio.name]);
             % TODO: use Java to show the full path as a tooltip
             obj.setTitle(obj.audio.name);
-            
-%             addlistener(obj, 'verticalScalingMethod', 'PostSet', @(source, event)handleVerticalScalingChanged(obj, source, event));
-%             addlistener(obj, 'verticalScalingValue', 'PostSet', @(source, event)handleVerticalScalingChanged(obj, source, event));
-            addlistener(obj.audio, 'timeOffset', 'PostSet', @(source, event)handleTimeOffsetChanged(obj, source, event));
         end
         
         
@@ -55,12 +51,24 @@ classdef WaveformPanel < TimelinePanel
         end
 	    
         
-	    function createControls(obj, panelSize) %#ok<INUSD>
+	    function createControls(obj, ~, varargin)
+            % For new panels the audio comes in varargin.
+            % For panels loaded from a workspace varargin will be empty but the audio is already set.
+            if ~isempty(obj.audio)
+                recording = obj.audio;
+            else
+                recording = varargin{1};
+            end
+            
             set(obj.controller.figure, 'CurrentAxes', obj.axes);
             
             obj.plotHandle = line([0 1000], [0 0], 'HitTest', 'off');
             obj.leftGrayRect = rectangle('Position', [0, -1, 1, 2], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off', 'Visible', 'off');
             obj.rightGrayRect = rectangle('Position', [0, -1, 1, 2], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off', 'Visible', 'off');
+            
+%             addlistener(obj, 'verticalScalingMethod', 'PostSet', @(source, event)handleVerticalScalingChanged(obj, source, event));
+%             addlistener(obj, 'verticalScalingValue', 'PostSet', @(source, event)handleVerticalScalingChanged(obj, source, event));
+            addlistener(recording, 'timeOffset', 'PostSet', @(source, event)handleTimeOffsetChanged(obj, source, event));
         end
 	    
         

@@ -28,16 +28,16 @@ classdef TempoPanel < handle
     
     methods
         
-        function obj = TempoPanel(controller)
+        function obj = TempoPanel(controller, varargin)
             obj.controller = controller;
             
-            obj.createUI();
+            obj.createUI(varargin{:});
             
             obj.handleCurrentTimeChanged([], []);
         end
         
         
-        function createUI(obj)
+        function createUI(obj, varargin)
             if isa(obj, 'VideoPanel')
                 parentPanel = obj.controller.videosPanel;
             else
@@ -80,9 +80,11 @@ classdef TempoPanel < handle
                 if obj.isHidden
                     icon = obj.showIcon;
                     callback = @(hObject,eventdata)handleShowPanel(obj, hObject, eventdata);
+                    textColor = obj.titleColor * 0.5;
                 else
                     icon = obj.hideIcon;
                     callback = @(hObject,eventdata)handleHidePanel(obj, hObject, eventdata);
+                    textColor = obj.titleColor * 0.25;
                 end
                 obj.showHideButton = uicontrol(...
                     'Parent', obj.titlePanel, ...
@@ -118,7 +120,7 @@ classdef TempoPanel < handle
                     'Units', 'pixels', ...
                     'Position', [52 3 100 12], ...
                     'HorizontalAlignment', 'left', ...
-                    'ForegroundColor', obj.titleColor * 0.25, ...
+                    'ForegroundColor', textColor, ...
                     'BackgroundColor', obj.titleColor, ...
                     'HitTest', 'off', ...
                     'Tag', 'titleText');
@@ -132,7 +134,7 @@ classdef TempoPanel < handle
                 'YLim', [0 1], ...
                 'YTick', []); %#ok<CPROP>
             
-            obj.createControls([100 - 16, 100]);
+            obj.createControls([100, 100], varargin{:});
             
             % Add listeners so we know when the current time and selection change.
             obj.listeners{end + 1} = addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));

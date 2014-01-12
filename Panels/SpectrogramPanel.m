@@ -36,11 +36,6 @@ classdef SpectrogramPanel < TimelinePanel
             obj.audio = recording;
             set(obj.actionMenuItem, 'Label', ['Audio file: ' obj.audio.name]);
             obj.setTitle(obj.audio.name);
-            
-            obj.listeners{end + 1} = addlistener(obj.controller, 'windowSize', 'PostSet', ...
-                @(source, event)handleSpectrogramParametersChanged(obj, source, event));
-            obj.listeners{end + 1} = addlistener(obj.controller, 'displayRange', 'PostSet', ...
-                @(source, event)handleSpectrogramParametersChanged(obj, source, event));
         end
         
         
@@ -63,6 +58,11 @@ classdef SpectrogramPanel < TimelinePanel
             obj.freqMinLabel = text(panelSize(1) - 1, 4, '', 'Units', 'pixels', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', 'BackgroundColor', 'white');
             obj.otherLabel = text(5, panelSize(2), '', 'Units', 'pixels', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'BackgroundColor', 'white');
             obj.noDisplayLabel = text(panelSize(1) / 2, panelSize(2) / 2, 'Zoom in to see the spectrogram', 'Units', 'pixels', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'Visible', 'off');
+            
+            obj.listeners{end + 1} = addlistener(obj.controller, 'windowSize', 'PostSet', ...
+                @(source, event)handleSpectrogramParametersChanged(obj, source, event));
+            obj.listeners{end + 1} = addlistener(obj.controller, 'displayRange', 'PostSet', ...
+                @(source, event)handleSpectrogramParametersChanged(obj, source, event));
         end
         
         

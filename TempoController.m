@@ -1778,11 +1778,13 @@ classdef TempoController < handle
                 
                 if getpref('Tempo', 'ShowWaveforms')
                     panel = WaveformPanel(obj, recording);
+                    panel.handleTimeWindowChanged();
                     obj.timelinePanels{end + 1} = panel;
                 end
                 
                 if getpref('Tempo', 'ShowSpectrograms')
                     panel = SpectrogramPanel(obj, recording);
+                    panel.handleTimeWindowChanged();
                     obj.timelinePanels{end + 1} = panel;
                 end
                 

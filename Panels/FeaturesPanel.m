@@ -20,7 +20,7 @@ classdef FeaturesPanel < TimelinePanel
 	methods
 	
 		function obj = FeaturesPanel(reporter)
-			obj = obj@TimelinePanel(reporter.controller);
+			obj = obj@TimelinePanel(reporter.controller, reporter);
             
             obj.panelType = 'Features';
             
@@ -28,15 +28,15 @@ classdef FeaturesPanel < TimelinePanel
             obj.setTitle(reporter.name);
             
             obj.featureHandles = obj.populateFeatures();
-            
-            % Listen for whenever the reporter changes its features.
-            obj.featureChangeListener = addlistener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
-            obj.listeners{end + 1} = obj.featureChangeListener;
         end
         
         
-        function createControls(obj, ~)
-            obj.featureHandles = obj.populateFeatures();
+        function createControls(obj, ~, reporter)
+            obj.featureHandles = obj.populateFeatures(reporter);
+            
+            % Listen for whenever the reporter changes its features.
+            obj.featureChangeListener = addlistener(reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
+            obj.listeners{end + 1} = obj.featureChangeListener;
         end
         
         
@@ -45,23 +45,27 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function hh=populateFeatures(obj)
+        function hh=populateFeatures(obj, reporter)
+            if nargin < 2
+                reporter = obj.reporter;
+            end
+            
             hh=[];
             if isempty(obj.contextualMenu)
                 obj.contextualMenu = uicontextmenu('Callback', @(source, event)enableReporterMenuItems(obj, source, event));
-                uimenu(obj.contextualMenu, 'Label', obj.reporter.name, 'Enable', 'off');
+                uimenu(obj.contextualMenu, 'Label', reporter.name, 'Enable', 'off');
                 obj.showReporterSettingsMenuItem = uimenu(obj.contextualMenu, 'Label', 'Show Reporter Settings', 'Callback', @(source, event)showReporterSettings(obj, source, event), 'Separator', 'on');
-                if isa(obj.reporter, 'FeatureDetector')
+                if isa(reporter, 'FeatureDetector')
                     obj.detectFeaturesInSelectionMenuItem = uimenu(obj.contextualMenu, 'Label', 'Detect Features in Selection', 'Callback', @(source, event)detectFeaturesInSelection(obj, source, event));
                 end
-                uimenu(obj.contextualMenu, 'Label', 'Export Features...', 'Callback', @(source, event)exportFeatures(obj.reporter));
+                uimenu(obj.contextualMenu, 'Label', 'Export Features...', 'Callback', @(source, event)exportFeatures(reporter));
                 uimenu(obj.contextualMenu, 'Label', 'Set Features Color...', 'Callback', @(source, event)setFeaturesColor(obj, source, event));
                 uimenu(obj.contextualMenu, 'Label', 'Draw/Clear Bounding Boxes', 'Callback', @(source, event)handleBoundingBoxes(obj, source, event), 'Separator', 'off');
                 uimenu(obj.contextualMenu, 'Label', 'Remove Reporter...', 'Callback', @(source, event)removeReporter(obj, source, event), 'Separator', 'on');
                 set(obj.axes, 'UIContextMenu', obj.contextualMenu);
             end
             
-            if isempty(obj.reporter)
+            if isempty(reporter)
                 return;
             end
             
@@ -71,16 +75,16 @@ classdef FeaturesPanel < TimelinePanel
             obj.featureTypeLabels= {};
             obj.featureTypeShadows = {};
             
-            featureTypes = obj.reporter.featureTypes();
+            featureTypes = reporter.featureTypes();
             
             spacing = 1 / length(featureTypes);
             axesPos = get(obj.axes, 'Position');
             
             % Indicate the time spans in which feature detection has occurred for each reporter.
             lastTime = 0.0;
-            if isa(obj.reporter, 'FeatureDetector')
-                for j = 1:size(obj.reporter.detectedTimeRanges, 1)
-                    detectedTimeRange = obj.reporter.detectedTimeRanges(j, :);
+            if isa(reporter, 'FeatureDetector')
+                for j = 1:size(reporter.detectedTimeRanges, 1)
+                    detectedTimeRange = reporter.detectedTimeRanges(j, :);
                     
                     if detectedTimeRange(1) > lastTime
                         % Add a gray background before the current range.
@@ -95,7 +99,7 @@ classdef FeaturesPanel < TimelinePanel
             end
             
             % Draw the features that have been reported.
-            features = obj.reporter.features();
+            features = reporter.features();
             if isempty(features)
                 lowFreqs = [];
                 highFreqs = [];
@@ -130,7 +134,7 @@ classdef FeaturesPanel < TimelinePanel
                            'HorizontalAlignment', 'center', ...
                            'VerticalAlignment', 'middle', ...
                            'UIContextMenu', feature.contextualMenu, ...
-                           'Color', obj.reporter.featuresColor, ...
+                           'Color', reporter.featuresColor, ...
                            'ButtonDownFcn', @(source, event)selectFeature(obj, source, event), ...
                            'UserData', feature);
                     hh=[hh h];
@@ -150,11 +154,11 @@ classdef FeaturesPanel < TimelinePanel
                         y1 = maxY;
                     end
                     
-                    fillColor = obj.reporter.featuresColor;
+                    fillColor = reporter.featuresColor;
                     fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
                     
                     h=patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
-                            'EdgeColor', obj.reporter.featuresColor, ...
+                            'EdgeColor', reporter.featuresColor, ...
                             'UIContextMenu', feature.contextualMenu, ...
                             'ButtonDownFcn', @(source, event)selectFeature(obj, source, event), ...
                             'UserData', feature);

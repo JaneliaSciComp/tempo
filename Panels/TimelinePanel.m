@@ -13,26 +13,26 @@ classdef TimelinePanel < TempoPanel
 	
 	methods
 		
-		function obj = TimelinePanel(controller)
-			obj = obj@TempoPanel(controller);
+		function obj = TimelinePanel(controller, varargin)
+			obj = obj@TempoPanel(controller, varargin{:});
              
             obj.handleSelectedRangeChanged();
-            obj.handleTimeWindowChanged();
-            
-            % Add listeners so we know when the current time and selection change.
-            obj.listeners{end + 1} = addlistener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
-            obj.listeners{end + 1} = addlistener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
+%             obj.handleTimeWindowChanged();
         end
         
         
-        function createUI(obj)
-            createUI@TempoPanel(obj);
+        function createUI(obj, varargin)
+            createUI@TempoPanel(obj, varargin{:});
             
             % Use a line to indicate the current time in the axes.
             obj.timeLine = line([0 0], [-100000 200000], 'Color', [1 0 0], 'HitTest', 'off', 'HandleVisibility', 'off');
             
             % Use a filled rectangle to indicate the current selection in the axes.
             obj.selectionPatch = patch([0 1 1 0], [-100000 -100000 200000 200000], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'Visible', 'off', 'HitTest', 'off', 'HandleVisibility', 'off');
+            
+            % Add listeners so we know when the current time and selection change.
+            obj.listeners{end + 1} = addlistener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
+            obj.listeners{end + 1} = addlistener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
 		end
         
         

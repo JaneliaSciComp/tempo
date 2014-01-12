@@ -20,7 +20,7 @@ classdef VideoPanel < TempoPanel
 	methods
 	
 		function obj = VideoPanel(controller, recording)
-			obj = obj@TempoPanel(controller);
+			obj = obj@TempoPanel(controller, recording);
             
             obj.panelType = 'Video';
             
@@ -44,7 +44,7 @@ classdef VideoPanel < TempoPanel
         end
         
         
-        function createControls(obj, ~)
+        function createControls(obj, ~, ~)
             obj.imageHandle = image(obj.currentFrameImage, 'HitTest', 'off');
             axis(obj.axes, 'image');
             set(obj.axes, 'XTick', [], 'YTick', [], 'Color', 'black');
@@ -96,7 +96,7 @@ classdef VideoPanel < TempoPanel
             
             [frameImage, frameNum] = obj.frameAtTime(obj.controller.currentTime);
             
-            if frameNum ~= obj.currentFrameNum
+            if isempty(obj.currentFrameNum) || frameNum ~= obj.currentFrameNum
                 obj.currentFrameImage = frameImage;
                 obj.currentFrameNum = frameNum;
                 
