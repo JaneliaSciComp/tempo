@@ -1187,6 +1187,72 @@ classdef TempoController < handle
         end
         
         
+        function openWaveform(obj, recording)
+            % Open or show the waveform for the given recording.
+            
+            % If it exists then make sure it's showing.
+            waveform = [];
+            for panel = obj.panelsOfClass('WaveformPanel')
+                if panel{1}.audio == recording
+                    panel{1}.setHidden(false);
+                    waveform = panel;
+                    break
+                end
+            end
+            
+            if isempty(waveform)
+                % Otherwise add a waveform panel right below the spectrorgam panel of the same recording.
+                position = length(obj.timelinePanels);
+                for i = 1:length(obj.timelinePanels)
+                    panel = obj.timelinePanels{i};
+                    if isa(panel, 'SpectrogramPanel') && panel.audio == recording
+                        position = i;
+                        break
+                    end
+                end
+
+                waveform = WaveformPanel(obj, recording);
+                waveform.handleTimeWindowChanged();
+                obj.timelinePanels = {obj.timelinePanels{1:position}, waveform, obj.timelinePanels{position + 1:end}};
+            end
+            
+            obj.arrangeTimelinePanels();
+        end
+        
+        
+        function openSpectrogram(obj, recording)
+            % Open or show the spectrogram for the given recording.
+            
+            % If it exists then make sure it's showing.
+            spectrogram = [];
+            for panel = obj.panelsOfClass('SpectrogramPanel')
+                if panel{1}.audio == recording
+                    panel{1}.setHidden(false);
+                    spectrogram = panel;
+                    break
+                end
+            end
+            
+            if isempty(spectrogram)
+                % Otherwise add a spectrogram panel right below the waveform panel of the same recording.
+                position = length(obj.timelinePanels);
+                for i = 1:length(obj.timelinePanels)
+                    panel = obj.timelinePanels{i};
+                    if isa(panel, 'WaveformPanel') && panel.audio == recording
+                        position = i;
+                        break
+                    end
+                end
+
+                spectrogram = SpectrogramPanel(obj, recording);
+                spectrogram.handleTimeWindowChanged();
+                obj.timelinePanels = {obj.timelinePanels{1:position}, spectrogram, obj.timelinePanels{position + 1:end}};
+            end
+            
+            obj.arrangeTimelinePanels();
+        end
+        
+        
         %% Playback menu callbacks
         
         
@@ -1778,15 +1844,11 @@ classdef TempoController < handle
                 obj.recordings{end + 1} = recording;
                 
                 if getpref('Tempo', 'ShowWaveforms')
-                    panel = WaveformPanel(obj, recording);
-                    panel.handleTimeWindowChanged();
-                    obj.timelinePanels{end + 1} = panel;
+                    obj.openWaveform(recording);
                 end
                 
                 if getpref('Tempo', 'ShowSpectrograms')
-                    panel = SpectrogramPanel(obj, recording);
-                    panel.handleTimeWindowChanged();
-                    obj.timelinePanels{end + 1} = panel;
+                    obj.openSpectrogram(recording);
                 end
                 
                 obj.arrangeTimelinePanels();
@@ -1906,11 +1968,9 @@ classdef TempoController < handle
                 recording.loadData();
                 if ~havePanels
                     if isa(recording, 'AudioRecording')
-                        panel = WaveformPanel(obj, recording);
-                        obj.timelinePanels{end + 1} = panel;
-
-                        panel = SpectrogramPanel(obj, recording);
-                        obj.timelinePanels{end + 1} = panel;
+                        % TODO: check prefs?
+                        obj.openWaveform(recording);
+                        obj.openSpectrogram(recording);
                     elseif isa(recording, 'VideoRecording')
                         panel = VideoPanel(obj, recording);
                         obj.videoPanels{end + 1} = panel;

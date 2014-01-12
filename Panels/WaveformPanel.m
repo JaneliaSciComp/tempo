@@ -38,10 +38,14 @@ classdef WaveformPanel < TimelinePanel
             uimenu(actionMenu, ...
                 'Label', 'Audio settings...', ...
                 'Separator', 'on', ...
-                'Callback', @(hObject,eventdata)showAudioSettings(obj, hObject, eventdata));
+                'Callback', @(hObject,eventdata)handleAudioSettings(obj, hObject, eventdata));
             uimenu(actionMenu, ...
                 'Label', 'Waveform setings...', ...
-                'Callback', @(hObject,eventdata)showWaveformSettings(obj, hObject, eventdata));
+                'Callback', @(hObject,eventdata)handleWaveformSettings(obj, hObject, eventdata));
+            uimenu(actionMenu, ...
+                'Label', 'Open Spectrogram', ...
+                'Separator', 'on', ...
+                'Callback', @(hObject,eventdata)handleOpenSpectrogram(obj, hObject, eventdata));
             
             % Move our first item above the default items.
             menuItems = get(actionMenu, 'Children');
@@ -78,13 +82,18 @@ classdef WaveformPanel < TimelinePanel
 %         end
         
         
-        function showAudioSettings(obj, ~, ~)
+        function handleAudioSettings(obj, ~, ~)
             RecordingSettings(obj.audio);
         end
         
         
-        function showWaveformSettings(obj, ~, ~)
+        function handleWaveformSettings(obj, ~, ~)
             WaveformSettings(obj);
+        end
+        
+        
+        function handleOpenSpectrogram(obj, ~, ~)
+            obj.controller.openSpectrogram(obj.audio);
         end
         
         
@@ -96,7 +105,7 @@ classdef WaveformPanel < TimelinePanel
             [audioData, dataOffset] = obj.audio.dataInTimeRange(timeRange(1:2));
             
             if isempty(audioData)
-                % TODO: display "zoom in" message
+                % TODO: display "zoom in" message like the spectrogram
             else
                 % The audio may not span the entire time range.
                 dataDuration = length(audioData) / obj.audio.sampleRate;

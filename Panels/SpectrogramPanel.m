@@ -81,10 +81,14 @@ classdef SpectrogramPanel < TimelinePanel
             uimenu(actionMenu, ...
                 'Label', 'Audio settings...', ...
                 'Separator', 'on', ...
-                'Callback', @(hObject,eventdata)showAudioSettings(obj, hObject, eventdata));
+                'Callback', @(hObject,eventdata)handleAudioSettings(obj, hObject, eventdata));
             uimenu(actionMenu, ...
                 'Label', 'Spectrogram setings...', ...
-                'Callback', @(hObject,eventdata)showSpectrogramSettings(obj, hObject, eventdata));
+                'Callback', @(hObject,eventdata)handleSpectrogramSettings(obj, hObject, eventdata));
+            uimenu(actionMenu, ...
+                'Label', 'Open Waveform', ...
+                'Separator', 'on', ...
+                'Callback', @(hObject,eventdata)handleOpenWaveform(obj, hObject, eventdata));
             
             % Move the recording's name item above the default items.
             menuItems = get(actionMenu, 'Children');
@@ -94,13 +98,18 @@ classdef SpectrogramPanel < TimelinePanel
         end
         
         
-        function showAudioSettings(obj, ~, ~)
+        function handleAudioSettings(obj, ~, ~)
             RecordingSettings(obj.audio);
         end
         
         
-        function showSpectrogramSettings(obj, ~, ~)
+        function handleSpectrogramSettings(obj, ~, ~)
             SpectrogramSettings(obj);
+        end
+        
+        
+        function handleOpenWaveform(obj, ~, ~)
+            obj.controller.openWaveform(obj.audio);
         end
         
         
