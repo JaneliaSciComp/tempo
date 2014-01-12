@@ -1232,12 +1232,11 @@ classdef TempoController < handle
             if startPlaying && (~obj.isPlaying || newRate ~= obj.playRate)
                 % TODO: if already playing then things need to be done differently...
                 
-                oldwarn = warning('query', 'MATLAB:hg:JavaSetHGPropertyParamValue');
-                warning('off', 'MATLAB:hg:JavaSetHGPropertyParamValue');
+                oldWarn = warning('off', 'MATLAB:hg:JavaSetHGPropertyParamValue');
                 set(obj.playBackwardsTool, 'Enable', onOff(obj.playRate > 0));
                 set(obj.pauseTool, 'Enable', 'on');
                 set(obj.playForwardsTool, 'Enable', onOff(obj.playRate < 0));
-                warning(oldwarn.state, 'MATLAB:hg:JavaSetHGPropertyParamValue');
+                warning(oldWarn);
                 
                 % Determine what range of time to play.
                 if obj.selectedRange(1) ~= obj.selectedRange(2)
@@ -1313,10 +1312,12 @@ classdef TempoController < handle
         
         function handlePause(obj, hObject, ~)
             if obj.isPlaying
+                oldWarn = warning('off', 'MATLAB:hg:JavaSetHGPropertyParamValue');
                 set(obj.playForwardsTool, 'Enable', 'on');
                 set(obj.pauseTool, 'Enable', 'off');
                 set(obj.playBackwardsTool, 'Enable', 'on');
-
+                warning(oldWarn);
+                
                 % Stop all of the audio players.
                 for i = 1:length(obj.recordings)
                     recording = obj.recordings{i};
