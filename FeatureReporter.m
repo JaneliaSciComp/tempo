@@ -99,6 +99,20 @@ classdef FeatureReporter < handle
         end
         
         
+        function addFeature(obj, feature)
+            % Add the feature to the list.
+            obj.featureCount = obj.featureCount + 1;
+            if obj.featureCount > obj.featureListSize
+                % Pre-allocate space for another 1000 features.
+                obj.featureList = horzcat(obj.featureList, cell(1, 1000));
+                obj.featureListSize = obj.featureListSize + 1000;
+            end
+            obj.featureList{obj.featureCount} = feature;
+            
+            notify(obj, 'FeaturesDidChange');
+        end
+        
+        
         function removeFeature(obj, feature)
             for i = 1:obj.featureListSize
                 if obj.featureList{i} == feature
@@ -257,24 +271,6 @@ classdef FeatureReporter < handle
         function endProgress(obj)
             close(obj.waitBarHandle);
             obj.waitBarHandle = [];
-        end
-        
-    end
-    
-    
-    methods (Access = protected)
-        
-        function addFeature(obj, feature)
-            % Add the feature to the list.
-            obj.featureCount = obj.featureCount + 1;
-            if obj.featureCount > obj.featureListSize
-                % Pre-allocate space for another 1000 features.
-                obj.featureList = horzcat(obj.featureList, cell(1, 1000));
-                obj.featureListSize = obj.featureListSize + 1000;
-            end
-            obj.featureList{obj.featureCount} = feature;
-            
-            notify(obj, 'FeaturesDidChange');
         end
         
     end

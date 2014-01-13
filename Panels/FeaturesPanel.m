@@ -31,12 +31,55 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function createControls(obj, ~, reporter)
-            obj.featureHandles = obj.populateFeatures(reporter);
+	    function createControls(obj, ~, varargin)
+            % For new panels the reporter comes in varargin.
+            % For panels loaded from a workspace varargin will be empty but the reporter is already set.
+            if isempty(obj.reporter)
+                obj.reporter = varargin{1};
+            end
+            
+            obj.featureHandles = obj.populateFeatures(obj.reporter);
             
             % Listen for whenever the reporter changes its features.
-            obj.featureChangeListener = addlistener(reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
+            obj.featureChangeListener = addlistener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
             obj.listeners{end + 1} = obj.featureChangeListener;
+        end
+        
+        
+        function addActionMenuItems(obj, actionMenu)
+            if isa(obj.reporter, 'FeatureDetector')
+                uimenu(actionMenu, ...
+                    'Label', 'Show Reporter Settings', ...
+                    'Callback', @(source, event)handleShowReporterSettings(obj, source, event));
+                uimenu(actionMenu, ...
+                    'Label', 'Detect Features in Selection', ...
+                    'Callback', @(source, event)handleDetectFeaturesInSelection(obj, source, event), ...
+                    'Tag', 'detectFeaturesInSelection');
+            end
+            uimenu(actionMenu, ...
+                    'Label', 'Export Features...', ...
+                    'Callback', @(source, event)exportFeatures(obj.reporter), ...
+                    'Tag', 'exportFeatures');
+            uimenu(actionMenu, ...
+                    'Label', 'Set Features Color...', ...
+                    'Callback', @(source, event)handleSetFeaturesColor(obj, source, event), ...
+                    'Tag', 'setFeaturesColor');
+            uimenu(actionMenu, ...
+                    'Label', 'Add New Feature with Selection...', ...
+                    'Callback', @(source, event)handleAddNewFeature(obj, source, event), ...
+                    'Tag', 'setFeaturesColor');
+            uimenu(actionMenu, ...
+                    'Label', 'Draw/Clear Bounding Boxes', ...
+                    'Callback', @(source, event)handleBoundingBoxes(obj, source, event), ...
+                    'Separator', 'off');
+        end
+        
+        
+        function updateActionMenu(obj, ~)
+            selectionIsEmpty = obj.controller.selectedRange(2) == obj.controller.selectedRange(1);
+            if isa(obj.reporter, 'FeatureDetector')
+                set(obj.actionMenuItem('detectFeaturesInSelection'), 'Enable', onOff(~selectionIsEmpty));
+            end
         end
         
         
@@ -51,19 +94,6 @@ classdef FeaturesPanel < TimelinePanel
             end
             
             hh=[];
-            if isempty(obj.contextualMenu)
-                obj.contextualMenu = uicontextmenu('Callback', @(source, event)enableReporterMenuItems(obj, source, event));
-                uimenu(obj.contextualMenu, 'Label', reporter.name, 'Enable', 'off');
-                obj.showReporterSettingsMenuItem = uimenu(obj.contextualMenu, 'Label', 'Show Reporter Settings', 'Callback', @(source, event)showReporterSettings(obj, source, event), 'Separator', 'on');
-                if isa(reporter, 'FeatureDetector')
-                    obj.detectFeaturesInSelectionMenuItem = uimenu(obj.contextualMenu, 'Label', 'Detect Features in Selection', 'Callback', @(source, event)detectFeaturesInSelection(obj, source, event));
-                end
-                uimenu(obj.contextualMenu, 'Label', 'Export Features...', 'Callback', @(source, event)exportFeatures(reporter));
-                uimenu(obj.contextualMenu, 'Label', 'Set Features Color...', 'Callback', @(source, event)setFeaturesColor(obj, source, event));
-                uimenu(obj.contextualMenu, 'Label', 'Draw/Clear Bounding Boxes', 'Callback', @(source, event)handleBoundingBoxes(obj, source, event), 'Separator', 'off');
-                uimenu(obj.contextualMenu, 'Label', 'Remove Reporter...', 'Callback', @(source, event)removeReporter(obj, source, event), 'Separator', 'on');
-                set(obj.axes, 'UIContextMenu', obj.contextualMenu);
-            end
             
             if isempty(reporter)
                 return;
@@ -125,8 +155,8 @@ classdef FeaturesPanel < TimelinePanel
                     end
                     feature.contextualMenu = uicontextmenu();
                     uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
-                    uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', @(source, event)showFeatureProperties(obj, source, event), 'Separator', 'on');
-                    uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)removeFeature(obj, source, event), 'Separator', 'off');
+                    uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', @(source, event)handleShowFeatureProperties(obj, source, event), 'Separator', 'on');
+                    uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)handleRemoveFeature(obj, source, event), 'Separator', 'off');
                 end
                 yCen = (length(featureTypes) - y + 0.5) * spacing;
                 if feature.startTime == feature.endTime
@@ -135,7 +165,7 @@ classdef FeaturesPanel < TimelinePanel
                            'VerticalAlignment', 'middle', ...
                            'UIContextMenu', feature.contextualMenu, ...
                            'Color', reporter.featuresColor, ...
-                           'ButtonDownFcn', @(source, event)selectFeature(obj, source, event), ...
+                           'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
                            'UserData', feature);
                     hh=[hh h];
                 else
@@ -160,7 +190,7 @@ classdef FeaturesPanel < TimelinePanel
                     h=patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
                             'EdgeColor', reporter.featuresColor, ...
                             'UIContextMenu', feature.contextualMenu, ...
-                            'ButtonDownFcn', @(source, event)selectFeature(obj, source, event), ...
+                            'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
                             'UserData', feature);
                     hh=[hh h];
                 end
@@ -236,26 +266,12 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function enableReporterMenuItems(obj, ~, ~)
-            if isa(obj.reporter, 'FeatureDetector') && (obj.controller.selectedRange(2) ~= obj.controller.selectedRange(1))
-                set(obj.detectFeaturesInSelectionMenuItem, 'Enable', 'on');
-            else
-                set(obj.detectFeaturesInSelectionMenuItem, 'Enable', 'off');
-            end
-            if isa(obj.reporter, 'FeatureDetector')
-                set(obj.showReporterSettingsMenuItem, 'Enable', 'on');
-            else
-                set(obj.showReporterSettingsMenuItem, 'Enable', 'off');
-            end
-        end
-        
-        
-        function showReporterSettings(obj, ~, ~)
+        function handleShowReporterSettings(obj, ~, ~)
             obj.reporter.showSettings();
         end
         
         
-        function detectFeaturesInSelection(obj, ~, ~)
+        function handleDetectFeaturesInSelection(obj, ~, ~)
             % Detect features in the current selection using an existing detector.
             % TODO: don't add duplicate features if selection overlaps already detected region?
             %       or reduce selection to not overlap before detection?
@@ -282,17 +298,16 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function setFeaturesColor(obj, ~, ~)
+        function handleSetFeaturesColor(obj, ~, ~)
             newColor = uisetcolor(obj.reporter.featuresColor);
             if length(newColor) == 3
                 obj.reporter.featuresColor = newColor;
-%                 syncGUIWithTime(handles);
                 fillColor = obj.reporter.featuresColor;
                 fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
                 set(obj.featureHandles(strcmp(get(obj.featureHandles, 'Type'), 'patch')), 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor);
                 set(obj.featureHandles(strcmp(get(obj.featureHandles, 'Type'), 'text')), 'Color', obj.reporter.featuresColor);
-                for j = 1:length(obj.controller.otherPanels)
-                    panel = obj.controller.otherPanels{j};
+                for j = 1:length(obj.controller.timelinePanels)
+                    panel = obj.controller.timelinePanels{j};
                     if isa(panel, 'SpectrogramPanel')
                         panel.changeBoundingBoxColor(obj.reporter);
                     end
@@ -301,15 +316,36 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function removeReporter(obj, ~, ~)
-            obj.controller.removeFeaturePanel(obj);
+        function handleAddNewFeature(obj, ~, ~)
+            % Add a new feature using the current selection.
+            
+            % Figure out which type of feature it should be.
+            featureTypes = obj.reporter.featureTypes();
+            if length(featureTypes) == 1
+                featureType = featureTypes{1};
+            else
+                choice = listdlg('PromptString', 'Choose which importer to use:', ...
+                                 'SelectionMode', 'Single', ...
+                                 'ListString', featureTypes);
+                if isempty(choice)
+                    featureType = [];
+                else
+                    featureType = featureTypes{choice(1)};
+                end
+            end
+            
+            % Add the feature
+            if ~isempty(featureType)
+                feature = Feature(featureType, obj.controller.selectedRange);
+                obj.reporter.addFeature(feature);
+            end
         end
         
         
         function handleBoundingBoxes(obj, ~, ~)
 %TODO:  make this work for drosophila
-          for i = 1:length(obj.controller.otherPanels)
-              panel = obj.controller.otherPanels{i};
+          for i = 1:length(obj.controller.timelinePanels)
+              panel = obj.controller.timelinePanels{i};
               if isa(panel, 'SpectrogramPanel')
                   panel.addReporter(obj.reporter);
               end
@@ -317,7 +353,7 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function showFeatureProperties(obj, ~, ~) %#ok<INUSD>
+        function handleShowFeatureProperties(obj, ~, ~) %#ok<INUSD>
             feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
             
             msg = ['Type: ' feature.type char(10) char(10)];
@@ -354,7 +390,7 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function removeFeature(obj, ~, ~)
+        function handleRemoveFeature(obj, ~, ~)
             feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
             
             answer = questdlg('Are you sure you wish to remove this feature?', 'Removing Feature', 'Cancel', 'Remove', 'Cancel');
@@ -364,7 +400,7 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function selectFeature(obj, ~, ~)
+        function handleSelectFeature(obj, ~, ~)
             feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
             
             obj.controller.selectRange(feature.range);

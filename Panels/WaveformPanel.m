@@ -10,8 +10,6 @@ classdef WaveformPanel < TimelinePanel
     properties (Transient)
         plotHandle
         
-        actionMenuItem
-        
         leftGrayRect
         rightGrayRect
         
@@ -27,17 +25,13 @@ classdef WaveformPanel < TimelinePanel
             obj.panelType = 'Waveform';
             
             obj.audio = recording;
-            set(obj.actionMenuItem, 'Label', ['Audio file: ' obj.audio.name]);
-            % TODO: use Java to show the full path as a tooltip
             obj.setTitle(obj.audio.name);
         end
         
         
         function addActionMenuItems(obj, actionMenu)
-            obj.actionMenuItem = uimenu(actionMenu, 'Label', 'Audio file: ', 'Enable', 'off');
             uimenu(actionMenu, ...
                 'Label', 'Audio settings...', ...
-                'Separator', 'on', ...
                 'Callback', @(hObject,eventdata)handleAudioSettings(obj, hObject, eventdata));
             uimenu(actionMenu, ...
                 'Label', 'Waveform setings...', ...
@@ -46,12 +40,6 @@ classdef WaveformPanel < TimelinePanel
                 'Label', 'Open Spectrogram', ...
                 'Separator', 'on', ...
                 'Callback', @(hObject,eventdata)handleOpenSpectrogram(obj, hObject, eventdata));
-            
-            % Move our first item above the default items.
-            menuItems = get(actionMenu, 'Children');
-            set(menuItems(end), 'Separator', 'on');
-            menuItems = vertcat(menuItems(1:end-3), menuItems(end-1:end), menuItems(end-2));
-            set(actionMenu, 'Children', menuItems);
         end
 	    
         

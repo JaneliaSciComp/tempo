@@ -9,8 +9,6 @@ classdef SpectrogramPanel < TimelinePanel
     end
     
     properties (Transient)
-        actionMenuItem
-        
         imageHandle
         
         freqMaxLabel
@@ -34,7 +32,6 @@ classdef SpectrogramPanel < TimelinePanel
             obj.showsFrequencyRange = true;
             
             obj.audio = recording;
-            set(obj.actionMenuItem, 'Label', ['Audio file: ' obj.audio.name]);
             obj.setTitle(obj.audio.name);
         end
         
@@ -76,11 +73,8 @@ classdef SpectrogramPanel < TimelinePanel
         
         
         function addActionMenuItems(obj, actionMenu)
-            % Add recording name, "Audio Settings..." and "Spectrogram Settings..." menu items
-            obj.actionMenuItem = uimenu(actionMenu, 'Label', 'Audio file: ', 'Enable', 'off');
             uimenu(actionMenu, ...
                 'Label', 'Audio settings...', ...
-                'Separator', 'on', ...
                 'Callback', @(hObject,eventdata)handleAudioSettings(obj, hObject, eventdata));
             uimenu(actionMenu, ...
                 'Label', 'Spectrogram setings...', ...
@@ -89,12 +83,6 @@ classdef SpectrogramPanel < TimelinePanel
                 'Label', 'Open Waveform', ...
                 'Separator', 'on', ...
                 'Callback', @(hObject,eventdata)handleOpenWaveform(obj, hObject, eventdata));
-            
-            % Move the recording's name item above the default items.
-            menuItems = get(actionMenu, 'Children');
-            set(menuItems(end), 'Separator', 'on');
-            menuItems = vertcat(menuItems(1:end-3), menuItems(end-1:end), menuItems(end-2));
-            set(actionMenu, 'Children', menuItems);
         end
         
         
