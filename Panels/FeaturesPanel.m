@@ -61,6 +61,10 @@ classdef FeaturesPanel < TimelinePanel
                     'Callback', @(source, event)exportFeatures(obj.reporter), ...
                     'Tag', 'exportFeatures');
             uimenu(actionMenu, ...
+                    'Label', 'Set Features Name...', ...
+                    'Callback', @(source, event)handleSetFeaturesName(obj, source, event), ...
+                    'Tag', 'setFeaturesName');
+            uimenu(actionMenu, ...
                     'Label', 'Set Features Color...', ...
                     'Callback', @(source, event)handleSetFeaturesColor(obj, source, event), ...
                     'Tag', 'setFeaturesColor');
@@ -294,6 +298,15 @@ classdef FeaturesPanel < TimelinePanel
                 obj.featureChangeListener.Enabled = true;
                 obj.reporter.endProgress();
                 rethrow(ME);
+            end
+        end
+        
+        
+        function handleSetFeaturesName(obj, ~, ~)
+            newName = inputdlg('Enter a new name for the features:', 'Tempo', 1, {obj.reporter.name});
+            if ~isempty(newName)
+                obj.reporter.name = newName{1};
+                obj.setTitle(obj.reporter.name);
             end
         end
         

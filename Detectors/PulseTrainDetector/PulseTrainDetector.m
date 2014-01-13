@@ -11,7 +11,7 @@ classdef PulseTrainDetector < FeatureDetector
     methods(Static)
         
         function n = typeName()
-            n = 'Pulse Train';
+            n = 'Pulse Trains';
         end
         
         function ft = possibleFeatureTypes()
@@ -25,7 +25,6 @@ classdef PulseTrainDetector < FeatureDetector
         
         function obj = PulseTrainDetector(controller)
             obj = obj@FeatureDetector(controller);
-            obj.name = 'Pulse Train Detector';
         end
         
         

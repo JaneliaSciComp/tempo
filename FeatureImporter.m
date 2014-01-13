@@ -35,6 +35,9 @@ classdef FeatureImporter < FeatureReporter
             obj = obj@FeatureReporter(controller, varargin{:});
             
             obj.featuresFilePath = featuresFilePath;
+            
+            % Default the name of the reporter to the file name.
+            [~, obj.name, ~] = fileparts(featuresFilePath);
         end
        
     end

@@ -40,7 +40,6 @@ classdef NoldusImporter < FeatureImporter
         
         function obj = NoldusImporter(controller, featuresFilePath)
             obj = obj@FeatureImporter(controller, featuresFilePath);
-            obj.name = 'Noldus Importer';
         end
         
         
