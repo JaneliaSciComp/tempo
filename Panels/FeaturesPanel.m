@@ -406,6 +406,11 @@ classdef FeaturesPanel < TimelinePanel
             obj.controller.selectRange(feature.range);
         end
         
-	end
+        
+        function close = shouldClose(obj)
+            close = strcmp(questdlg('Are you sure you wish to close these features?', 'Tempo', 'Close', 'Cancel', 'Close'), 'Close');
+        end
+        
+    end
 	
 end

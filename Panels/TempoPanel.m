@@ -185,10 +185,17 @@ classdef TempoPanel < handle
         end
         
         
+        function close = shouldClose(obj) %#ok<MANU>
+            close = true;
+        end
+        
+        
         function handleClosePanel(obj, ~, ~)
             % TODO: How to undo this?  The uipanel gets deleted...
             
-            obj.controller.closePanel(obj);
+            if obj.shouldClose()
+                obj.controller.closePanel(obj);
+            end
         end
         
         
