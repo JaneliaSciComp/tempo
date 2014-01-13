@@ -572,22 +572,23 @@ classdef TempoController < handle
             % Open panels share the full height of the area minus room for hidden panels and top and bottom margins.
             % TODO: allow left to right
             % TODO: allow panels to specify a fixed height/width.
-            shownPanelsHeight = parentSize(2) - margin(1) - numPanels * 16 - margin(3);
+            titleBarHeight = 16;
+            shownPanelsHeight = parentSize(2) - margin(1) - numPanels * (titleBarHeight + 1) - margin(3);
             shownPanelHeight = floor(shownPanelsHeight / numShown);
-            curY = parentSize(2) - margin(1) + 1;
+            curY = parentSize(2) - margin(1) + 2;
             for i = 1:numPanels
                 if panels{i}.isHidden
-                    % Hidden panels are 16 pixels tall.
-                    curY = curY - 16;
-                    panelHeight = 16;
+                    % Just need room for the title bar.
+                    panelHeight = titleBarHeight;
+                    curY = curY - panelHeight - 1;
                 elseif i < numPanels
                     % Open panels get an even fraction of the available space.
                     % Leave a one pixel gap between panels so there's a visible line between them.
-                    curY = curY - shownPanelHeight - 16;
-                    panelHeight = shownPanelHeight + 16;
+                    panelHeight = shownPanelHeight + 1 + titleBarHeight;
+                    curY = curY - panelHeight - 1;
                 else
                     % The last open panel gets whatever is left.
-                    panelHeight = curY - (2 + margin(3));
+                    panelHeight = curY - (2 + margin(3)) - 1;
                     curY = 2 + margin(3);
                 end
                 set(panels{i}.panel, 'Position', [margin(4), curY, parentSize(1) - margin(2), panelHeight]);
@@ -654,10 +655,10 @@ classdef TempoController < handle
                 % Position the time indicator panel at the bottom.
                 timeIndicatorHeight = 13;
                 obj.timeIndicatorPanel.setHidden(false);
-                set(obj.timeIndicatorPanel.panel, 'Position', [2, 18, timelinesPos(3) - 3, timeIndicatorHeight + 1]);
+                set(obj.timeIndicatorPanel.panel, 'Position', [2, 18, timelinesPos(3), timeIndicatorHeight + 1]);
                 obj.timeIndicatorPanel.updateAxes(obj.displayRange(1:2));
                 
-                obj.arrangePanels(obj.timelinePanels, timelinesPos(3:4), [0, 3, timeIndicatorHeight + 2 + 16, 2]);
+                obj.arrangePanels(obj.timelinePanels, timelinesPos(3:4), [0, 0, timeIndicatorHeight + 2 + 16, 2]);
                 
                 % Position the timeline slider at the bottom.
                 set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 1, 16]);
