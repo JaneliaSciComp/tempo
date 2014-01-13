@@ -481,6 +481,7 @@ classdef TempoController < handle
                 jDetect = get(obj.detectPopUpTool,'JavaContainer');
                 jMenu = get(jDetect,'MenuComponent');
                 jMenu.removeAll;
+                jMenu.add('Detect Features:').setEnabled(false);
                 for actionIdx = 1:length(obj.detectorTypeNames)
                     jActionItem = jMenu.add(obj.detectorTypeNames(actionIdx));
                     set(jActionItem, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
