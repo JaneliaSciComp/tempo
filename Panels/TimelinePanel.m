@@ -79,7 +79,7 @@ classdef TimelinePanel < TempoPanel
         
         
         function handleTimeWindowChanged(obj, ~, ~)
-            if ~obj.isHidden && ~isempty(obj.controller.displayRange)
+            if ~obj.isHidden && ~isempty(obj.controller) && ~isempty(obj.controller.displayRange)
                 % For performance only update the axes if the time range has changed.
                 % The spectogram needs to update even when playback stops and the range doesn't change so it's special cased.
                 if ~isempty(obj.controller.displayRange) && (any(obj.axesXLim ~= obj.controller.displayRange(1:2)) || isa(obj, 'SpectrogramPanel'))

@@ -163,25 +163,27 @@ classdef TempoPanel < handle
             panelPos = get(obj.panel, 'Position');
             set(obj.panel, 'Units', prevUnits);
             
-            panelPos(4) = panelPos(4) + 1;
-            
-            if obj.hasTitleBarControls()
-                % Position the title panel.
-                titlePos = [0, panelPos(4) - 16, panelPos(3), 16];
-                set(obj.titlePanel, 'Position', titlePos);
+            if ~isempty(panelPos)
+                panelPos(4) = panelPos(4) + 1;
                 
-                % Resize the text box.
-                set(obj.titleText, 'Position', [52, 3, titlePos(3) - 52 - 5,  12]);
-                axesPos = [0, 0, panelPos(3), panelPos(4) - 16];
-            else
-                axesPos = [0, 0, panelPos(3), panelPos(4)];
+                if obj.hasTitleBarControls()
+                    % Position the title panel.
+                    titlePos = [0, panelPos(4) - 16, panelPos(3), 16];
+                    set(obj.titlePanel, 'Position', titlePos);
+                    
+                    % Resize the text box.
+                    set(obj.titleText, 'Position', [52, 3, titlePos(3) - 52 - 5,  12]);
+                    axesPos = [0, 0, panelPos(3), panelPos(4) - 16];
+                else
+                    axesPos = [0, 0, panelPos(3), panelPos(4)];
+                end
+                
+                % Position the axes within the panel.
+                set(obj.axes, 'Position', axesPos, 'Units', 'pixels');
+                
+                % Let subclasses reposition their controls.
+                obj.resizeControls(axesPos(3:4));
             end
-            
-            % Position the axes within the panel.
-            set(obj.axes, 'Position', axesPos, 'Units', 'pixels');
-            
-            % Let subclasses reposition their controls.
-            obj.resizeControls(axesPos(3:4));
         end
         
         

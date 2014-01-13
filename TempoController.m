@@ -820,8 +820,6 @@ classdef TempoController < handle
                                     obj.reporters{end + 1} = importer;
                                     obj.timelinePanels{end + 1} = FeaturesPanel(importer);
                                     
-                                    obj.arrangeTimelinePanels();
-                                    
                                     somethingOpened = true;
                                 end
                             catch ME
@@ -878,6 +876,8 @@ classdef TempoController < handle
                         obj.showTimelinePanels(false);
                     end
                 end
+                
+                obj.arrangeTimelinePanels();
                 
                 obj.needsSave = true;
             elseif ~isempty(fileNames)
