@@ -761,6 +761,8 @@ classdef TempoController < handle
                 
                 [~, ~, ext] = fileparts(fileName);
                 if strcmp(ext, '.tempo')
+                    % Open a Tempo workspace.
+                    
                     if isempty(obj.recordings) && isempty(obj.reporters)
                         % Nothing has been done in this controller so load the workspace here.
                         target = obj;
@@ -821,6 +823,7 @@ classdef TempoController < handle
                                     obj.timelinePanels{end + 1} = FeaturesPanel(importer);
                                     
                                     somethingOpened = true;
+                                    obj.needsSave = true;
                                 end
                             catch ME
                                 importer.endProgress();
@@ -829,8 +832,6 @@ classdef TempoController < handle
                                 waitfor(msgbox('An error occurred while importing features.  (See the command window for details.)', obj.importerTypeNames{index}, 'error', 'modal'));
                                 rethrow(ME);
                             end
-
-% TODO                            addContextualMenu(importer);
                         end
                     end
                 catch ME
@@ -878,8 +879,6 @@ classdef TempoController < handle
                 end
                 
                 obj.arrangeTimelinePanels();
-                
-                obj.needsSave = true;
             elseif ~isempty(fileNames)
                 warndlg('Tempo does not know how to open that kind of file.');
             end
@@ -1856,6 +1855,8 @@ classdef TempoController < handle
                 obj.arrangeTimelinePanels();
                 
                 addlistener(recording, 'timeOffset', 'PostSet', @(source, event)handleRecordingDurationChanged(obj, source, event));
+                
+                obj.needsSave = true;
             end
         end
         
@@ -1879,6 +1880,8 @@ classdef TempoController < handle
                 obj.arrangeVideoPanels();
                 
                 addlistener(recording, 'timeOffset', 'PostSet', @(source, event)handleRecordingDurationChanged(obj, source, event));
+                
+                obj.needsSave = true;
             end
         end
         
