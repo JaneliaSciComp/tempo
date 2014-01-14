@@ -3,9 +3,7 @@ classdef UISplitter < handle
     properties
         position = 0.5
         orientation = 'horizontal'
-        paneOneIsVisible = true
         paneOneMinSize = 200
-        paneTwoIsVisible = true
         paneTwoMinSize = 200
     end
     
@@ -60,27 +58,16 @@ classdef UISplitter < handle
 %                 'Callback', @(hObject, eventdata)handleMouseDown(obj, hObject, eventdata), ... 
 %                 'HitTest', 'on', ...
 %                 'Enable', 'on');
+        
+            % Add listeners to the two panes so we can see when they are made visible/invisible.
+            addlistener(paneOne, 'Visible', 'PostSet', @(source, event)handlePaneVisibilityChanged(obj, source, event));
+            addlistener(paneTwo, 'Visible', 'PostSet', @(source, event)handlePaneVisibilityChanged(obj, source, event));
         end
         
         
-        function showPaneOne(obj, doShow)
-            % Show or hide the first pane.
-            if obj.paneOneIsVisible ~= doShow
-                obj.paneOneIsVisible = doShow;
-                set(obj.paneOne, 'Visible', onOff(doShow));
+        function handlePaneVisibilityChanged(obj, ~, ~)
                 obj.arrangePanes();
             end
-        end
-        
-        
-        function showPaneTwo(obj, doShow)
-            % Show or hide the second pane.
-            if obj.paneTwoIsVisible ~= doShow
-                obj.paneTwoIsVisible = doShow;
-                set(obj.paneTwo, 'Visible', onOff(doShow));
-                obj.arrangePanes();
-            end
-        end
         
         
         function resize(obj)
@@ -161,8 +148,27 @@ classdef UISplitter < handle
             parentPos = get(obj.parent, 'Position');
             set(obj.parent, 'Units', prevUnits);
             
-            if obj.orientation(1) == 'h'
+            paneOneIsVisible = onOff(get(obj.paneOne, 'Visible'));
+            paneTwoIsVisible = onOff(get(obj.paneTwo, 'Visible'));
+            
+            if ~paneOneIsVisible && ~paneTwoIsVisible
+                % Neither pane is visible, hide the divider.
+                set(obj.divider, 'Visible', 'off');
+            elseif ~paneTwoIsVisible
+                % Let the first pane have all of the space.
+                set(obj.divider, 'Visible', 'off');
+                prevUnits = get(obj.paneOne, 'Units');
+                set(obj.paneOne, 'Units', 'pixels', 'Position', [0 0 parentPos(3:4)]);
+                set(obj.paneOne, 'Units', prevUnits);
+            elseif ~paneOneIsVisible
+                % Let the second pane have all of the space.
+                set(obj.divider, 'Visible', 'off');
+                prevUnits = get(obj.paneTwo, 'Units');
+                set(obj.paneTwo, 'Units', 'pixels', 'Position', [0 0 parentPos(3:4)]);
+                set(obj.paneTwo, 'Units', prevUnits);
+            elseif obj.orientation(1) == 'h'
                 % Arrage the panes to the left and right of each other.
+                set(obj.divider, 'Visible', 'on');
                 
                 if obj.position > 1
                     % Pane one should be a fixed number of pixels wide.
@@ -191,6 +197,7 @@ classdef UISplitter < handle
                 set(obj.paneTwo, 'Units', prevUnits);
             else
                 % Arrage the panes above and below each other.
+                set(obj.divider, 'Visible', 'on');
                 
                 if obj.position > 1
                     % Pane one should be a fixed number of pixels wide.

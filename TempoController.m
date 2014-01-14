@@ -24,6 +24,7 @@ classdef TempoController < handle
         
         fileMenu
         editMenu
+        viewMenu
         videoMenu
         timelineMenu
         playbackMenu
@@ -66,6 +67,7 @@ classdef TempoController < handle
         importing = false
         recordingsToAdd = {}
         
+        showVideo
         showWaveforms
         showSpectrograms
         showFeatures
@@ -152,7 +154,7 @@ classdef TempoController < handle
             obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
             
             obj.createMenuBar();
-            if getpref('Tempo', 'WindowShowToolbar', true)
+            if getpref('Tempo', 'ViewShowToolbar', true)
                 obj.createToolbar();
             end
             
@@ -258,6 +260,29 @@ classdef TempoController < handle
                                      'UserData', detectorIdx);
             end
             
+            obj.viewMenu = uimenu(obj.figure, 'Label', 'View');
+            uimenu(obj.viewMenu, 'Label', 'Show Toolbar', ...
+                                 'Callback', @(hObject, eventdata)handleShowToolbar(obj, hObject, eventdata), ...
+                                 'Accelerator', '', ...
+                                 'Checked', onOff(getpref('Tempo', 'ViewShowToolbar', true)), ...
+                                 'Tag', 'showToolbar');
+            uimenu(obj.viewMenu, 'Label', 'Show Video', ...
+                                 'Callback', @(hObject, eventdata)handleShowVideoAndOrTimeline(obj, hObject, eventdata, true, false), ...
+                                 'Accelerator', '', ...
+                                 'Checked', onOff(getpref('Tempo', 'ViewShowVideo', true) && ~getpref('Tempo', 'ViewShowTimeline', true)), ...
+                                 'Separator', 'on', ...
+                                 'Tag', 'showVideo');
+            uimenu(obj.viewMenu, 'Label', 'Show Timeline', ...
+                                 'Callback', @(hObject, eventdata)handleShowVideoAndOrTimeline(obj, hObject, eventdata, false, true), ...
+                                 'Accelerator', '', ...
+                                 'Checked', onOff(~getpref('Tempo', 'ViewShowVideo', true) && getpref('Tempo', 'ViewShowTimeline', true)), ...
+                                 'Tag', 'showTimeline');
+            uimenu(obj.viewMenu, 'Label', 'Show Video and Timeline', ...
+                                 'Callback', @(hObject, eventdata)handleShowVideoAndOrTimeline(obj, hObject, eventdata, true, true), ...
+                                 'Accelerator', '', ...
+                                 'Checked', onOff(getpref('Tempo', 'ViewShowVideo', true) && getpref('Tempo', 'ViewShowTimeline', true)), ...
+                                 'Tag', 'showVideoAndTimeline');
+            
             obj.videoMenu = uimenu(obj.figure, 'Label', 'Video');
             uimenu(obj.videoMenu, 'Label', 'View at Actual Size', ...
                                   'Callback', '', ...
@@ -357,15 +382,9 @@ classdef TempoController < handle
                                      'Accelerator', '');
             
             obj.windowMenu = uimenu(obj.figure, 'Label', 'Window');
-            uimenu(obj.windowMenu, 'Label', 'Show Toolbar', ...
-                                   'Callback', @(hObject, eventdata)handleShowToolbar(obj, hObject, eventdata), ...
-                                   'Accelerator', '', ...
-                                   'Checked', onOff(getpref('Tempo', 'WindowShowToolbar', true)), ...
-                                   'Tag', 'showToolbar');
             uimenu(obj.windowMenu, 'Label', 'Arrange Windows Top to Bottom', ...
                                    'Callback', '', ...
                                    'Accelerator', '', ...
-                                   'Separator', 'on', ...
                                    'Enable', 'off');
             uimenu(obj.windowMenu, 'Label', 'Arrange Windows Left to Right', ...
                                    'Callback', '', ...
@@ -617,7 +636,7 @@ classdef TempoController < handle
             if nargin < 2
                 doShow = true;
             end
-            obj.splitter.showPaneOne(doShow)
+            set(obj.videoPanels, 'Visible', onOff(doShow));
         end
         
         
@@ -654,7 +673,7 @@ classdef TempoController < handle
             if nargin < 2
                 doShow = true;
             end
-            obj.splitter.showPaneTwo(doShow);
+            set(obj.timelinePanels, 'Visible', onOff(doShow));
         end
         
         
@@ -716,7 +735,6 @@ classdef TempoController < handle
                 fileNames = {};
             end
             
-            nothingWasOpen = isempty(obj.recordings);
             somethingOpened = false;
 
             for i = 1:length(fileNames)
@@ -840,16 +858,6 @@ classdef TempoController < handle
             
             if somethingOpened
                 obj.updateOverallDuration();
-                
-                if nothingWasOpen
-                    if isempty(obj.videoPanels)
-                        % Hide the video half of the splitter.
-                        obj.showVideoPanels(false);
-                    elseif isempty(obj.timelinePanels)
-                        % Hide the video half of the splitter.
-                        obj.showTimelinePanels(false);
-                    end
-                end
                 
                 obj.arrangeTimelinePanels();
             elseif ~isempty(fileNames)
@@ -1074,6 +1082,43 @@ classdef TempoController < handle
                     end
                 end
             end
+        end
+        
+        
+        %% View menu callbacks
+        
+        
+        function handleShowToolbar(obj, ~, ~)
+            % Toggle the display of the toolbar.
+            menuItem = findobj(obj.viewMenu, 'Tag', 'showToolbar');
+            curState = get(menuItem, 'Checked');
+            if strcmp(curState, 'on')
+                set(obj.toolbar, 'Visible', 'off');
+                set(menuItem, 'Checked', 'off');
+            else
+                if isempty(obj.toolbar)
+                    obj.createToolbar();
+                end
+                set(obj.toolbar, 'Visible', 'on');
+                set(menuItem, 'Checked', 'on');
+            end
+            
+            % Remember the user's preference.
+            setpref('Tempo', 'ViewShowToolbar', strcmp(curState, 'off'));
+        end
+        
+        
+        function handleShowVideoAndOrTimeline(obj, ~, ~, showVideo, showTimeline)
+            % Show and/or hide the videos and timelines.
+            
+            % Update the menu items.
+            set(findobj(obj.viewMenu, 'Tag', 'showVideo'), 'Checked', onOff(showVideo && ~showTimeline));
+            set(findobj(obj.viewMenu, 'Tag', 'showTimeline'), 'Checked', onOff(~showVideo && showTimeline));
+            set(findobj(obj.viewMenu, 'Tag', 'showVideoAndTimeline'), 'Checked', onOff(showVideo && showTimeline));
+            
+            % Update the panels.
+            set(obj.videosPanel, 'Visible', onOff(showVideo));
+            set(obj.timelinesPanel, 'Visible', onOff(showTimeline));
         end
         
         
@@ -1417,25 +1462,6 @@ classdef TempoController < handle
         
         
         %% Window menu callbacks
-        
-        
-        function handleShowToolbar(obj, ~, ~)
-            % Toggle the display of the toolbar.
-            menuItem = findobj(obj.windowMenu, 'Tag', 'showToolbar');
-            curState = get(menuItem, 'Checked');
-            if strcmp(curState, 'on')
-                set(obj.toolbar, 'Visible', 'off');
-                set(menuItem, 'Checked', 'off');
-            else
-                if isempty(obj.toolbar)
-                    obj.createToolbar();
-                end
-                set(obj.toolbar, 'Visible', 'on');
-                set(menuItem, 'Checked', 'on');
-            end
-            
-            setpref('Tempo', 'WindowShowToolbar', strcmp(curState, 'off'));
-        end
         
         
         %% Toolbar callbacks
@@ -1929,8 +1955,7 @@ classdef TempoController < handle
         
         
         function openWorkspace(obj, filePath)
-            % TODO: Create a new controller if the current one has recordings open?
-            %       Allow "importing" a workspace to add it to the current one?
+            % TODO: Allow "importing" a workspace to add it to the current one?
             
             set(obj.figure, 'Pointer', 'watch');
             drawnow
