@@ -103,6 +103,7 @@ classdef TempoController < handle
                 'KeyReleaseFcn', @(source, event)handleKeyRelease(obj, source, event), ...
                 'CloseRequestFcn', @(source, event)handleClose(obj, source, event), ...
                 'WindowButtonDownFcn', @(source, event)handleMouseButtonDown(obj, source, event), ...
+                'WindowButtonMotionFcn', @(source, event)handleMouseMotion(obj, source, event), ...
                 'WindowButtonUpFcn', @(source, event)handleMouseButtonUp(obj, source, event)); %#ok<CPROP>
             
             if isdeployed && exist(fullfile(ctfroot, 'Detectors'), 'dir')
@@ -126,30 +127,28 @@ classdef TempoController < handle
             addpath(fullfile(parentDir, 'ThirdParty', 'export_fig'));
             addpath(fullfile(parentDir, 'ThirdParty', 'dbutils'));
             addpath(fullfile(parentDir, 'ThirdParty', 'ffmpeg'));
-            addpath(fullfile(parentDir, 'ThirdParty', 'uisplitpane'));
             
             % Insert a splitter at the top level to separate the video and timeline panels.
-            % TODO: Allow the splitter to split the screen vertically with the video panels on top.
-            %       This will require removing and re-adding the uisplitpane since that property cannot be modified.
-            set(obj.figure, 'WindowButtonMotionFcn', @()handleMouseMotion(obj));
-            figurePos = get(obj.figure, 'Position');
-            obj.splitterPanel = uipanel(obj.figure, ...
+            obj.videosPanel = uipanel(obj.figure, ...
                 'BorderType', 'none', ...
                 'BorderWidth', 0, ...
-                'BackgroundColor', [0.25 0.25 0.25], ...
-                'SelectionHighlight', 'off', ...
-                'Units', 'pixels', ...
-                'Position', [0 0 figurePos(3) figurePos(4)]);
-            [obj.videosPanel, obj.timelinesPanel, obj.splitter] = uisplitpane(obj.splitterPanel, ...
-                'DividerLocation', 0.25, ...
-                'DividerWidth', 5);
-            set(obj.videosPanel, ...
                 'BackgroundColor', 'black', ...
+                'SelectionHighlight', 'off', ...
                 'ResizeFcn', @(source, event)arrangeVideoPanels(obj, source, event));
-            set(obj.timelinesPanel, ...
+            obj.timelinesPanel = uipanel(obj.figure, ...
+                'BorderType', 'none', ...
+                'BorderWidth', 0, ...
                 'BackgroundColor', 'white', ...
+                'SelectionHighlight', 'off', ...
                 'ResizeFcn', @(source, event)arrangeTimelinePanels(obj, source, event));
+            if strcmp(getpref('Tempo', 'VideoPlacement', 'left'), 'left')
+                orientation = 'horizontal';
+            else
+                orientation = 'vertical';
+            end
+            obj.splitter = UISplitter(obj.figure, obj.videosPanel, obj.timelinesPanel, orientation);
             
+            % Create the time indicator at the bottom of the timelines.
             obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
             
             obj.createMenuBar();
@@ -184,6 +183,7 @@ classdef TempoController < handle
             obj.arrangeTimelinePanels();
             
             % Set up a timer to fire 30 times per second during playback.
+            % MATLAB can only seem to manage up to 15 FPS but one can hope.
             obj.playTimer = timer('ExecutionMode', 'fixedRate', 'TimerFcn', @(timerObj, event)handlePlayTimer(obj, timerObj, event), 'Period', round(1.0 / 30.0 * 1000) / 1000);
         end
         
@@ -470,6 +470,7 @@ classdef TempoController < handle
                 'TooltipString', 'Zoom out',... 
                 'ClickedCallback', @(hObject, eventdata)handleZoomOut(obj, hObject, eventdata));
             
+            % Make sure the Java components we need have been created.
             drawnow;
             
             obj.jToolbar = get(get(obj.toolbar, 'JavaContainer'), 'ComponentPeer');
@@ -622,14 +623,7 @@ classdef TempoController < handle
             if nargin < 2
                 doShow = true;
             end
-            isShowing = (get(obj.splitter, 'DividerLocation') > 0.01);
-            if isShowing ~= doShow
-                try
-                    obj.splitter.JavaComponent.getComponent(0).doClick();
-                catch
-                    % oh well?
-                end
-            end
+            obj.splitter.showPaneOne(doShow)
         end
         
         
@@ -674,14 +668,7 @@ classdef TempoController < handle
             if nargin < 2
                 doShow = true;
             end
-            isShowing = (get(obj.splitter, 'DividerLocation') < 0.99);
-            if isShowing ~= doShow
-                try
-                    obj.splitter.JavaComponent.getComponent(1).doClick();
-                catch
-                    % oh well?
-                end
-            end
+            obj.splitter.showPaneTwo(doShow);
         end
         
         
@@ -1123,6 +1110,7 @@ classdef TempoController < handle
                 set(menuItem, 'Checked', 'off');
             end
             
+            % Remember the user's preference.
             setpref('Tempo', 'VideoShowFrameNumber', showNumbers);
         end
         
@@ -1522,11 +1510,7 @@ classdef TempoController < handle
         
         
         function handleResize(obj, ~, ~)
-            pos = get(obj.figure, 'Position');
-            
-            set(obj.splitterPanel, 'Position', [1, 1, pos(3), pos(4)]);
-            
-            obj.needsSave = true;
+            obj.splitter.resize();
         end
         
         
@@ -1927,8 +1911,8 @@ classdef TempoController < handle
             s.timelinePanels = obj.timelinePanels;
             
             s.windowPosition = get(obj.figure, 'Position');
-            s.mainSplitter.orientation = get(obj.splitter, 'Orientation');
-            s.mainSplitter.location = get(obj.splitter, 'DividerLocation');
+            s.mainSplitter.orientation = obj.splitter.orientation;
+            s.mainSplitter.location = obj.splitter.position;
             
             save(filePath, '-struct', 's');
         end
@@ -1959,7 +1943,7 @@ classdef TempoController < handle
                 else
                     obj.showVideoPanels(true);
                     obj.showTimelinePanels(true);
-                    set(obj.splitter, 'DividerLocation', s.mainSplitter.location);
+                    obj.splitter.position = s.mainSplitter.location;
                 end
             end
             
