@@ -28,6 +28,7 @@ classdef TempoController < handle
         timelineMenu
         playbackMenu
         windowMenu
+        helpMenu
         
         toolbar
         jToolbar
@@ -376,7 +377,21 @@ classdef TempoController < handle
                                    'Enable', 'off');
             % TODO: add/manage the list of open windows
             
-            % TODO: Help menu
+            obj.helpMenu = uimenu(obj.figure, 'Label', 'Help');
+            uimenu(obj.helpMenu, 'Label', 'Tempo Help', ...
+                                 'Callback', @(hObject, eventdata)handleShowHelp(obj, hObject, eventdata), ...
+                                 'Tag', 'showHelp');
+            uimenu(obj.helpMenu, 'Label', 'Using Tempo', ...
+                                 'Callback', @(hObject, eventdata)handleShowHelp(obj, hObject, eventdata, 'UserInterface'), ...
+                                 'Separator', 'on', ...
+                                 'Tag', 'showUIHelp');
+            uimenu(obj.helpMenu, 'Label', 'Customizing Tempo', ...
+                                 'Callback', @(hObject, eventdata)handleShowHelp(obj, hObject, eventdata, 'Customizing'), ...
+                                 'Tag', 'showCustomizingHelp');
+            uimenu(obj.helpMenu, 'Label', 'Visit the Tempo Web Site', ...
+                                 'Callback', @(hObject, eventdata)handleVisitWebSite(obj, hObject, eventdata), ...
+                                 'Separator', 'on', ...
+                                 'Tag', 'visitWebSite');
         end
         
         
@@ -1438,6 +1453,19 @@ classdef TempoController < handle
             end
             
             setpref('Tempo', 'WindowShowToolbar', strcmp(curState, 'off'));
+        end
+        
+        
+        %% Help menu callbacks
+        
+        
+        function handleShowHelp(obj, ~, ~, varargin)  %#ok<INUSL>
+            TempoHelp().openPage(varargin{:});
+        end
+        
+        
+        function handleVisitWebSite(obj, ~, ~) %#ok<INUSD>
+            web('http://github.com/JaneliaSciComp/tempo', '-browser');
         end
         
         
