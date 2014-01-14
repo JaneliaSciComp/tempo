@@ -575,24 +575,28 @@ classdef TempoController < handle
             titleBarHeight = 16;
             shownPanelsHeight = parentSize(2) - margin(1) - numPanels * (titleBarHeight + 1) - margin(3);
             shownPanelHeight = floor(shownPanelsHeight / numShown);
-            curY = parentSize(2) - margin(1) + 2;
-            for i = 1:numPanels
-                if panels{i}.isHidden
-                    % Just need room for the title bar.
-                    panelHeight = titleBarHeight;
-                    curY = curY - panelHeight - 1;
-                elseif i < numPanels
-                    % Open panels get an even fraction of the available space.
-                    % Leave a one pixel gap between panels so there's a visible line between them.
-                    panelHeight = shownPanelHeight + 1 + titleBarHeight;
-                    curY = curY - panelHeight - 1;
-                else
-                    % The last open panel gets whatever is left.
-                    panelHeight = curY - (2 + margin(3)) - 1;
-                    curY = 2 + margin(3);
+            if shownPanelHeight < 32
+                warning('Tempo:WindowTooSmall', 'The window is too small to display all of the panels');
+            else
+                curY = parentSize(2) - margin(1) + 2;
+                for i = 1:numPanels
+                    if panels{i}.isHidden
+                        % Just need room for the title bar.
+                        panelHeight = titleBarHeight;
+                        curY = curY - panelHeight - 1;
+                    elseif i < numPanels
+                        % Open panels get an even fraction of the available space.
+                        % Leave a one pixel gap between panels so there's a visible line between them.
+                        panelHeight = shownPanelHeight + 1 + titleBarHeight;
+                        curY = curY - panelHeight - 1;
+                    else
+                        % The last open panel gets whatever is left.
+                        panelHeight = curY - (2 + margin(3)) - 1;
+                        curY = 2 + margin(3);
+                    end
+                    set(panels{i}.panel, 'Position', [margin(4), curY, parentSize(1) - margin(2), panelHeight]);
+                    panels{i}.handleResize([], []);
                 end
-                set(panels{i}.panel, 'Position', [margin(4), curY, parentSize(1) - margin(2), panelHeight]);
-                panels{i}.handleResize([], []);
             end
         end
         
@@ -603,17 +607,9 @@ classdef TempoController < handle
             videosPos = get(obj.videosPanel, 'Position');
             set(obj.videosPanel, 'Units', 'normalized');
             
-            if videosPos(3) < 5
-                % The splitter has been collapsed, don't show the video panels.
-                set(obj.videosPanel, 'Visible', 'off');
-            else
-                % The splitter is open, show the panels.
-                set(obj.videosPanel, 'Visible', 'on');
-                
-                obj.arrangePanels(obj.videoPanels, videosPos(3:4), [0 3 16 4]);
-                
-                set(obj.videoSlider, 'Position', [1, 0, videosPos(3) + 1, 16]);
-            end
+            obj.arrangePanels(obj.videoPanels, videosPos(3:4), [0 3 16 4]);
+            
+            set(obj.videoSlider, 'Position', [1, 0, videosPos(3) + 1, 16]);
         end
         
         
@@ -641,24 +637,16 @@ classdef TempoController < handle
             timelinesPos = get(obj.timelinesPanel, 'Position');
             set(obj.timelinesPanel, 'Units', 'normalized');
             
-            if timelinesPos(3) > 15
-                % The splitter is open, show the panels.
-                set(obj.timelinesPanel, 'Visible', 'on');
-                
-                % Position the time indicator panel at the bottom.
-                timeIndicatorHeight = 13;
-                obj.timeIndicatorPanel.setHidden(false);
-                set(obj.timeIndicatorPanel.panel, 'Position', [2, 18, timelinesPos(3), timeIndicatorHeight + 1]);
-                obj.timeIndicatorPanel.updateAxes(obj.displayRange(1:2));
-                
-                obj.arrangePanels(obj.timelinePanels, timelinesPos(3:4), [0, 0, timeIndicatorHeight + 2 + 16, 2]);
-                
-                % Position the timeline slider at the bottom.
-                set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 1, 16]);
-            else
-                % The splitter has been collapsed, don't show the timeline panels.
-                set(obj.timelinesPanel, 'Visible', 'off');
-            end
+            % Position the time indicator panel at the bottom.
+            timeIndicatorHeight = 13;
+            obj.timeIndicatorPanel.setHidden(false);
+            set(obj.timeIndicatorPanel.panel, 'Position', [2, 18, timelinesPos(3), timeIndicatorHeight + 1]);
+            obj.timeIndicatorPanel.updateAxes(obj.displayRange(1:2));
+            
+            obj.arrangePanels(obj.timelinePanels, timelinesPos(3:4), [0, 0, timeIndicatorHeight + 2 + 16, 2]);
+            
+            % Position the timeline slider at the bottom.
+            set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 1, 16]);
         end
         
         
