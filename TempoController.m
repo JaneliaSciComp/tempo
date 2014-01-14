@@ -67,7 +67,6 @@ classdef TempoController < handle
         importing = false
         recordingsToAdd = {}
         
-        showVideo
         showWaveforms
         showSpectrograms
         showFeatures
@@ -136,13 +135,15 @@ classdef TempoController < handle
                 'BorderWidth', 0, ...
                 'BackgroundColor', 'black', ...
                 'SelectionHighlight', 'off', ...
-                'ResizeFcn', @(source, event)arrangeVideoPanels(obj, source, event));
+                'ResizeFcn', @(source, event)arrangeVideoPanels(obj, source, event), ...
+                'Visible', onOff(getpref('Tempo', 'ViewShowVideo', true)));
             obj.timelinesPanel = uipanel(obj.figure, ...
                 'BorderType', 'none', ...
                 'BorderWidth', 0, ...
                 'BackgroundColor', 'white', ...
                 'SelectionHighlight', 'off', ...
-                'ResizeFcn', @(source, event)arrangeTimelinePanels(obj, source, event));
+                'ResizeFcn', @(source, event)arrangeTimelinePanels(obj, source, event), ...
+                'Visible', onOff(getpref('Tempo', 'ViewShowTimeline', true)));
             if strcmp(getpref('Tempo', 'VideoPlacement', 'left'), 'left')
                 orientation = 'horizontal';
             else
@@ -264,24 +265,21 @@ classdef TempoController < handle
             uimenu(obj.viewMenu, 'Label', 'Show Toolbar', ...
                                  'Callback', @(hObject, eventdata)handleShowToolbar(obj, hObject, eventdata), ...
                                  'Accelerator', '', ...
-                                 'Checked', onOff(getpref('Tempo', 'ViewShowToolbar', true)), ...
                                  'Tag', 'showToolbar');
             uimenu(obj.viewMenu, 'Label', 'Show Video', ...
                                  'Callback', @(hObject, eventdata)handleShowVideoAndOrTimeline(obj, hObject, eventdata, true, false), ...
                                  'Accelerator', '', ...
-                                 'Checked', onOff(getpref('Tempo', 'ViewShowVideo', true) && ~getpref('Tempo', 'ViewShowTimeline', true)), ...
                                  'Separator', 'on', ...
                                  'Tag', 'showVideo');
             uimenu(obj.viewMenu, 'Label', 'Show Timeline', ...
                                  'Callback', @(hObject, eventdata)handleShowVideoAndOrTimeline(obj, hObject, eventdata, false, true), ...
                                  'Accelerator', '', ...
-                                 'Checked', onOff(~getpref('Tempo', 'ViewShowVideo', true) && getpref('Tempo', 'ViewShowTimeline', true)), ...
                                  'Tag', 'showTimeline');
             uimenu(obj.viewMenu, 'Label', 'Show Video and Timeline', ...
                                  'Callback', @(hObject, eventdata)handleShowVideoAndOrTimeline(obj, hObject, eventdata, true, true), ...
                                  'Accelerator', '', ...
-                                 'Checked', onOff(getpref('Tempo', 'ViewShowVideo', true) && getpref('Tempo', 'ViewShowTimeline', true)), ...
                                  'Tag', 'showVideoAndTimeline');
+            obj.updateViewMenuItems();
             
             obj.videoMenu = uimenu(obj.figure, 'Label', 'Video');
             uimenu(obj.videoMenu, 'Label', 'View at Actual Size', ...
@@ -312,42 +310,41 @@ classdef TempoController < handle
             uimenu(obj.videoMenu, 'Label', 'Place Videos Left of the Timeline', ...
                                   'Callback', @(hObject, eventdata)handlePlaceVideoToTheLeft(obj, hObject, eventdata), ...
                                   'Separator', 'on', ...
-                                  'Checked', onOff(strcmp(getpref('Tempo', 'VideoPlacement', 'left'), 'left')), ...
                                   'Tag', 'placeVideoToTheLeft');
             uimenu(obj.videoMenu, 'Label', 'Place Videos Above the Timeline', ...
                                   'Callback', @(hObject, eventdata)handlePlaceVideoAbove(obj, hObject, eventdata), ...
-                                  'Checked', onOff(strcmp(getpref('Tempo', 'VideoPlacement', 'left'), 'above')), ...
                                   'Tag', 'placeVideoAbove');
             uimenu(obj.videoMenu, 'Label', 'Show Current Frame Number', ...
                                   'Callback', @(hObject, eventdata)handleShowFrameNumber(obj, hObject, eventdata), ...
                                   'Accelerator', '', ... 
                                   'Separator', 'on', ...
-                                  'Checked', onOff(getpref('Tempo', 'VideoShowFrameNumber', true)), ...
                                   'Tag', 'showFrameNumber');
+            obj.updateVideoMenuItems();
             
             obj.timelineMenu = uimenu(obj.figure, 'Label', 'Timeline');
             uimenu(obj.timelineMenu, 'Label', 'Zoom In', ...
                                      'Callback', @(hObject, eventdata)handleZoomIn(obj, hObject, eventdata), ...
-                                     'Accelerator', '');
+                                     'Accelerator', '', ...
+                                     'Tag', 'zoomIn');
             uimenu(obj.timelineMenu, 'Label', 'Zoom Out', ...
                                      'Callback', @(hObject, eventdata)handleZoomOut(obj, hObject, eventdata), ...
-                                     'Accelerator', '');
+                                     'Accelerator', '', ...
+                                     'Tag', 'zoomOut');
             uimenu(obj.timelineMenu, 'Label', 'Zoom to Selection', ...
                                      'Callback', @(hObject, eventdata)handleZoomToSelection(obj, hObject, eventdata), ...
-                                     'Accelerator', '');
+                                     'Accelerator', '', ...
+                                     'Tag', 'zoomToSelection');
             uimenu(obj.timelineMenu, 'Label', 'Open Waveform for New Recordings', ...
-                                     'Callback', @(hObject, eventdata)handleShowWaveformOnOpen(obj, hObject, eventdata), ...
+                                     'Callback', @(hObject, eventdata)handleShowWaveformAndOrSpectrogramOnOpen(obj, hObject, eventdata, true, false), ...
                                      'Separator', 'on', ...
-                                     'Checked', onOff(getpref('Tempo', 'ShowWaveforms', true) && ~getpref('Tempo', 'ShowSpectrograms', true)), ...
                                      'Tag', 'showWaveformOnOpen');
             uimenu(obj.timelineMenu, 'Label', 'Open Spectrogram for New Recordings', ...
-                                     'Callback', @(hObject, eventdata)handleShowSpectrogramOnOpen(obj, hObject, eventdata), ...
-                                     'Checked', onOff(~getpref('Tempo', 'ShowWaveforms', true) && getpref('Tempo', 'ShowSpectrograms', true)), ...
+                                     'Callback', @(hObject, eventdata)handleShowWaveformAndOrSpectrogramOnOpen(obj, hObject, eventdata, false, true), ...
                                      'Tag', 'showSpectrogramOnOpen');
             uimenu(obj.timelineMenu, 'Label', 'Open Both for New Recordings', ...
-                                     'Callback', @(hObject, eventdata)handleShowBothOnOpen(obj, hObject, eventdata), ...
-                                     'Checked', onOff(getpref('Tempo', 'ShowWaveforms', true) && getpref('Tempo', 'ShowSpectrograms', true)), ...
+                                     'Callback', @(hObject, eventdata)handleShowWaveformAndOrSpectrogramOnOpen(obj, hObject, eventdata, true, true), ...
                                      'Tag', 'showBothOnOpen');
+            obj.updateTimelineMenuItems();
             
             obj.playbackMenu = uimenu(obj.figure, 'Label', 'Playback');
             uimenu(obj.playbackMenu, 'Label', 'Play', ...
@@ -628,7 +625,7 @@ classdef TempoController < handle
             
             obj.arrangePanels(obj.videoPanels, videosPos(3:4), [0 3 16 4]);
             
-            set(obj.videoSlider, 'Position', [1, 0, videosPos(3) + 1, 16]);
+            set(obj.videoSlider, 'Position', [1, 0, videosPos(3), 16]);
         end
         
         
@@ -636,7 +633,7 @@ classdef TempoController < handle
             if nargin < 2
                 doShow = true;
             end
-            set(obj.videoPanels, 'Visible', onOff(doShow));
+            set(obj.videosPanel, 'Visible', onOff(doShow));
         end
         
         
@@ -665,7 +662,7 @@ classdef TempoController < handle
             obj.arrangePanels(obj.timelinePanels, timelinesPos(3:4), [0, 0, timeIndicatorHeight + 2 + 16, 2]);
             
             % Position the timeline slider at the bottom.
-            set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 1, 16]);
+            set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 2, 16]);
         end
         
         
@@ -673,7 +670,7 @@ classdef TempoController < handle
             if nargin < 2
                 doShow = true;
             end
-            set(obj.timelinePanels, 'Visible', onOff(doShow));
+            set(obj.timelinesPanel, 'Visible', onOff(doShow));
         end
         
         
@@ -859,6 +856,7 @@ classdef TempoController < handle
             if somethingOpened
                 obj.updateOverallDuration();
                 
+                obj.arrangeVideoPanels();
                 obj.arrangeTimelinePanels();
             elseif ~isempty(fileNames)
                 warndlg('Tempo does not know how to open that kind of file.');
@@ -1111,14 +1109,30 @@ classdef TempoController < handle
         function handleShowVideoAndOrTimeline(obj, ~, ~, showVideo, showTimeline)
             % Show and/or hide the videos and timelines.
             
-            % Update the menu items.
-            set(findobj(obj.viewMenu, 'Tag', 'showVideo'), 'Checked', onOff(showVideo && ~showTimeline));
-            set(findobj(obj.viewMenu, 'Tag', 'showTimeline'), 'Checked', onOff(~showVideo && showTimeline));
-            set(findobj(obj.viewMenu, 'Tag', 'showVideoAndTimeline'), 'Checked', onOff(showVideo && showTimeline));
-            
             % Update the panels.
             set(obj.videosPanel, 'Visible', onOff(showVideo));
             set(obj.timelinesPanel, 'Visible', onOff(showTimeline));
+            
+            % Remember the user's preference.
+            setpref('Tempo', 'ViewShowVideo', showVideo);
+            setpref('Tempo', 'ViewShowTimeline', showTimeline);
+            
+            obj.updateViewMenuItems();
+            obj.updateVideoMenuItems();
+            obj.updateTimelineMenuItems();
+        end
+        
+        
+        function updateViewMenuItems(obj)
+            % Update the show toolbar item based on the user's preference.
+            set(findobj(obj.viewMenu, 'Tag', 'showToolbar'), 'Checked', onOff(getpref('Tempo', 'ViewShowToolbar', true)));
+            
+            % Update the show video and/or timeine items based on the visibility of the video and timeline panels.
+            showVideo = onOff(get(obj.videosPanel, 'Visible'));
+            showTimeline = onOff(get(obj.timelinesPanel, 'Visible'));
+            set(findobj(obj.viewMenu, 'Tag', 'showVideo'), 'Checked', onOff(showVideo && ~showTimeline));
+            set(findobj(obj.viewMenu, 'Tag', 'showTimeline'), 'Checked', onOff(~showVideo && showTimeline));
+            set(findobj(obj.viewMenu, 'Tag', 'showVideoAndTimeline'), 'Checked', onOff(showVideo && showTimeline));
         end
         
         
@@ -1127,25 +1141,22 @@ classdef TempoController < handle
         
         function handlePlaceVideoToTheLeft(obj, ~, ~)
             % Update the menu items.
-            set(findobj(obj.videoMenu, 'Tag', 'placeVideoToTheLeft'), 'Checked', 'on');
-            set(findobj(obj.videoMenu, 'Tag', 'placeVideoAbove'), 'Checked', 'off');
-            
             obj.splitter.setOrientation('horizontal');
             
             % Remember the user's preference.
             setpref('Tempo', 'VideoPlacement', 'left');
+            
+            obj.updateVideoMenuItems();
         end
         
         
         function handlePlaceVideoAbove(obj, ~, ~)
-            % Update the menu items.
-            set(findobj(obj.videoMenu, 'Tag', 'placeVideoToTheLeft'), 'Checked', 'off');
-            set(findobj(obj.videoMenu, 'Tag', 'placeVideoAbove'), 'Checked', 'on');
-            
             obj.splitter.setOrientation('vertical');
             
             % Remember the user's preference.
             setpref('Tempo', 'VideoPlacement', 'above');
+            
+            obj.updateVideoMenuItems();
         end
         
         
@@ -1159,14 +1170,33 @@ classdef TempoController < handle
                 videoPanel{1}.showFrameNumber(showNumbers);
             end
             
-            if showNumbers
-                set(menuItem, 'Checked', 'on');
-            else
-                set(menuItem, 'Checked', 'off');
-            end
-            
             % Remember the user's preference.
             setpref('Tempo', 'VideoShowFrameNumber', showNumbers);
+            
+            obj.updateVideoMenuItems();
+        end
+        
+        
+        function updateVideoMenuItems(obj)
+            showVideo = onOff(get(obj.videosPanel, 'Visible'));
+            
+            if isempty(obj.videoPanels)
+                showFrameNumbers = getpref('Tempo', 'VideoShowFrameNumber', true);
+            else
+                showFrameNumbers = obj.videoPanels{1}.showFrameNum;
+            end
+            
+            % Update the menu items.
+            set(findobj(obj.videoMenu, 'Tag', 'placeVideoToTheLeft'), ...
+                'Enable', onOff(showVideo), ...
+                'Checked', onOff(strcmp(obj.splitter.orientation, 'horizontal')));
+            set(findobj(obj.videoMenu, 'Tag', 'placeVideoAbove'), ...
+                'Enable', onOff(showVideo), ...
+                'Checked', onOff(strcmp(obj.splitter.orientation, 'vertical')));
+            
+            set(findobj(obj.videoMenu, 'Tag', 'showFrameNumber'), ...
+                'Enable', onOff(showVideo), ...
+                'Checked', onOff(showFrameNumbers));
         end
         
         
@@ -1180,6 +1210,8 @@ classdef TempoController < handle
         
         function handleZoomOut(obj, ~, ~)
             obj.setZoom(obj.zoom / 2);
+            
+            obj.updateTimelineMenuItems();
         end
         
         
@@ -1195,39 +1227,12 @@ classdef TempoController < handle
         end
         
         
-        function handleShowWaveformOnOpen(obj, ~, ~)
-            % Update the menu items.
-            set(findobj(obj.timelineMenu, 'Tag', 'showWaveformOnOpen'), 'Checked', 'on');
-            set(findobj(obj.timelineMenu, 'Tag', 'showSpectrogramOnOpen'), 'Checked', 'off');
-            set(findobj(obj.timelineMenu, 'Tag', 'showBothOnOpen'), 'Checked', 'off');
-            
+        function handleShowWaveformAndOrSpectrogramOnOpen(obj, ~, ~, showWaveform, showSpectrogram)
             % Remember the user's choice.
-            setpref('Tempo', 'ShowWaveforms', true);
-            setpref('Tempo', 'ShowSpectrograms', false);
-        end
-        
-        
-        function handleShowSpectrogramOnOpen(obj, ~, ~)
-            % Update the menu items.
-            set(findobj(obj.timelineMenu, 'Tag', 'showWaveformOnOpen'), 'Checked', 'off');
-            set(findobj(obj.timelineMenu, 'Tag', 'showSpectrogramOnOpen'), 'Checked', 'on');
-            set(findobj(obj.timelineMenu, 'Tag', 'showBothOnOpen'), 'Checked', 'off');
+            setpref('Tempo', 'ShowWaveforms', showWaveform);
+            setpref('Tempo', 'ShowSpectrograms', showSpectrogram);
             
-            % Remember the user's choice.
-            setpref('Tempo', 'ShowWaveforms', false);
-            setpref('Tempo', 'ShowSpectrograms', true);
-        end
-        
-        
-        function handleShowBothOnOpen(obj, ~, ~)
-            % Update the menu items.
-            set(findobj(obj.timelineMenu, 'Tag', 'showWaveformOnOpen'), 'Checked', 'off');
-            set(findobj(obj.timelineMenu, 'Tag', 'showSpectrogramOnOpen'), 'Checked', 'off');
-            set(findobj(obj.timelineMenu, 'Tag', 'showBothOnOpen'), 'Checked', 'on');
-            
-            % Remember the user's choice.
-            setpref('Tempo', 'ShowWaveforms', true);
-            setpref('Tempo', 'ShowSpectrograms', true);
+            obj.updateTimelineMenuItems();
         end
         
         
@@ -1294,6 +1299,28 @@ classdef TempoController < handle
             end
             
             obj.arrangeTimelinePanels();
+        end
+        
+        
+        function updateTimelineMenuItems(obj)
+            showTimeline = onOff(get(obj.timelinesPanel, 'Visible'));
+            
+            % Update the menu items.
+            set(findobj(obj.timelineMenu, 'Tag', 'zoomIn'), ...
+                'Enable', onOff(showTimeline));
+            set(findobj(obj.timelineMenu, 'Tag', 'zoomOut'), ...
+                'Enable', onOff(showTimeline && obj.zoom > 1));
+            set(findobj(obj.timelineMenu, 'Tag', 'zoomToSelection'), ...
+                'Enable', onOff(showTimeline));
+            set(findobj(obj.timelineMenu, 'Tag', 'showWaveformOnOpen'), ...
+                'Enable', onOff(showTimeline), ...
+                'Checked', onOff(getpref('Tempo', 'ShowWaveforms', true) && ~getpref('Tempo', 'ShowSpectrograms', true)));
+            set(findobj(obj.timelineMenu, 'Tag', 'showSpectrogramOnOpen'), ...
+                'Enable', onOff(showTimeline), ...
+                'Checked', onOff(~getpref('Tempo', 'ShowWaveforms', true) && getpref('Tempo', 'ShowSpectrograms', true)));
+            set(findobj(obj.timelineMenu, 'Tag', 'showBothOnOpen'), ...
+                'Enable', onOff(showTimeline), ...
+                'Checked', onOff(getpref('Tempo', 'ShowWaveforms', true) && getpref('Tempo', 'ShowSpectrograms', true)));
         end
         
         
@@ -1947,8 +1974,12 @@ classdef TempoController < handle
             s.timelinePanels = obj.timelinePanels;
             
             s.windowPosition = get(obj.figure, 'Position');
+            
+            % Save the state of the splitter.
+            s.showVideo = onOff(get(obj.videosPanel, 'Visible'));
+            s.showTimeline = onOff(get(obj.timelinesPanel, 'Visible'));
             s.mainSplitter.orientation = obj.splitter.orientation;
-            s.mainSplitter.location = obj.splitter.position;
+            s.mainSplitter.position = obj.splitter.position;
             
             save(filePath, '-struct', 's');
         end
@@ -1969,17 +2000,30 @@ classdef TempoController < handle
             % TODO: check if the window still fits on screen?
             set(obj.figure, 'Position', s.windowPosition);
             
-            if isfield(s, 'mainSplitter')
-                % TODO: set vertical orientation once supported
+            % Restore the state of the splitter.
+            if isfield(s, 'showVideo') && isfield(s, 'showTimeline')
+                % Load newest style settings.
+                obj.splitter.setOrientation(s.mainSplitter.orientation);
+                obj.splitter.position = s.mainSplitter.position;
+                obj.showVideoPanels(s.showVideo);
+                obj.showTimelinePanels(s.showTimeline);
+            elseif isfield(s, 'mainSplitter')
+                % Load settings from an older file.
+                if isfield(s.mainSplitter', 'orientation')
+                    obj.splitter.setOrientation(s.mainSplitter.orientation);
+                end
+                
                 if s.mainSplitter.location < 0.01
                     obj.showVideoPanels(false);
+                    obj.showTimelinePanels(true);
                 elseif s.mainSplitter.location > 0.99
+                    obj.showVideoPanels(true);
                     obj.showTimelinePanels(false);
                 else
                     obj.showVideoPanels(true);
                     obj.showTimelinePanels(true);
-                    obj.splitter.position = s.mainSplitter.location;
                 end
+                obj.splitter.position = s.mainSplitter.location;
             end
             
             havePanels = isfield(s, 'videoPanels');
@@ -2048,6 +2092,10 @@ classdef TempoController < handle
             
             obj.arrangeVideoPanels();
             obj.arrangeTimelinePanels();
+            
+            obj.updateViewMenuItems();
+            obj.updateVideoMenuItems();
+            obj.updateTimelineMenuItems();
             
             set(obj.figure, 'Pointer', 'arrow');
             drawnow

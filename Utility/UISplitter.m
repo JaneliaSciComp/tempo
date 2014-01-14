@@ -42,8 +42,8 @@ classdef UISplitter < handle
             thumbIcon = thumbIcon / 255.0;
             
             obj.divider = uipanel(obj.parent, ...
-                'BorderType', 'none', ...
-                'BorderWidth', 0, ...
+                'BorderType', 'beveledout', ...
+                'BorderWidth', 1, ...
                 'BackgroundColor', obj.color, ...
                 'SelectionHighlight', 'off', ...
                 'ButtonDownFcn', @(hObject, eventdata)handleMouseDown(obj, hObject, eventdata), ... 
@@ -58,7 +58,7 @@ classdef UISplitter < handle
 %                 'Callback', @(hObject, eventdata)handleMouseDown(obj, hObject, eventdata), ... 
 %                 'HitTest', 'on', ...
 %                 'Enable', 'on');
-        
+            
             % Add listeners to the two panes so we can see when they are made visible/invisible.
             addlistener(paneOne, 'Visible', 'PostSet', @(source, event)handlePaneVisibilityChanged(obj, source, event));
             addlistener(paneTwo, 'Visible', 'PostSet', @(source, event)handlePaneVisibilityChanged(obj, source, event));
@@ -66,8 +66,8 @@ classdef UISplitter < handle
         
         
         function handlePaneVisibilityChanged(obj, ~, ~)
-                obj.arrangePanes();
-            end
+            obj.arrangePanes();
+        end
         
         
         function resize(obj)
@@ -125,6 +125,15 @@ classdef UISplitter < handle
             % Restore the figure's mouse motion and mouse up callbacks.
             set(gcf, 'WindowButtonMotionFcn', obj.previousWindowMouseMotionCallback);
             set(gcf, 'WindowButtonUpFcn', obj.previousWindowMouseUpCallback);
+        end
+        
+        
+        function set.position(obj, position)
+            if obj.position ~= position
+                obj.position = position;
+                
+                obj.arrangePanes();
+            end
         end
         
         
