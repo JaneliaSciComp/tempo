@@ -278,24 +278,21 @@ classdef TempoController < handle
                                   'Enable', 'off');
             uimenu(obj.videoMenu, 'Label', 'Arrange Videos Left to Right', ...
                                   'Callback', '', ...
-                                  'Accelerator', '', ... 
                                   'Separator', 'on', ...
                                   'Enable', 'off');
             uimenu(obj.videoMenu, 'Label', 'Arrange Videos Top to Bottom', ...
                                   'Callback', '', ...
-                                  'Accelerator', '', ...
                                   'Checked', 'on', ...
                                   'Enable', 'off');
             uimenu(obj.videoMenu, 'Label', 'Place Videos Left of the Timeline', ...
-                                  'Callback', '', ...
-                                  'Accelerator', '', ... 
+                                  'Callback', @(hObject, eventdata)handlePlaceVideoToTheLeft(obj, hObject, eventdata), ...
                                   'Separator', 'on', ...
-                                  'Checked', 'on', ...
-                                  'Enable', 'off');
+                                  'Checked', onOff(strcmp(getpref('Tempo', 'VideoPlacement', 'left'), 'left')), ...
+                                  'Tag', 'placeVideoToTheLeft');
             uimenu(obj.videoMenu, 'Label', 'Place Videos Above the Timeline', ...
-                                  'Callback', '', ...
-                                  'Accelerator', '', ...
-                                  'Enable', 'off');
+                                  'Callback', @(hObject, eventdata)handlePlaceVideoAbove(obj, hObject, eventdata), ...
+                                  'Checked', onOff(strcmp(getpref('Tempo', 'VideoPlacement', 'left'), 'above')), ...
+                                  'Tag', 'placeVideoAbove');
             uimenu(obj.videoMenu, 'Label', 'Show Current Frame Number', ...
                                   'Callback', @(hObject, eventdata)handleShowFrameNumber(obj, hObject, eventdata), ...
                                   'Accelerator', '', ... 
@@ -409,6 +406,7 @@ classdef TempoController < handle
                 'Tag', 'exportSelection', ...
                 'CData', iconData, ...
                 'TooltipString', 'Export the selected time window to a movie',...
+                'Separator', 'on', ...
                 'ClickedCallback', @(hObject, eventdata)handleExportSelection(obj, hObject, eventdata));
             
             iconData = double(imread(fullfile(iconRoot, 'screenshot.png'), 'BackgroundColor', defaultBackground)) / 255;
@@ -490,14 +488,14 @@ classdef TempoController < handle
                 end
                 
                 % Try to replace the playback tools with Java buttons that can display the play rate, etc.
-                obj.replaceToolbarTool(8, 'playSlowerTool', 'PlaySlower');
-                obj.replaceToolbarTool(9, 'playBackwardsTool', 'PlayBackwards');
-                obj.replaceToolbarTool(10, 'pauseTool');
+                obj.replaceToolbarTool(9, 'playSlowerTool', 'PlaySlower');
+                obj.replaceToolbarTool(10, 'playBackwardsTool', 'PlayBackwards');
+                obj.replaceToolbarTool(11, 'pauseTool');
                 if isjava(obj.pauseTool)
                     obj.pauseTool.setText('1x');
                 end
-                obj.replaceToolbarTool(11, 'playForwardsTool', 'PlayForwards');
-                obj.replaceToolbarTool(12, 'playFasterTool', 'PlayFaster');
+                obj.replaceToolbarTool(12, 'playForwardsTool', 'PlayForwards');
+                obj.replaceToolbarTool(13, 'playFasterTool', 'PlayFaster');
 
                 try
                     obj.jToolbar(1).repaint;
@@ -1092,6 +1090,30 @@ classdef TempoController < handle
         
         
         %% Video menu callbacks
+        
+        
+        function handlePlaceVideoToTheLeft(obj, ~, ~)
+            % Update the menu items.
+            set(findobj(obj.videoMenu, 'Tag', 'placeVideoToTheLeft'), 'Checked', 'on');
+            set(findobj(obj.videoMenu, 'Tag', 'placeVideoAbove'), 'Checked', 'off');
+            
+            obj.splitter.setOrientation('horizontal');
+            
+            % Remember the user's preference.
+            setpref('Tempo', 'VideoPlacement', 'left');
+        end
+        
+        
+        function handlePlaceVideoAbove(obj, ~, ~)
+            % Update the menu items.
+            set(findobj(obj.videoMenu, 'Tag', 'placeVideoToTheLeft'), 'Checked', 'off');
+            set(findobj(obj.videoMenu, 'Tag', 'placeVideoAbove'), 'Checked', 'on');
+            
+            obj.splitter.setOrientation('vertical');
+            
+            % Remember the user's preference.
+            setpref('Tempo', 'VideoPlacement', 'above');
+        end
         
         
         function handleShowFrameNumber(obj, ~, ~)
