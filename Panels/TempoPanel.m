@@ -168,7 +168,7 @@ classdef TempoPanel < handle
                 
                 if obj.hasTitleBarControls()
                     % Position the title panel.
-                    titlePos = [0, panelPos(4) - 16, panelPos(3), 16];
+                    titlePos = [0, panelPos(4) - 16, panelPos(3) + 1, 16];
                     set(obj.titlePanel, 'Position', titlePos);
                     
                     % Resize the text box.
