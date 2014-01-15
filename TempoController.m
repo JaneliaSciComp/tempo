@@ -231,12 +231,10 @@ classdef TempoController < handle
             uimenu(obj.editMenu, 'Label', 'Undo', ...
                                  'Callback', @(hObject, eventdata)handleUndo(obj, hObject, eventdata), ...
                                  'Accelerator', 'z', ...
-                                 'Enable', 'off', ...
                                  'Tag', 'undo');
             uimenu(obj.editMenu, 'Label', 'Redo', ...
                                  'Callback', @(hObject, eventdata)handleRedo(obj, hObject, eventdata), ...
                                  'Accelerator', 'y', ...
-                                 'Enable', 'off', ...
                                  'Tag', 'redo');
             uimenu(obj.editMenu, 'Label', 'Cut', ...
                                  'Callback', '', ...
@@ -262,10 +260,11 @@ classdef TempoController < handle
                                                 'Callback', '', ... 
                                                 'Separator', 'on');
             for detectorIdx = 1:length(obj.detectorTypeNames)
-                uimenu(detectorMenu, 'Label', obj.detectorTypeNames{detectorIdx}, ...
+                uimenu(detectorMenu, 'Label', [obj.detectorTypeNames{detectorIdx} '...'], ...
                                      'Callback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
                                      'UserData', detectorIdx);
             end
+            obj.updateEditMenuItems();
             
             obj.viewMenu = uimenu(obj.figure, 'Label', 'View');
             uimenu(obj.viewMenu, 'Label', 'Show Toolbar', ...
@@ -419,15 +418,13 @@ classdef TempoController < handle
         
         
         function createToolbar(obj)
-            % Open | Zoom in Zoom out | Play Pause | Find features | Save features Save screenshot | Show/hide waveforms Show/hide features Toggle time format
             obj.toolbar = uitoolbar(obj.figure);
             
             [tempoRoot, ~, ~] = fileparts(mfilename('fullpath'));
             iconRoot = fullfile(tempoRoot, 'Icons');
             defaultBackground = get(0, 'defaultUicontrolBackgroundColor');
             
-            % Open, save, export
-            
+            % Open and save
             iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'file_open.png'), 'BackgroundColor', defaultBackground)) / 65535;
             uipushtool(obj.toolbar, ...
                 'Tag', 'openFile', ...
@@ -442,6 +439,7 @@ classdef TempoController < handle
                 'TooltipString', 'Save the workspace',...
                 'ClickedCallback', @(hObject, eventdata)handleSaveWorkspace(obj, hObject, eventdata));
             
+            % Export and screenshot
             iconData = double(imread(fullfile(iconRoot, 'ExportToMovie.png'), 'BackgroundColor', defaultBackground)) / 255;
             uipushtool(obj.toolbar, ...
                 'Tag', 'exportSelection', ...
@@ -449,7 +447,6 @@ classdef TempoController < handle
                 'TooltipString', 'Export the selected time window to a movie',...
                 'Separator', 'on', ...
                 'ClickedCallback', @(hObject, eventdata)handleExportSelection(obj, hObject, eventdata));
-            
             iconData = double(imread(fullfile(iconRoot, 'screenshot.png'), 'BackgroundColor', defaultBackground)) / 255;
             uipushtool(obj.toolbar, ...
                 'Tag', 'saveScreenshot', ...
@@ -457,6 +454,7 @@ classdef TempoController < handle
                 'TooltipString', 'Save a screenshot',...
                 'ClickedCallback', @(hObject, eventdata)handleSaveScreenshot(obj, hObject, eventdata));
             
+            % Detect features
             iconData = double(imread(fullfile(iconRoot, 'detect.png'), 'BackgroundColor', defaultBackground)) / 255;
             obj.detectPopUpTool = uisplittool('Parent', obj.toolbar, ...
                 'Tag', 'detectFeatures', ...
@@ -466,7 +464,6 @@ classdef TempoController < handle
                 'ClickedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata));
             
             % Playback
-            
             forwardIcon = double(imread(fullfile(iconRoot, 'play.png'), 'BackgroundColor', defaultBackground)) / 255;
             pauseIcon = double(imread(fullfile(iconRoot, 'pause.png'), 'BackgroundColor', defaultBackground)) / 255;
             backwardsIcon = flipdim(forwardIcon, 2);
@@ -494,7 +491,6 @@ classdef TempoController < handle
                 'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'faster'));
             
             % Zooming
-            
             iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'tool_zoom_in.png'), 'BackgroundColor', defaultBackground)) / 65535;
             uipushtool(obj.toolbar, ...
                 'Tag', 'zoomIn', ...
@@ -523,7 +519,7 @@ classdef TempoController < handle
                 jMenu.removeAll;
                 jMenu.add('Detect Features:').setEnabled(false);
                 for actionIdx = 1:length(obj.detectorTypeNames)
-                    jActionItem = jMenu.add(obj.detectorTypeNames(actionIdx));
+                    jActionItem = jMenu.add([obj.detectorTypeNames{actionIdx} '...']);
                     set(jActionItem, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
                         'UserData', actionIdx);
                 end
@@ -1121,6 +1117,26 @@ classdef TempoController < handle
             if ~isempty(features)
                 % Add the found features to the detector's list of features.
                 detector.addFeaturesInTimeRange(features, timeRange);
+            end
+        end
+        
+        
+        function updateEditMenuItems(obj)
+            if obj.undoIndex > 0
+                set(obj.menuItem(obj.editMenu, 'undo'), ...
+                    'Label', ['Undo ' obj.undoStack{obj.undoIndex}.name], ...
+                    'Enable', 'on');
+            else
+                % Nothing left to undo.
+                set(obj.menuItem(obj.editMenu, 'undo'), 'Label', 'Undo', 'Enable', 'off');
+            end
+            if obj.undoIndex < length(obj.undoStack)
+                set(obj.menuItem(obj.editMenu, 'redo'), ....
+                    'Label', ['Redo ' obj.undoStack{obj.undoIndex + 1}.name], ...
+                    'Enable', 'on');
+            else
+                % Nothing left to redo.
+                set(obj.menuItem(obj.editMenu, 'redo'), 'Label', 'Redo', 'Enable', 'off');
             end
         end
         
@@ -2196,14 +2212,13 @@ classdef TempoController < handle
             action.selectedRange = obj.selectedRange;
             
             % Add the action to the stack.
+            % Any redoable actions on the stack are cleared.
             % TODO: should there be a maximum size to the stack?
             obj.undoStack(obj.undoIndex + 1:end) = [];
             obj.undoIndex = obj.undoIndex + 1;
             obj.undoStack{obj.undoIndex} = action;
             
-            % Update the menu items.
-            set(obj.menuItem(obj.editMenu, 'undo'), 'Label', ['Undo ' actionName], 'Enable', 'on');
-            set(obj.menuItem(obj.editMenu, 'redo'), 'Label', 'Redo', 'Enable', 'off');
+            obj.updateEditMenuItems();
         end
         
         
@@ -2219,22 +2234,11 @@ classdef TempoController < handle
                 % Move one place back in the stack.
                 obj.undoIndex = obj.undoIndex - 1;
                 
-                % Update the menu items.
-                if obj.undoIndex > 0
-                    set(obj.menuItem(obj.editMenu, 'undo'), ...
-                        'Label', ['Undo ' obj.undoStack{obj.undoIndex}.name], ...
-                        'Enable', 'on');
-                else
-                    % Nothing left to undo.
-                    set(obj.menuItem(obj.editMenu, 'undo'), 'Label', 'Undo', 'Enable', 'off');
-                end
-                set(obj.menuItem(obj.editMenu, 'redo'), ....
-                    'Label', ['Redo ' obj.undoStack{obj.undoIndex + 1}.name], ...
-                    'Enable', 'on');
-                
                 % Reset the display and selection to where it was when the action was performed.
                 obj.displayRange = action.displayRange;
                 obj.selectedRange = action.selectedRange;
+                
+                obj.updateEditMenuItems();
             end
         end
         
@@ -2251,33 +2255,24 @@ classdef TempoController < handle
                 % Move one place forward in the stack.
                 obj.undoIndex = obj.undoIndex + 1;
                 
-                % Update the menu items.
-                set(obj.menuItem(obj.editMenu, 'undo'), ...
-                    'Label', ['Undo ' obj.undoStack{obj.undoIndex}.name], ...
-                    'Enable', 'on');
-                if obj.undoIndex < length(obj.undoStack)
-                    set(obj.menuItem(obj.editMenu, 'redo'), ....
-                        'Label', ['Redo ' obj.undoStack{obj.undoIndex + 1}.name], ...
-                        'Enable', 'on');
-                else
-                    % Nothing left to redo.
-                    set(obj.menuItem(obj.editMenu, 'redo'), 'Label', 'Redo', 'Enable', 'off');
-                end
-                
                 % Reset the display and selection to where it was when the action was performed.
                 obj.displayRange = action.displayRange;
                 obj.selectedRange = action.selectedRange;
-            end
+                
+                obj.updateEditMenuItems();
+           end
         end
         
         
         function clearUndoableActions(obj)
             obj.undoStack = {};
             obj.undoIndex = 0;
+            
+            obj.updateEditMenuItems();
         end
         
         
-        %%
+        %% Miscellaneous functions
         
         
         function handleClose(obj, ~, ~)
