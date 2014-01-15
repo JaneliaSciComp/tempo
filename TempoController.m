@@ -1506,6 +1506,19 @@ classdef TempoController < handle
         %% Window menu callbacks
         
         
+        %% Help menu callbacks
+        
+        
+        function handleShowHelp(obj, ~, ~, varargin)  %#ok<INUSL>
+            TempoHelp().openPage(varargin{:});
+        end
+        
+        
+        function handleVisitWebSite(obj, ~, ~) %#ok<INUSD>
+            web('http://github.com/JaneliaSciComp/tempo', '-browser');
+        end
+        
+        
         %% Toolbar callbacks
         
         
