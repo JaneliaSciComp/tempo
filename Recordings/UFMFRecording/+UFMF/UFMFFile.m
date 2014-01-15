@@ -20,6 +20,10 @@ classdef UFMFFile < handle
         showBoxes = false       % TODO: should be a parameter to getFrame?
     end
     
+    properties (Dependent)
+        duration
+    end
+    
     properties (Access=private)
         fileID
         isReadOnly
@@ -80,7 +84,7 @@ classdef UFMFFile < handle
             % >> ufmfFile.sampleFrame(sample);                  % Optionally add a sample for the background image.
             % >> ufmfFile.addFrame(frame1);                     % Add a frame to the movie.
             % >> ufmfFile.addFrame(frame2);                     % Add another one.
-            % >> ufmfFile.close();                              % Complete writing the file.
+            % >> ufmfFile.close();                              % Finish writing the file.
             
             if nargin < 1
                 % This can happen when an empty matrix of UFMFFile's gets auto-populated by MATLAB.
@@ -139,6 +143,21 @@ classdef UFMFFile < handle
         end
         
         
+        function d = get.duration(obj)
+            if isempty(obj.frameRate)
+                % Get the time stamp of the last frame.
+                if obj.isWritable || ~isempty(obj.frameIndex)
+                    d = obj.frameIndex.frame.timestamp(end);
+                else
+                    d = obj.frames(end).timeStamp;
+                end
+            else
+                % Use the frame count and rate.
+                d = obj.frameCount / obj.frameRate;
+            end
+        end
+        
+        
         function [im, frameNum] = getFrame(obj, frameNum)
             % Read in a frame from the UFMF file by specifying a frame number or just getting the next one.
             % If the last frame has been read or there is no frame at the given number then an empty matrix will be returned.
@@ -152,6 +171,9 @@ classdef UFMFFile < handle
             
             if isempty(obj.path)
                 error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to read from.');
+            end
+            if ~obj.isReadOnly && ~obj.isWritable
+                error('UFMF:FileIsClosed', 'This UFMF file has been closed.');
             end
             if ~ismember(lower(obj.pixelCoding), {'mono8','rgb8'})
                 error('UFMF:UnsupportedColorspace', 'Colorspace ''%s'' is not yet supported.  Only MONO8 and RGB8 allowed.', obj.pixelCoding);
@@ -179,6 +201,9 @@ classdef UFMFFile < handle
             
             if isempty(obj.path)
                 error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to read from.');
+            end
+            if ~obj.isReadOnly && ~obj.isWritable
+                error('UFMF:FileIsClosed', 'This UFMF file has been closed.');
             end
             if ~ismember(lower(obj.pixelCoding), {'mono8','rgb8'})
                 error('UFMF:UnsupportedColorspace', 'Colorspace ''%s'' is not yet supported.  Only MONO8 and RGB8 allowed.', obj.pixelCoding);
@@ -333,6 +358,9 @@ classdef UFMFFile < handle
             
             if isempty(obj.path)
                 error('UFMF:NoUFMFFile', 'This UFMFFile instance has no UFMF file to write to.');
+            end
+            if ~obj.isReadOnly && ~obj.isWritable
+                error('UFMF:FileIsClosed', 'This UFMF file has been closed.');
             end
             % TODO: are there times when writing when this will fail or return bad data?
             
@@ -709,7 +737,7 @@ classdef UFMFFile < handle
                 % TODO: If imlincomb here and imabsdiff just below could be replace with standard MATLAB calls then
                 %       the image toolbox would not be needed to create fixed size UFMFs.
                 obj.bgModel.meanImage = imlincomb((n-1)/n, obj.bgModel.meanImage, ...
-                                                      1/n, frameImage);
+                                                      1/n, uint8(frameImage));
             end
             
             if obj.printStats && frameNum >= obj.bgInitialMeans
@@ -720,7 +748,7 @@ classdef UFMFFile < handle
         
         function [boundingBoxes, diffImage] = subtractBackground(obj, frameImage)
             % Perform background substraction.
-            diffImage = imabsdiff(frameImage, obj.bgModel.meanImage);
+            diffImage = imabsdiff(uint8(frameImage), obj.bgModel.meanImage);
             
             % Convert to grayscale if needed.
             ncolors = size(diffImage, 3);

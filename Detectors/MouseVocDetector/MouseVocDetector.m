@@ -50,7 +50,6 @@ classdef MouseVocDetector < FeatureDetector
         
         function obj = MouseVocDetector(recording)
             obj = obj@FeatureDetector(recording);
-            obj.name = 'Mouse Vocalization Detector';
         end
         
         

@@ -18,7 +18,9 @@ classdef VideoRecording < Recording
                     canLoad = true;
                 end
             catch ME
-                if ~strcmp(ME.identifier, 'MATLAB:audiovideo:VideoReader:InitializationFailed')
+                if ~strcmp(ME.identifier, 'MATLAB:audiovideo:VideoReader:InitializationFailed') && ...
+                   ~strcmp(ME.identifier, 'MATLAB:audiovideo:VideoReader:NoVideo')
+                    disp('Tempo could not check if a file is video:');
                     disp(getReport(ME));
                 end
             end

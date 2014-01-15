@@ -25,7 +25,6 @@ classdef PulseTrainDetector < FeatureDetector
         
         function obj = PulseTrainDetector(controller)
             obj = obj@FeatureDetector(controller);
-            obj.name = 'Pulse Train Detector';
         end
         
         

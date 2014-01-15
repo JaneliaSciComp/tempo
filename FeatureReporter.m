@@ -184,7 +184,7 @@ classdef FeatureReporter < handle
                     
                     if haveFreqRanges
                         s.lowFreqs = lowFreqs;
-                        s.highFreqs = highFreqs;
+                        s.highFreqs = highFreqs; %#ok<STRNU>
                     end
                     
                     save(fullfile(pathName, fileName), '-struct', 's');

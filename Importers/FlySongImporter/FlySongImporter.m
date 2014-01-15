@@ -40,7 +40,6 @@ classdef FlySongImporter < FeatureImporter
         
         function obj = FlySongImporter(controller, featuresFilePath)
             obj = obj@FeatureImporter(controller, featuresFilePath);
-            obj.name = 'Fly Song Importer';
         end
         
         

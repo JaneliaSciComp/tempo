@@ -36,7 +36,6 @@ classdef VCodeImporter < FeatureImporter
         
         function obj = VCodeImporter(controller, featuresFilePath)
             obj = obj@FeatureImporter(controller, featuresFilePath);
-            obj.name = 'VCode Importer';
         end
         
         

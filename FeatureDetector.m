@@ -29,6 +29,9 @@ classdef FeatureDetector < FeatureReporter
         function obj = FeatureDetector(controller, varargin)
             obj = obj@FeatureReporter(controller, varargin{:});
             
+            % Default the name of the reporter to the reporter type.
+            obj.name = obj.typeName();
+            
             obj.detectedTimeRanges = [];
         end
         

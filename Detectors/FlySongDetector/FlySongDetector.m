@@ -59,7 +59,6 @@ classdef FlySongDetector < FeatureDetector
         
         function obj = FlySongDetector(controller)
             obj = obj@FeatureDetector(controller);
-            obj.name = 'Fly Song Detector';
         end
         
         

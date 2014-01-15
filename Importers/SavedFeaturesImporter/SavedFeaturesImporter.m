@@ -30,7 +30,6 @@ classdef SavedFeaturesImporter < FeatureImporter
         
         function obj = SavedFeaturesImporter(controller, featuresFilePath)
             obj = obj@FeatureImporter(controller, featuresFilePath);
-            obj.name = 'Saved Features Importer';
         end
         
         
