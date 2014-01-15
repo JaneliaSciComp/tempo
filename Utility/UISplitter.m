@@ -18,6 +18,8 @@ classdef UISplitter < handle
         
         previousWindowMouseMotionCallback
         previousWindowMouseUpCallback
+        
+        thumbAxes
     end
     
     methods
@@ -30,13 +32,6 @@ classdef UISplitter < handle
                 obj.orientation = orientation;
             end
             
-            % Create a little thumb icon to put in the middle of the divider.
-            thumbIcon = zeros(6, 6, 3);
-            thumbIcon(:,:,1) = [237 237 115 115 237 237; 237 64 128 144 160 237; 115 128 237 237 178 221; 115 144 237 237 221 233; 237 160 178 221 255 237; 237 237 221 233 237 237];
-            thumbIcon(:,:,2) = [237 237 115 115 237 237; 237 64 128 144 160 237; 115 128 237 237 178 221; 115 144 237 237 221 233; 237 160 178 221 255 237; 237 237 221 233 237 237];
-            thumbIcon(:,:,3) = [237 237 115 115 237 237; 237 64 128 144 160 237; 115 128 237 237 178 221; 115 144 237 237 221 233; 237 160 178 221 255 237; 237 237 221 233 237 237];
-            thumbIcon = thumbIcon / 255.0;
-            
             obj.divider = uipanel(obj.parent, ...
                 'BorderType', 'beveledout', ...
                 'BorderWidth', 1, ...
@@ -45,15 +40,21 @@ classdef UISplitter < handle
                 'ButtonDownFcn', @(hObject, eventdata)handleMouseDown(obj, hObject, eventdata), ... 
                 'Units', 'pixels', ...
                 'Position', [0 0 100 6]);
-%             uicontrol(...
-%                 'Parent', obj.divider, ...
-%                 'Style', 'pushbutton', ...
-%                 'CData', thumbIcon, ...
-%                 'Units', 'normalized', ...
-%                 'Position', [0.0 0.0 1.0 1.0], ...
-%                 'Callback', @(hObject, eventdata)handleMouseDown(obj, hObject, eventdata), ... 
-%                 'HitTest', 'on', ...
-%                 'Enable', 'on');
+            
+            % Create a little thumb in the middle of the divider.
+            obj.thumbAxes = axes(...
+                'Parent', obj.divider, ...
+                'Color', 'none', ...
+                'HitTest', 'off', ...
+                'Units', 'pixels', ...
+                'Position', [0 100 6 6]);
+            thumbIcon = zeros(6, 6, 3);
+            thumbIcon(:,:,1) = [237 237 115 115 237 237; 237 64 128 144 160 237; 115 128 237 237 178 221; 115 144 237 237 221 233; 237 160 178 221 255 237; 237 237 221 233 237 237] / 255.0;
+            thumbIcon(:,:,2) = [237 237 115 115 237 237; 237 64 128 144 160 237; 115 128 237 237 178 221; 115 144 237 237 221 233; 237 160 178 221 255 237; 237 237 221 233 237 237] / 255.0;
+            thumbIcon(:,:,3) = [237 237 115 115 237 237; 237 64 128 144 160 237; 115 128 237 237 178 221; 115 144 237 237 221 233; 237 160 178 221 255 237; 237 237 221 233 237 237] / 255.0;
+            image(thumbIcon, 'HitTest', 'off');
+            axis off;
+            axis image;
             
             % Add listeners to the two panes so we can see when they are made visible/invisible.
             addlistener(paneOne, 'Visible', 'PostSet', @(source, event)handlePaneVisibilityChanged(obj, source, event));
@@ -185,6 +186,9 @@ classdef UISplitter < handle
                 % Arrage the panes to the left and right of each other.
                 set(obj.divider, 'Visible', 'on');
                 
+                % Position the thumb at the center of the divider.
+                set(obj.thumbAxes, 'Position', [0, parentPos(4) / 2 - 3, 6, 6]);
+                
                 if obj.position > 1
                     % Pane one should be a fixed number of pixels wide.
                     pixelPosition = obj.position;
@@ -213,6 +217,9 @@ classdef UISplitter < handle
             else
                 % Arrage the panes above and below each other.
                 set(obj.divider, 'Visible', 'on');
+                
+                % Position the thumb at the center of the divider.
+                set(obj.thumbAxes, 'Position', [parentPos(3) / 2 - 3, 1, 6, 6]);
                 
                 if obj.position > 1
                     % Pane one should be a fixed number of pixels wide.
