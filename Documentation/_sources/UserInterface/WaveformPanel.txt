@@ -1,8 +1,8 @@
-======
-Videos
-======
+========
+Waveform
+========
 
-The video panel...
+The waveform panel...
 
 ------------------
 Keyboard Shortcuts
