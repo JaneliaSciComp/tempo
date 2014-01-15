@@ -350,18 +350,20 @@ classdef TempoController < handle
             obj.playbackMenu = uimenu(obj.figure, 'Label', 'Playback');
             uimenu(obj.playbackMenu, 'Label', 'Play', ...
                                      'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'forwards'), ...
-                                     'Accelerator', '');
+                                     'Accelerator', '', ...
+                                     'Tag', 'play');
             uimenu(obj.playbackMenu, 'Label', 'Play Backwards', ...
                                      'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'backwards'), ...
-                                     'Accelerator', '');
+                                     'Accelerator', '', ...
+                                     'Tag', 'playBackwards');
             uimenu(obj.playbackMenu, 'Label', 'Pause', ...
                                      'Callback', @(hObject, eventdata)handlePause(obj, hObject, eventdata), ...
-                                     'Accelerator', '');
+                                     'Accelerator', '', ...
+                                     'Tag', 'pause');
             uimenu(obj.playbackMenu, 'Label', 'Play at Regular Speed', ...
                                      'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, '1x'), ...
                                      'Accelerator', '1', ...
                                      'Separator', 'on', ...
-                                     'Checked', 'on', ...
                                      'Tag', 'regularSpeed');
             uimenu(obj.playbackMenu, 'Label', 'Play at Double Speed', ...
                                      'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, '2x'), ...
@@ -374,10 +376,13 @@ classdef TempoController < handle
             uimenu(obj.playbackMenu, 'Label', 'Increase Speed', ...
                                      'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'faster'), ...
                                      'Accelerator', '', ...
-                                     'Separator', 'on');
+                                     'Separator', 'on', ...
+                                     'Tag', 'increaseSpeed');
             uimenu(obj.playbackMenu, 'Label', 'Decrease Speed', ...
                                      'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'slower'), ...
-                                     'Accelerator', '');
+                                     'Accelerator', '', ...
+                                     'Tag', 'decreaseSpeed');
+            obj.updatePlaybackMenuItems();
             
             obj.windowMenu = uimenu(obj.figure, 'Label', 'Window');
             uimenu(obj.windowMenu, 'Label', 'Arrange Windows Top to Bottom', ...
@@ -1367,28 +1372,8 @@ classdef TempoController < handle
             end
             obj.playRate = newRate;
             
-            % Update the checked status of the play rate menu items.
-            set(obj.menuItem(obj.playbackMenu, 'regularSpeed'), 'Checked', onOff(abs(obj.playRate) == 1.0));
-            set(obj.menuItem(obj.playbackMenu, 'doubleSpeed'), 'Checked', onOff(abs(obj.playRate) == 2.0));
-            set(obj.menuItem(obj.playbackMenu, 'halfSpeed'), 'Checked', onOff(abs(obj.playRate) == 0.5));
-            
-            % Show the play rate in the toolbar icon
-            if isjava(obj.pauseTool)
-                if obj.playRate < 1
-                    obj.pauseTool.setText(sprintf('1/%dx', 1.0 / obj.playRate));
-                else
-                    obj.pauseTool.setText(sprintf('%dx', obj.playRate));
-                end
-            end
-            
             if startPlaying && (~obj.isPlaying || newRate ~= obj.playRate)
                 % TODO: if already playing then things need to be done differently...
-                
-                oldWarn = warning('off', 'MATLAB:hg:JavaSetHGPropertyParamValue');
-                set(obj.playBackwardsTool, 'Enable', onOff(obj.playRate > 0));
-                set(obj.pauseTool, 'Enable', 'on');
-                set(obj.playForwardsTool, 'Enable', onOff(obj.playRate < 0));
-                warning(oldWarn);
                 
                 % Determine what range of time to play.
                 if obj.selectedRange(1) ~= obj.selectedRange(2)
@@ -1437,6 +1422,8 @@ classdef TempoController < handle
                 obj.playStartTime = now;
                 start(obj.playTimer);
             end
+            
+            obj.updatePlaybackMenuItems();
         end
         
         
@@ -1464,12 +1451,6 @@ classdef TempoController < handle
         
         function handlePause(obj, hObject, ~)
             if obj.isPlaying
-                oldWarn = warning('off', 'MATLAB:hg:JavaSetHGPropertyParamValue');
-                set(obj.playForwardsTool, 'Enable', 'on');
-                set(obj.pauseTool, 'Enable', 'off');
-                set(obj.playBackwardsTool, 'Enable', 'on');
-                warning(oldWarn);
-                
                 % Stop all of the audio players.
                 for i = 1:length(obj.recordings)
                     recording = obj.recordings{i};
@@ -1498,6 +1479,48 @@ classdef TempoController < handle
                 else
                     obj.currentTime = obj.currentTime;
                     obj.centerDisplayAtTime(mean(obj.displayRange(1:2))); % trigger a refresh of timeline-based panels
+                end
+                
+                obj.updatePlaybackMenuItems();
+            end
+        end
+        
+        
+        function updatePlaybackMenuItems(obj)
+            set(findobj(obj.playbackMenu, 'Tag', 'play'), ...
+                'Enable', onOff(~obj.isPlaying));
+            set(findobj(obj.playbackMenu, 'Tag', 'playBackwards'), ...
+                'Enable', onOff(~obj.isPlaying));
+            set(findobj(obj.playbackMenu, 'Tag', 'pause'), ...
+                'Enable', onOff(obj.isPlaying));
+            set(findobj(obj.playbackMenu, 'Tag', 'regularSpeed'), ...
+                'Enable', onOff(~obj.isPlaying), ...
+                'Checked', onOff(obj.playRate == 1.0));
+            set(findobj(obj.playbackMenu, 'Tag', 'doubleSpeed'), ...
+                'Enable', onOff(~obj.isPlaying), ...
+                'Checked', onOff(obj.playRate == 2.0));
+            set(findobj(obj.playbackMenu, 'Tag', 'halfSpeed'), ...
+                'Enable', onOff(~obj.isPlaying), ...
+                'Checked', onOff(obj.playRate == 0.5));
+            set(findobj(obj.playbackMenu, 'Tag', 'increaseSpeed'), ...
+                'Enable', onOff(~obj.isPlaying));
+            set(findobj(obj.playbackMenu, 'Tag', 'decreaseSpeed'), ...
+                'Enable', onOff(~obj.isPlaying));
+            
+            oldWarn = warning('off', 'MATLAB:hg:JavaSetHGPropertyParamValue');
+            set(obj.playSlowerTool, 'Enable', onOff(~obj.isPlaying));
+            set(obj.playForwardsTool, 'Enable', onOff(~obj.isPlaying));
+            set(obj.pauseTool, 'Enable', onOff(obj.isPlaying));
+            set(obj.playBackwardsTool, 'Enable', onOff(~obj.isPlaying));
+            set(obj.playFasterTool, 'Enable', onOff(~obj.isPlaying));
+            warning(oldWarn);
+            
+            % Show the play rate in the toolbar icon
+            if isjava(obj.pauseTool)
+                if obj.playRate < 1
+                    obj.pauseTool.setText(sprintf('1/%dx', 1.0 / obj.playRate));
+                else
+                    obj.pauseTool.setText(sprintf('%dx', obj.playRate));
                 end
             end
         end
