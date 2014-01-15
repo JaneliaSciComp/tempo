@@ -19,6 +19,7 @@ classdef TempoPanel < handle
         actionButton
         actionMenu
         titleText
+        helpButton
         
         axes
         
@@ -118,6 +119,15 @@ classdef TempoPanel < handle
                     'BackgroundColor', obj.titleColor, ...
                     'HitTest', 'off', ...
                     'Tag', 'titleText');
+                
+                obj.helpButton = uicontrol(...
+                    'Parent', obj.titlePanel, ...
+                    'Style', 'pushbutton', ...
+                    'CData', double(imread(fullfile(iconRoot, 'PanelHelp.png'))) / 255.0, ...
+                    'Units', 'pixels', ...
+                    'Position', [152 2 12 12], ...
+                    'Callback', @(hObject,eventdata)handleShowHelp(obj, hObject, eventdata), ...
+                    'Tag', 'helpButton');
             end
             
             obj.axes = axes('Parent', obj.panel, ...
@@ -172,7 +182,12 @@ classdef TempoPanel < handle
                     set(obj.titlePanel, 'Position', titlePos);
                     
                     % Resize the text box.
-                    set(obj.titleText, 'Position', [52, 3, titlePos(3) - 52 - 5,  12]);
+                    set(obj.titleText, 'Position', [52, 1, titlePos(3) - 1 - 12 - 5 - 52,  14]);
+                    
+                    % Resize the help button.
+                    set(obj.helpButton, 'Position', [titlePos(3) - 1 - 12, 2, 12,  12]);
+                    
+                    % Don't let the axes overlap the title bar.
                     axesPos = [0, 0, panelPos(3), panelPos(4) - 16];
                 else
                     axesPos = [0, 0, panelPos(3), panelPos(4)];
@@ -220,6 +235,11 @@ classdef TempoPanel < handle
             set(obj.actionMenu, ...
                 'Position', mousePos, ...
                 'Visible', 'on');
+        end
+        
+        
+        function handleShowHelp(obj, ~, ~)
+            TempoHelp().openPage('UserInterface', class(obj));
         end
         
         
