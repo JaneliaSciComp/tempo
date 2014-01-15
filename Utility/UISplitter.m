@@ -27,10 +27,6 @@ classdef UISplitter < handle
             obj.paneOne = paneOne;
             obj.paneTwo = paneTwo;
             if nargin > 3
-                % Don't call setOrientation because it will arrange the panes prematurely and trigger their resize methods.
-                if ~ismember(orientation, {'horizontal', 'vertical'})
-                    error('UISplitter:InvalidOrientation', 'A UISplitter''s orientation must be ''horizontal'' or ''vertical''.');
-                end
                 obj.orientation = orientation;
             end
             
@@ -86,7 +82,7 @@ classdef UISplitter < handle
         
         
         function handleMouseMotion(obj, ~, ~)
-            % Determine the new divider position based on the mouse's position with the parent.
+            % Determine the new divider position based on the mouse's position within the parent.
             prevUnits = get(obj.parent, 'Units');
             set(obj.parent, 'Units', 'pixels');
             clickedPoint = get(obj.parent, 'CurrentPoint');
@@ -115,9 +111,9 @@ classdef UISplitter < handle
             halfDividerWidth = 4.0 / parentSize;
             newPosition = max([newPosition,       pageOneMin + halfDividerWidth]);
             newPosition = min([newPosition, 1.0 - pageTwoMin - halfDividerWidth]);
-            obj.position = newPosition;
             
-            obj.arrangePanes();
+            % Finally set the new position.
+            obj.position = newPosition;
         end
         
         
@@ -129,23 +125,33 @@ classdef UISplitter < handle
         
         
         function set.position(obj, position)
+            wasEmpty = isempty(obj.position);
             if obj.position ~= position
                 obj.position = position;
                 
-                obj.arrangePanes();
+                if ~wasEmpty
+                    % Don't arrange the panes if we were just constructed so they aren't 
+                    % prematurely arranged and trigger their resize methods.
+                    obj.arrangePanes();
+                end
             end
         end
         
         
-        function setOrientation(obj, orientation)
+        function set.orientation(obj, orientation)
             if ~ismember(orientation, {'horizontal', 'vertical'})
                 error('UISplitter:InvalidOrientation', 'A UISplitter''s orientation must be ''horizontal'' or ''vertical''.');
             end
             
+            wasEmpty = isempty(obj.orientation);
             if ~strcmp(orientation, obj.orientation)
                 obj.orientation = orientation;
                 
-                obj.arrangePanes();
+                if ~wasEmpty
+                    % Don't arrange the panes if we were just constructed so they aren't 
+                    % prematurely arranged and trigger their resize methods.
+                    obj.arrangePanes();
+                end
             end
         end
         

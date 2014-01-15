@@ -1141,7 +1141,7 @@ classdef TempoController < handle
         
         function handlePlaceVideoToTheLeft(obj, ~, ~)
             % Update the menu items.
-            obj.splitter.setOrientation('horizontal');
+            obj.splitter.orientation = 'horizontal';
             
             % Remember the user's preference.
             setpref('Tempo', 'VideoPlacement', 'left');
@@ -1151,7 +1151,7 @@ classdef TempoController < handle
         
         
         function handlePlaceVideoAbove(obj, ~, ~)
-            obj.splitter.setOrientation('vertical');
+            obj.splitter.orientation = 'vertical';
             
             % Remember the user's preference.
             setpref('Tempo', 'VideoPlacement', 'above');
@@ -2003,14 +2003,14 @@ classdef TempoController < handle
             % Restore the state of the splitter.
             if isfield(s, 'showVideo') && isfield(s, 'showTimeline')
                 % Load newest style settings.
-                obj.splitter.setOrientation(s.mainSplitter.orientation);
+                obj.splitter.orientation = s.mainSplitter.orientation;
                 obj.splitter.position = s.mainSplitter.position;
                 obj.showVideoPanels(s.showVideo);
                 obj.showTimelinePanels(s.showTimeline);
             elseif isfield(s, 'mainSplitter')
                 % Load settings from an older file.
                 if isfield(s.mainSplitter', 'orientation')
-                    obj.splitter.setOrientation(s.mainSplitter.orientation);
+                    obj.splitter.orientation = s.mainSplitter.orientation;
                 end
                 
                 if s.mainSplitter.location < 0.01
