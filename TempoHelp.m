@@ -28,30 +28,12 @@ classdef TempoHelp < Singleton
                     'CloseRequestFcn', @(source, event)handleClose(obj, source, event), ...
                     'Visible', 'off');
                 
-                obj.createToolbar();
-                
                 % Create the HTML browser control.
                 jObject = com.mathworks.mlwidgets.html.HTMLBrowserPanel;
                 [obj.browser, container] = javacomponent(jObject, [], obj.window);
+                obj.browser.addToolbar();
                 set(container, 'Units', 'norm', 'Position', [0.0, 0.0, 1.0, 1.0]);
             end
-        end
-        
-        
-        function createToolbar(obj)
-            % Home | Back Forward | Search(?)
-            obj.toolbar = uitoolbar(obj.window);
-            
-            [tempoRoot, ~, ~] = fileparts(mfilename('fullpath'));
-            iconRoot = fullfile(tempoRoot, 'Icons');
-            defaultBackground = get(0, 'defaultUicontrolBackgroundColor');
-            
-            iconData = double(imread(fullfile(iconRoot, 'Home.png'), 'BackgroundColor', defaultBackground)) / 255;
-            uipushtool(obj.toolbar, ...
-                'Tag', 'home', ...
-                'CData', iconData, ...
-                'TooltipString', 'Show the main Tempo help page',... 
-                'ClickedCallback', @(hObject, eventdata)handleGoHome(obj, hObject, eventdata));
         end
         
         
