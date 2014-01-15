@@ -189,6 +189,9 @@ classdef TempoController < handle
             % Set up a timer to fire 30 times per second during playback.
             % MATLAB can only seem to manage up to 15 FPS but one can hope.
             obj.playTimer = timer('ExecutionMode', 'fixedRate', 'TimerFcn', @(timerObj, event)handlePlayTimer(obj, timerObj, event), 'Period', round(1.0 / 30.0 * 1000) / 1000);
+            
+            % Display a welcome message the first time the user runs Tempo.
+            obj.welcomeUser();
         end
         
         
@@ -564,6 +567,16 @@ classdef TempoController < handle
             catch ME
                 rethrow(ME);
                 % Oh well, leave it alone.
+            end
+        end
+        
+        
+        function welcomeUser(obj) %#ok<MANU>
+            if ~getpref('Tempo', 'UserWasWelcomed', false)
+                uiwait(msgbox(['Welcome to Tempo!' char(10) char(10) ...
+                               'To get started open a video, audio or annotation file.'], 'Tempo', 'modal'));
+                
+                setpref('Tempo', 'UserWasWelcomed', true);
             end
         end
         
