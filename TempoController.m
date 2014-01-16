@@ -75,8 +75,7 @@ classdef TempoController < handle
         needsSave = false
         savePath
         
-        undoStack;
-        undoIndex = 0;
+        undoManager;
     end
     
     
@@ -132,6 +131,10 @@ classdef TempoController < handle
             addpath(fullfile(parentDir, 'ThirdParty', 'export_fig'));
             addpath(fullfile(parentDir, 'ThirdParty', 'dbutils'));
             addpath(fullfile(parentDir, 'ThirdParty', 'ffmpeg'));
+            
+            % Create an undo manager and listen to its changes.
+            obj.undoManager = UndoManager();
+            addlistener(obj.undoManager, 'UndoStackChanged', @(source, event)handleUndoStackChanged(obj, source, event));
             
             % Insert a splitter at the top level to separate the video and timeline panels.
             obj.videosPanel = uipanel(obj.figure, ...
@@ -1118,20 +1121,17 @@ classdef TempoController < handle
         
         
         function updateEditMenuItems(obj)
-            if obj.undoIndex > 0
-                set(obj.menuItem(obj.editMenu, 'undo'), ...
-                    'Label', ['Undo ' obj.undoStack{obj.undoIndex}.name], ...
-                    'Enable', 'on');
+            undoAction = obj.undoManager.nextUndoAction();
+            if ~isempty(undoAction)
+                set(obj.menuItem(obj.editMenu, 'undo'), 'Label', ['Undo ' undoAction], 'Enable', 'on');
             else
-                % Nothing left to undo.
                 set(obj.menuItem(obj.editMenu, 'undo'), 'Label', 'Undo', 'Enable', 'off');
             end
-            if obj.undoIndex < length(obj.undoStack)
-                set(obj.menuItem(obj.editMenu, 'redo'), ....
-                    'Label', ['Redo ' obj.undoStack{obj.undoIndex + 1}.name], ...
-                    'Enable', 'on');
+            
+            redoAction = obj.undoManager.nextRedoAction();
+            if ~isempty(redoAction)
+                set(obj.menuItem(obj.editMenu, 'redo'), 'Label', ['Redo ' redoAction], 'Enable', 'on');
             else
-                % Nothing left to redo.
                 set(obj.menuItem(obj.editMenu, 'redo'), 'Label', 'Redo', 'Enable', 'off');
             end
         end
@@ -2205,112 +2205,40 @@ classdef TempoController < handle
         
         %% Undo management
         
-        % TODO: move this to an UndoManager class
         
         function addUndoableAction(obj, actionName, undoAction, redoAction, context)
-            % Create a new action.
-            action.name = actionName;
-            action.undo = undoAction;
-            action.redo = redoAction;
-            action.context = context;
-            action.displayRange = obj.displayRange;
-            action.selectedRange = obj.selectedRange;
-            
-            % Add the action to the stack.
-            % Any redoable actions on the stack are cleared.
-            % TODO: should there be a maximum size to the stack?
-            obj.undoStack(obj.undoIndex + 1:end) = [];
-            obj.undoIndex = obj.undoIndex + 1;
-            obj.undoStack{obj.undoIndex} = action;
+            % Remember the display range and selection so they can be restored on undo/redo.
+            userData.displayRange = obj.displayRange;
+            userData.selectedRange = obj.selectedRange;
             
             % Mark the workspace as dirty.
             % TODO: can this be determined by the state of the undo stack?
             obj.needsSave = true;
             
-            obj.updateEditMenuItems();
+            obj.undoManager.addAction(actionName, undoAction, redoAction, context, userData);
         end
         
         
         function handleUndo(obj, ~, ~)
-            if obj.undoIndex == 0
-                % There is nothing to undo.
-                beep
-            else
-                % Perform the current undo action.
-                action = obj.undoStack{obj.undoIndex};
-                action.undo();
-                
-                % Move one place back in the stack.
-                obj.undoIndex = obj.undoIndex - 1;
-                
-                % Reset the display and selection to where it was when the action was performed.
-                obj.displayRange = action.displayRange;
-                obj.selectedRange = action.selectedRange;
-                
-                obj.updateEditMenuItems();
-            end
+            userData = obj.undoManager.undo();
+            
+            % Reset the display and selection to where it was when the action was performed.
+            obj.displayRange = userData.displayRange;
+            obj.selectedRange = userData.selectedRange;
         end
         
         
         function handleRedo(obj, ~, ~)
-            if obj.undoIndex == length(obj.undoStack)
-                % There is nothing to redo.
-                beep
-            else
-                % Perform the current redo action.
-                action = obj.undoStack{obj.undoIndex + 1};
-                action.redo();
-                
-                % Move one place forward in the stack.
-                obj.undoIndex = obj.undoIndex + 1;
-                
-                % Reset the display and selection to where it was when the action was performed.
-                obj.displayRange = action.displayRange;
-                obj.selectedRange = action.selectedRange;
-                
-                obj.updateEditMenuItems();
-           end
-        end
-        
-        
-        function clearUndoContext(obj, context)
-            % Remove all actions associated with the context.
-            i = length(obj.undoStack);
-            while i > 0
-                if obj.undoStack{i}.context == context
-                    % Remove the action.
-                    obj.undoStack(i) = [];
-                    
-                    % Make sure the index points to the first action prior to its current 
-                    % action that is _not_ associated with the context being removed.
-                    if obj.undoIndex >= i
-                        obj.undoIndex = obj.undoIndex - 1;
-                    end
-                end
-                i = i - 1;
-            end
+            userData = obj.undoManager.redo();
             
-            obj.updateEditMenuItems();
+            % Reset the display and selection to where it was when the action was performed.
+            obj.displayRange = userData.displayRange;
+            obj.selectedRange = userData.selectedRange;
         end
         
         
-        function clearUndoableActions(obj)
-            obj.undoStack = {};
-            obj.undoIndex = 0;
-            
+        function handleUndoStackChanged(obj, ~, ~)
             obj.updateEditMenuItems();
-        end
-        
-        
-        function printUndoStack(obj)
-            for i = 1:length(obj.undoStack)
-                if i > obj.undoIndex
-                    undoRedo = 'Redo';
-                else
-                    undoRedo = 'Undo';
-                end
-                fprintf('%s "%s" (%s)\n', undoRedo, obj.undoStack{i}.name, class(obj.undoStack{i}.context));
-            end
         end
         
         
