@@ -1087,7 +1087,6 @@ classdef TempoController < handle
                     obj.addUndoableAction(['Detect ' detector.typeName], ...
                                           @() obj.removeReporter(detector), ...
                                           @() obj.addReporter(detector));
-                    obj.needsSave = true;
                     
 % TODO:                 handles = updateFeatureTimes(handles);
                 end
@@ -2202,6 +2201,7 @@ classdef TempoController < handle
         
         %% Undo management
         
+        % TODO: move this to an UndoManager class
         
         function addUndoableAction(obj, actionName, undoAction, redoAction)
             % Create a new action.
@@ -2218,6 +2218,10 @@ classdef TempoController < handle
             obj.undoIndex = obj.undoIndex + 1;
             obj.undoStack{obj.undoIndex} = action;
             
+            % Mark the workspace as dirty.
+            % TODO: can this be determined by the state of the undo stack?
+            obj.needsSave = true;
+            
             obj.updateEditMenuItems();
         end
         
@@ -2227,7 +2231,7 @@ classdef TempoController < handle
                 % There is nothing to undo.
                 beep
             else
-                % Perform the undo action.
+                % Perform the current undo action.
                 action = obj.undoStack{obj.undoIndex};
                 action.undo();
                 
@@ -2248,7 +2252,7 @@ classdef TempoController < handle
                 % There is nothing to redo.
                 beep
             else
-                % Perform the redo action.
+                % Perform the current redo action.
                 action = obj.undoStack{obj.undoIndex + 1};
                 action.redo();
                 

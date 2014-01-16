@@ -287,7 +287,6 @@ classdef FeaturesPanel < TimelinePanel
                 obj.controller.addUndoableAction(['Detect ' obj.reporter.typeName], ...
                                                   @() reporterHandle.removeFeaturesInTimeRange(features, timeRange), ...
                                                   @() reporterHandle.addFeaturesInTimeRange(features, timeRange));
-                obj.controller.needsSave = true;
             end
         end
         
@@ -295,30 +294,46 @@ classdef FeaturesPanel < TimelinePanel
         function handleSetFeaturesName(obj, ~, ~)
             newName = inputdlg('Enter a new name for the features:', 'Tempo', 1, {obj.reporter.name});
             if ~isempty(newName)
-                obj.reporter.name = newName{1};
-                obj.setTitle(obj.reporter.name);
+                oldName = obj.setFeaturesName(newName{1});
                 
-                % TODO: undo
+                obj.controller.addUndoableAction('Set Features Name', ...
+                                                  @() obj.setFeaturesName(oldName), ...
+                                                  @() obj.setFeaturesName(newName{1}));
             end
+        end
+        
+        
+        function oldName = setFeaturesName(obj, newName)
+            oldName = obj.reporter.name;
+            obj.reporter.name = newName;
+            obj.setTitle(obj.reporter.name);
         end
         
         
         function handleSetFeaturesColor(obj, ~, ~)
             newColor = uisetcolor(obj.reporter.featuresColor);
             if length(newColor) == 3
-                obj.reporter.featuresColor = newColor;
-                fillColor = obj.reporter.featuresColor;
-                fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
-                set(obj.featureHandles(strcmp(get(obj.featureHandles, 'Type'), 'patch')), 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor);
-                set(obj.featureHandles(strcmp(get(obj.featureHandles, 'Type'), 'text')), 'Color', obj.reporter.featuresColor);
-                for j = 1:length(obj.controller.timelinePanels)
-                    panel = obj.controller.timelinePanels{j};
-                    if isa(panel, 'SpectrogramPanel')
-                        panel.changeBoundingBoxColor(obj.reporter);
-                    end
-                end
+                oldColor = obj.setFeaturesColor(newColor);
                 
-                % TODO: undo
+                obj.controller.addUndoableAction('Set Features Color', ...
+                                                  @() obj.setFeaturesColor(oldColor), ...
+                                                  @() obj.setFeaturesColor(newColor));
+            end
+        end
+        
+        
+        function oldColor = setFeaturesColor(obj, newColor)
+            oldColor = obj.reporter.featuresColor;
+            obj.reporter.featuresColor = newColor;
+            fillColor = obj.reporter.featuresColor;
+            fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
+            set(obj.featureHandles(strcmp(get(obj.featureHandles, 'Type'), 'patch')), 'FaceColor', fillColor, 'EdgeColor', obj.reporter.featuresColor);
+            set(obj.featureHandles(strcmp(get(obj.featureHandles, 'Type'), 'text')), 'Color', obj.reporter.featuresColor);
+            for j = 1:length(obj.controller.timelinePanels)
+                panel = obj.controller.timelinePanels{j};
+                if isa(panel, 'SpectrogramPanel')
+                    panel.changeBoundingBoxColor(obj.reporter);
+                end
             end
         end
         
@@ -333,7 +348,6 @@ classdef FeaturesPanel < TimelinePanel
                 obj.controller.addUndoableAction(['Remove ' obj.reporter.typeName], ...
                                                   @() controllerHandle.addReporter(reporterHandle), ...
                                                   @() controllerHandle.removeReporter(reporterHandle));
-                obj.controller.needsSave = true;
                 
                 obj.controller.removeReporter(obj.reporter);
             end
@@ -361,10 +375,14 @@ classdef FeaturesPanel < TimelinePanel
             
             % Add the feature
             if ~isempty(featureType)
-                feature = Feature(featureType, obj.controller.selectedRange);
-                obj.reporter.addFeature(feature);
+                features = {Feature(featureType, obj.controller.selectedRange)};
+                obj.reporter.addFeatures(features);
                 
-                % TODO: undo
+                % Create a new reference to the reporter object so it doesn't get destroyed when this panel does.
+                reporterHandle = obj.reporter;
+                obj.controller.addUndoableAction('Add Feature', ...
+                                                  @() reporterHandle.removeFeatures(features), ...
+                                                  @() reporterHandle.addFeatures(features));
             end
         end
         
@@ -422,9 +440,13 @@ classdef FeaturesPanel < TimelinePanel
             
             answer = questdlg('Are you sure you wish to remove this feature?', 'Removing Feature', 'Cancel', 'Remove', 'Cancel');
             if strcmp(answer, 'Remove')
-                obj.reporter.removeFeature(feature);
+                obj.reporter.removeFeatures({feature});
                 
-                % TODO: undo
+                % Create a new reference to the reporter object so it doesn't get destroyed when this panel does.
+                reporterHandle = obj.reporter;
+                obj.controller.addUndoableAction('Add Feature', ...
+                                                  @() reporterHandle.addFeatures({feature}), ...
+                                                  @() reporterHandle.removeFeatures({feature}));
             end
         end
         

@@ -50,7 +50,6 @@ classdef ManualDetector < FeatureDetector
                 obj.controller.addUndoableAction(['Add ' obj.featureType], ...
                                                   @() obj.removeFeatures(features), ...
                                                   @() obj.addFeatures(features));
-                obj.controller.needsSave = true;
                 
                 handled = true;
             else
