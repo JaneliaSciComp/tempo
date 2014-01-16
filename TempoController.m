@@ -716,18 +716,14 @@ classdef TempoController < handle
         
         
         function closePanel(obj, panel)
+            % Let the panel do what it needs to before closing.
+            panel.close();
+            
+            % Remove the panel.
             if isa(panel, 'VideoPanel')
-                % Let the panel do what it needs to before closing.
-                panel.close();
-                
-                % Remove the panel.
                 obj.videoPanels(cellfun(@(x) x == panel, obj.videoPanels)) = [];
                 obj.arrangeVideoPanels();
             else
-                % Let the panel do what it needs to before closing.
-                panel.close();
-                
-                % Remove the panel.
                 obj.timelinePanels(cellfun(@(x) x == panel, obj.timelinePanels)) = [];
                 obj.arrangeTimelinePanels();
             end
@@ -1085,8 +1081,8 @@ classdef TempoController < handle
                     panel = obj.addReporter(detector);
                     
                     obj.addUndoableAction(['Detect ' detector.typeName], ...
-                                          @() obj.removeReporter(detector), ...
-                                          @() obj.addReporter(detector), ...
+                                          @() obj.closePanel(panel), ...
+                                          @() obj.addReporter(detector, panel), ...
                                           panel);
                     
 % TODO:                 handles = updateFeatureTimes(handles);
@@ -1583,11 +1579,16 @@ classdef TempoController < handle
         %% Toolbar callbacks
         
         
-        function panel = addReporter(obj, reporter)
+        function panel = addReporter(obj, reporter, panel)
             obj.reporters{end + 1} = reporter;
             
-            % Open a features panel for the reporter.
-            panel = FeaturesPanel(reporter);
+            % Open a new features panel for the reporter unless one was provided.
+            if nargin < 3
+                panel = FeaturesPanel(reporter);
+            else
+                panel.createUI();
+                panel.handleCurrentTimeChanged([], []);
+            end
             obj.timelinePanels{end + 1} = panel;
             obj.arrangeTimelinePanels();
             obj.showTimelinePanels(true);
@@ -1599,6 +1600,7 @@ classdef TempoController < handle
             for featurePanel = obj.panelsOfClass('FeaturesPanel')
                 if featurePanel{1}.reporter == reporter
                     obj.timelinePanels(cellfun(@(x) x == featurePanel{1}, obj.timelinePanels)) = [];
+                    featurePanel{1}.close();
                     delete(featurePanel{1});
                     obj.arrangeTimelinePanels();
                     break
@@ -2297,6 +2299,18 @@ classdef TempoController < handle
             obj.undoIndex = 0;
             
             obj.updateEditMenuItems();
+        end
+        
+        
+        function printUndoStack(obj)
+            for i = 1:length(obj.undoStack)
+                if i > obj.undoIndex
+                    undoRedo = 'Redo';
+                else
+                    undoRedo = 'Undo';
+                end
+                fprintf('%s "%s" (%s)\n', undoRedo, obj.undoStack{i}.name, class(obj.undoStack{i}.context));
+            end
         end
         
         
