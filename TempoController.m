@@ -74,6 +74,8 @@ classdef TempoController < handle
         
         needsSave = false
         savePath
+        
+        undoManager;
     end
     
     
@@ -129,6 +131,10 @@ classdef TempoController < handle
             addpath(fullfile(parentDir, 'ThirdParty', 'export_fig'));
             addpath(fullfile(parentDir, 'ThirdParty', 'dbutils'));
             addpath(fullfile(parentDir, 'ThirdParty', 'ffmpeg'));
+            
+            % Create an undo manager and listen to its changes.
+            obj.undoManager = UndoManager();
+            addlistener(obj.undoManager, 'UndoStackChanged', @(source, event)handleUndoStackChanged(obj, source, event));
             
             % Insert a splitter at the top level to separate the video and timeline panels.
             obj.videosPanel = uipanel(obj.figure, ...
@@ -229,13 +235,13 @@ classdef TempoController < handle
             
             obj.editMenu = uimenu(obj.figure, 'Label', 'Edit');
             uimenu(obj.editMenu, 'Label', 'Undo', ...
-                                 'Callback', '', ...
+                                 'Callback', @(hObject, eventdata)handleUndo(obj, hObject, eventdata), ...
                                  'Accelerator', 'z', ...
-                                 'Enable', 'off');
-            uimenu(obj.editMenu, 'Label', 'Redo...', ...
-                                 'Callback', '', ...
-                                 'Accelerator', 'Z', ...
-                                 'Enable', 'off');
+                                 'Tag', 'undo');
+            uimenu(obj.editMenu, 'Label', 'Redo', ...
+                                 'Callback', @(hObject, eventdata)handleRedo(obj, hObject, eventdata), ...
+                                 'Accelerator', 'y', ...
+                                 'Tag', 'redo');
             uimenu(obj.editMenu, 'Label', 'Cut', ...
                                  'Callback', '', ...
                                  'Accelerator', 'x', ...
@@ -260,10 +266,11 @@ classdef TempoController < handle
                                                 'Callback', '', ... 
                                                 'Separator', 'on');
             for detectorIdx = 1:length(obj.detectorTypeNames)
-                uimenu(detectorMenu, 'Label', obj.detectorTypeNames{detectorIdx}, ...
+                uimenu(detectorMenu, 'Label', [obj.detectorTypeNames{detectorIdx} '...'], ...
                                      'Callback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
                                      'UserData', detectorIdx);
             end
+            obj.updateEditMenuItems();
             
             obj.viewMenu = uimenu(obj.figure, 'Label', 'View');
             uimenu(obj.viewMenu, 'Label', 'Show Toolbar', ...
@@ -417,15 +424,13 @@ classdef TempoController < handle
         
         
         function createToolbar(obj)
-            % Open | Zoom in Zoom out | Play Pause | Find features | Save features Save screenshot | Show/hide waveforms Show/hide features Toggle time format
             obj.toolbar = uitoolbar(obj.figure);
             
             [tempoRoot, ~, ~] = fileparts(mfilename('fullpath'));
             iconRoot = fullfile(tempoRoot, 'Icons');
             defaultBackground = get(0, 'defaultUicontrolBackgroundColor');
             
-            % Open, save, export
-            
+            % Open and save
             iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'file_open.png'), 'BackgroundColor', defaultBackground)) / 65535;
             uipushtool(obj.toolbar, ...
                 'Tag', 'openFile', ...
@@ -440,6 +445,7 @@ classdef TempoController < handle
                 'TooltipString', 'Save the workspace',...
                 'ClickedCallback', @(hObject, eventdata)handleSaveWorkspace(obj, hObject, eventdata));
             
+            % Export and screenshot
             iconData = double(imread(fullfile(iconRoot, 'ExportToMovie.png'), 'BackgroundColor', defaultBackground)) / 255;
             uipushtool(obj.toolbar, ...
                 'Tag', 'exportSelection', ...
@@ -447,7 +453,6 @@ classdef TempoController < handle
                 'TooltipString', 'Export the selected time window to a movie',...
                 'Separator', 'on', ...
                 'ClickedCallback', @(hObject, eventdata)handleExportSelection(obj, hObject, eventdata));
-            
             iconData = double(imread(fullfile(iconRoot, 'screenshot.png'), 'BackgroundColor', defaultBackground)) / 255;
             uipushtool(obj.toolbar, ...
                 'Tag', 'saveScreenshot', ...
@@ -455,6 +460,7 @@ classdef TempoController < handle
                 'TooltipString', 'Save a screenshot',...
                 'ClickedCallback', @(hObject, eventdata)handleSaveScreenshot(obj, hObject, eventdata));
             
+            % Detect features
             iconData = double(imread(fullfile(iconRoot, 'detect.png'), 'BackgroundColor', defaultBackground)) / 255;
             obj.detectPopUpTool = uisplittool('Parent', obj.toolbar, ...
                 'Tag', 'detectFeatures', ...
@@ -464,7 +470,6 @@ classdef TempoController < handle
                 'ClickedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata));
             
             % Playback
-            
             forwardIcon = double(imread(fullfile(iconRoot, 'play.png'), 'BackgroundColor', defaultBackground)) / 255;
             pauseIcon = double(imread(fullfile(iconRoot, 'pause.png'), 'BackgroundColor', defaultBackground)) / 255;
             backwardsIcon = flipdim(forwardIcon, 2);
@@ -492,7 +497,6 @@ classdef TempoController < handle
                 'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'faster'));
             
             % Zooming
-            
             iconData = double(imread(fullfile(matlabroot, 'toolbox', 'matlab', 'icons', 'tool_zoom_in.png'), 'BackgroundColor', defaultBackground)) / 65535;
             uipushtool(obj.toolbar, ...
                 'Tag', 'zoomIn', ...
@@ -521,7 +525,7 @@ classdef TempoController < handle
                 jMenu.removeAll;
                 jMenu.add('Detect Features:').setEnabled(false);
                 for actionIdx = 1:length(obj.detectorTypeNames)
-                    jActionItem = jMenu.add(obj.detectorTypeNames(actionIdx));
+                    jActionItem = jMenu.add([obj.detectorTypeNames{actionIdx} '...']);
                     set(jActionItem, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
                         'UserData', actionIdx);
                 end
@@ -728,18 +732,14 @@ classdef TempoController < handle
         
         
         function closePanel(obj, panel)
+            % Let the panel do what it needs to before closing.
+            panel.close();
+            
+            % Remove the panel.
             if isa(panel, 'VideoPanel')
-                % Let the panel do what it needs to before closing.
-                panel.close();
-                
-                % Remove the panel.
                 obj.videoPanels(cellfun(@(x) x == panel, obj.videoPanels)) = [];
                 obj.arrangeVideoPanels();
             else
-                % Let the panel do what it needs to before closing.
-                panel.close();
-                
-                % Remove the panel.
                 obj.timelinePanels(cellfun(@(x) x == panel, obj.timelinePanels)) = [];
                 obj.arrangeTimelinePanels();
             end
@@ -1074,44 +1074,78 @@ classdef TempoController < handle
                     waitfor(warndlg({'Could not automatically pop up the detectors toolbar menu.', '', 'Please click the small arrow next to the icon instead.'}, 'Tempo', 'modal'));
                 end
             else
+                % Create a new detector.
                 detectorClassName = obj.detectorClassNames{index};
-                
                 constructor = str2func(detectorClassName);
                 detector = constructor(obj);
                 
+                % Let the user tweak its settings.
                 if detector.editSettings()
-% TODO:               addContextualMenu(detector);
-                    
-                    detector.startProgress();
-                    try
-                        if obj.selectedRange(2) > obj.selectedRange(1)
-                            n = detector.detectFeatures(obj.selectedRange);
-                        else
-                            n = detector.detectFeatures([0.0 obj.duration]);
-                        end
-                        detector.endProgress();
-                        
-                        if n == 0
-                            waitfor(msgbox('No features were detected.', detectorClassName, 'warn', 'modal'));
-                        else
-                            obj.reporters{end + 1} = detector;
-                            obj.timelinePanels{end + 1} = FeaturesPanel(detector);
-                            
-                            obj.arrangeTimelinePanels();
-                            
-                            obj.showTimelinePanels(true);
-                            
-                            obj.needsSave = true;
-                        end
-                        
-% TODO:                   handles = updateFeatureTimes(handles);
-                    catch ME
-                        waitfor(msgbox(['An error occurred while detecting features:' char(10) char(10) ME.message char(10) char(10) '(See the command window for details.)'], ...
-                                       detectorClassName, 'error', 'modal'));
-                        detector.endProgress();
-                        rethrow(ME);
+                    % If there is a selection then only detect features within it, otherwise check everywhere.
+                    if obj.selectedRange(2) > obj.selectedRange(1)
+                        timeRange = obj.selectedRange;
+                    else
+                        timeRange = [0.0 obj.duration];
                     end
+                    
+                    % Have the detector look for features in the time range.
+                    if ~isa(detector, 'ManualDetector') && isempty(obj.detectFeatures(detector, timeRange))
+                        waitfor(msgbox('No features were detected.', detector.typeName, 'warn', 'modal'));
+                    end
+                    
+                    % Create a panel to show the features that were found.
+                    panel = obj.addReporter(detector);
+                    
+                    obj.addUndoableAction(['Detect ' detector.typeName], ...
+                                          @() obj.closePanel(panel), ...
+                                          @() obj.addReporter(detector, panel), ...
+                                          panel);
+                    
+% TODO:                 handles = updateFeatureTimes(handles);
                 end
+            end
+        end
+        
+        
+        function features = detectFeatures(obj, detector, timeRange) %#ok<INUSL>
+            % Detect features using the given detector in the given time range.
+            % TODO: don't add duplicate features if selection overlaps already detected region?
+            %       or reduce selection to not overlap before detection?
+            
+            % TODO: startProgress() should be a controller method.
+            
+            % Have the detector look for features and report its progress.
+            detector.startProgress();
+            try
+                features = detector.detectFeatures(timeRange);
+                detector.endProgress();
+            catch ME
+                detector.endProgress();
+                waitfor(msgbox(['An error occurred while detecting features:' char(10) char(10) ME.message char(10) char(10) '(See the command window for details.)'], ...
+                               detector.typeName, 'error', 'modal'));
+                rethrow(ME);
+            end
+            
+            if ~isempty(features)
+                % Add the found features to the detector's list of features.
+                detector.addFeaturesInTimeRange(features, timeRange);
+            end
+        end
+        
+        
+        function updateEditMenuItems(obj)
+            undoAction = obj.undoManager.nextUndoAction();
+            if ~isempty(undoAction)
+                set(obj.menuItem(obj.editMenu, 'undo'), 'Label', ['Undo ' undoAction], 'Enable', 'on');
+            else
+                set(obj.menuItem(obj.editMenu, 'undo'), 'Label', 'Undo', 'Enable', 'off');
+            end
+            
+            redoAction = obj.undoManager.nextRedoAction();
+            if ~isempty(redoAction)
+                set(obj.menuItem(obj.editMenu, 'redo'), 'Label', ['Redo ' redoAction], 'Enable', 'on');
+            else
+                set(obj.menuItem(obj.editMenu, 'redo'), 'Label', 'Redo', 'Enable', 'off');
             end
         end
         
@@ -1558,28 +1592,44 @@ classdef TempoController < handle
         %% Toolbar callbacks
         
         
-        function removeFeaturePanel(obj, featurePanel)
-            answer = questdlg('Are you sure you wish to remove this reporter?', 'Removing Reporter', 'Cancel', 'Remove', 'Cancel');
-            if strcmp(answer, 'Remove')
-                reporter = featurePanel.reporter;
-                
-                % Remove the panel.
-                obj.closePanel(featurePanel);
-                
-                % Remove the panel's reporter.
-                obj.reporters(cellfun(@(x) x == reporter, obj.reporters)) = [];
-                delete(reporter);
-                
-% TODO:                handles = updateFeatureTimes(handles);
-
-                for j = 1:length(obj.timelinePanels)
-                    panel = obj.timelinePanels{j};
-                    if isa(panel, 'SpectrogramPanel')
-                        panel.deleteAllReporters();
-                    end
+        function panel = addReporter(obj, reporter, panel)
+            obj.reporters{end + 1} = reporter;
+            
+            % Open a new features panel for the reporter unless one was provided.
+            if nargin < 3
+                panel = FeaturesPanel(reporter);
+            else
+                panel.createUI();
+                panel.handleCurrentTimeChanged([], []);
+            end
+            obj.timelinePanels{end + 1} = panel;
+            obj.arrangeTimelinePanels();
+            obj.showTimelinePanels(true);
+        end
+        
+        
+        function removeReporter(obj, reporter)
+            % Remove the reporter's panel if it has one.
+            for featurePanel = obj.panelsOfClass('FeaturesPanel')
+                if featurePanel{1}.reporter == reporter
+                    obj.timelinePanels(cellfun(@(x) x == featurePanel{1}, obj.timelinePanels)) = [];
+                    featurePanel{1}.close();
+                    delete(featurePanel{1});
+                    obj.arrangeTimelinePanels();
+                    break
                 end
-                
-                obj.needsSave = true;
+            end
+            
+            % Remove the reporter.
+            obj.reporters(cellfun(@(x) x == reporter, obj.reporters)) = [];
+            
+% TODO:     handles = updateFeatureTimes(handles);
+            
+            for j = 1:length(obj.timelinePanels)
+                panel = obj.timelinePanels{j};
+                if isa(panel, 'SpectrogramPanel')
+                    panel.deleteAllReporters();
+                end
             end
         end
         
@@ -2164,6 +2214,48 @@ classdef TempoController < handle
             set(obj.figure, 'Pointer', 'arrow');
             drawnow
         end
+        
+        
+        %% Undo management
+        
+        
+        function addUndoableAction(obj, actionName, undoAction, redoAction, context)
+            % Remember the display range and selection so they can be restored on undo/redo.
+            userData.displayRange = obj.displayRange;
+            userData.selectedRange = obj.selectedRange;
+            
+            % Mark the workspace as dirty.
+            % TODO: can this be determined by the state of the undo stack?
+            obj.needsSave = true;
+            
+            obj.undoManager.addAction(actionName, undoAction, redoAction, context, userData);
+        end
+        
+        
+        function handleUndo(obj, ~, ~)
+            userData = obj.undoManager.undo();
+            
+            % Reset the display and selection to where it was when the action was performed.
+            obj.displayRange = userData.displayRange;
+            obj.selectedRange = userData.selectedRange;
+        end
+        
+        
+        function handleRedo(obj, ~, ~)
+            userData = obj.undoManager.redo();
+            
+            % Reset the display and selection to where it was when the action was performed.
+            obj.displayRange = userData.displayRange;
+            obj.selectedRange = userData.selectedRange;
+        end
+        
+        
+        function handleUndoStackChanged(obj, ~, ~)
+            obj.updateEditMenuItems();
+        end
+        
+        
+        %% Miscellaneous functions
         
         
         function handleClose(obj, ~, ~)

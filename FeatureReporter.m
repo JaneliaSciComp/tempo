@@ -99,32 +99,53 @@ classdef FeatureReporter < handle
         end
         
         
-        function addFeature(obj, feature)
-            % Add the feature to the list.
-            obj.featureCount = obj.featureCount + 1;
-            if obj.featureCount > obj.featureListSize
+        function addFeatures(obj, features)
+            % Add the features to the list.
+            numFeatures = length(features);
+            obj.featureCount = obj.featureCount + numFeatures;
+            while obj.featureCount > obj.featureListSize
                 % Pre-allocate space for another 1000 features.
                 obj.featureList = horzcat(obj.featureList, cell(1, 1000));
                 obj.featureListSize = obj.featureListSize + 1000;
             end
-            obj.featureList{obj.featureCount} = feature;
+            for i = 1:numFeatures
+                if iscell(features)
+                    obj.featureList{obj.featureCount - numFeatures + i} = features{i};
+                else
+                    obj.featureList{obj.featureCount - numFeatures + i} = features(i);
+                end
+            end
             
             notify(obj, 'FeaturesDidChange');
         end
         
         
-        function removeFeature(obj, feature)
-            for i = 1:obj.featureListSize
-                if obj.featureList{i} == feature
-                    obj.featureList(i) = [];
-                    obj.featureListSize = obj.featureListSize - 1;
+        function removeFeatures(obj, features)
+            featureWasRemoved = false;
+            
+            for i = 1:obj.featureCount
+                for j = 1:length(features)
+                    if iscell(features)
+                        feature = features{j};
+                    else
+                        feature = features(j);
+                    end
                     
-                    notify(obj, 'FeaturesDidChange');
-                    
-                    break;
+                    if obj.featureList{i} == feature
+                        obj.featureList(i) = [];
+                        obj.featureListSize = obj.featureListSize - 1;
+
+                        featureWasRemoved = true;
+
+                        break;
+                    end
                 end
-                
             end
+            
+            if featureWasRemoved
+                notify(obj, 'FeaturesDidChange');
+            end
+            
         end
         
         
@@ -139,7 +160,7 @@ classdef FeatureReporter < handle
         end
         
         
-        function handled = keyWasPressed(obj, keyEvent) %#ok<INUSD>
+        function handled = keyWasPressedInPanel(obj, keyEvent, panel) %#ok<INUSD>
             handled = false;
         end
         
@@ -163,7 +184,7 @@ classdef FeatureReporter < handle
                     
                     if haveFreqRanges
                         s.lowFreqs = lowFreqs;
-                        s.highFreqs = highFreqs;
+                        s.highFreqs = highFreqs; %#ok<STRNU>
                     end
                     
                     save(fullfile(pathName, fileName), '-struct', 's');

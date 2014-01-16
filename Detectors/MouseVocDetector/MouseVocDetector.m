@@ -66,10 +66,12 @@ classdef MouseVocDetector < FeatureDetector
         end
         
         
-        function n = detectFeatures(obj, timeRange)
+        function features = detectFeatures(obj, timeRange)
 
             persistent sampleRate2 NFFT2 NW2 K2 PVal2 timeRange2
-
+            
+            features = {};
+            
             [p,n,~]=fileparts(obj.recording{1}.filePath);
 
             if(isempty(sampleRate2) || (sampleRate2~=obj.recording{1}.sampleRate) || ...
@@ -142,16 +144,13 @@ classdef MouseVocDetector < FeatureDetector
                 x_start = timeRange(1) + voclist(i,1);
                 x_stop = timeRange(1) + voclist(i,2);
                 if(i==1)
-                  obj.addFeature(Feature('Vocalization', [x_start x_stop voclist(i,3:4)], ...
-                                         'HotPixels', hotpixels));
+                  feature = Feature('Vocalization', [x_start x_stop voclist(i,3:4)], ...
+                                    'HotPixels', hotpixels);
                 else
-                  obj.addFeature(Feature('Vocalization', [x_start x_stop voclist(i,3:4)]));
+                  feature = Feature('Vocalization', [x_start x_stop voclist(i,3:4)]);
                 end
+                features{end + 1} = feature; %#ok<AGROW>
             end
-            n=size(voclist,1);
-
-            obj.timeRangeDetected(timeRange);
-
         end
         
     end

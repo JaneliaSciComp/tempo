@@ -97,7 +97,6 @@ classdef TempoPanel < handle
                     'Tag', 'hideButton');
                 
                 obj.actionMenu = uicontextmenu;
-                obj.addActionMenuItems(obj.actionMenu);
                 obj.actionButton = uicontrol(...
                     'Parent', obj.titlePanel, ...
                     'Style', 'pushbutton', ...
@@ -138,7 +137,11 @@ classdef TempoPanel < handle
                 'YLim', [0 1], ...
                 'YTick', []); %#ok<CPROP>
             
+            % Make calls that sub-classes can override, making sure to pass along varargin to createControls.
             obj.createControls([100, 100], varargin{:});
+            if obj.hasTitleBarControls()
+                obj.addActionMenuItems(obj.actionMenu);
+            end
             
             % Add listeners so we know when the current time and selection change.
             obj.listeners{end + 1} = addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
@@ -212,6 +215,9 @@ classdef TempoPanel < handle
             
             if obj.shouldClose()
                 obj.controller.closePanel(obj);
+                
+                % Remove any undoable actions that had been added for this panel.
+                obj.controller.clearUndoContext(obj);
             end
         end
         
@@ -312,6 +318,7 @@ classdef TempoPanel < handle
             
             % Delete any listeners.
             cellfun(@(x) delete(x), obj.listeners);
+            obj.listeners = {};
             
             % Remove the uipanel from the figure.
             if ishandle(obj.panel)

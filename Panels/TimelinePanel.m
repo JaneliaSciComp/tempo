@@ -33,6 +33,8 @@ classdef TimelinePanel < TempoPanel
             % Add listeners so we know when the current time and selection change.
             obj.listeners{end + 1} = addlistener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
             obj.listeners{end + 1} = addlistener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
+            
+            obj.axesXLim = [0 0];
 		end
         
         
