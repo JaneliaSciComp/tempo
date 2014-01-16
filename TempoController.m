@@ -1688,6 +1688,10 @@ classdef TempoController < handle
         
         function handleResize(obj, ~, ~)
             obj.splitter.resize();
+            
+            % The panels' ResizeFcn's should take care of this but they aren't for some reason.
+            obj.arrangeVideoPanels();
+            obj.arrangeTimelinePanels();
         end
         
         
