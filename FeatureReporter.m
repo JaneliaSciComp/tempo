@@ -160,7 +160,7 @@ classdef FeatureReporter < handle
         end
         
         
-        function handled = keyWasPressed(obj, keyEvent) %#ok<INUSD>
+        function handled = keyWasPressedInPanel(obj, keyEvent, panel) %#ok<INUSD>
             handled = false;
         end
         

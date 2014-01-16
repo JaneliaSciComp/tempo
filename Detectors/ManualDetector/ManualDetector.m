@@ -42,14 +42,15 @@ classdef ManualDetector < FeatureDetector
         end
         
         
-        function handled = keyWasPressed(obj, keyEvent)
+        function handled = keyWasPressedInPanel(obj, keyEvent, panel)
             if keyEvent.Character == obj.hotKey     % or .Key?
                 features = {Feature(obj.featureType, obj.controller.selectedRange)};
                 obj.addFeatures(features);
                 
                 obj.controller.addUndoableAction(['Add ' obj.featureType], ...
                                                   @() obj.removeFeatures(features), ...
-                                                  @() obj.addFeatures(features));
+                                                  @() obj.addFeatures(features), ...
+                                                  panel);
                 
                 handled = true;
             else

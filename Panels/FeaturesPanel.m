@@ -261,7 +261,7 @@ classdef FeaturesPanel < TimelinePanel
                 
                 handled = true;
             else
-                handled = obj.reporter.keyWasPressed(keyEvent);
+                handled = obj.reporter.keyWasPressedInPanel(keyEvent, obj);
                 
                 if ~handled
                     handled = keyWasPressed@TimelinePanel(obj, keyEvent);
@@ -286,7 +286,8 @@ classdef FeaturesPanel < TimelinePanel
                 
                 obj.controller.addUndoableAction(['Detect ' obj.reporter.typeName], ...
                                                   @() reporterHandle.removeFeaturesInTimeRange(features, timeRange), ...
-                                                  @() reporterHandle.addFeaturesInTimeRange(features, timeRange));
+                                                  @() reporterHandle.addFeaturesInTimeRange(features, timeRange), ...
+                                                  obj);
             end
         end
         
@@ -298,7 +299,8 @@ classdef FeaturesPanel < TimelinePanel
                 
                 obj.controller.addUndoableAction('Set Features Name', ...
                                                   @() obj.setFeaturesName(oldName), ...
-                                                  @() obj.setFeaturesName(newName{1}));
+                                                  @() obj.setFeaturesName(newName{1}), ...
+                                                  obj);
             end
         end
         
@@ -317,7 +319,8 @@ classdef FeaturesPanel < TimelinePanel
                 
                 obj.controller.addUndoableAction('Set Features Color', ...
                                                   @() obj.setFeaturesColor(oldColor), ...
-                                                  @() obj.setFeaturesColor(newColor));
+                                                  @() obj.setFeaturesColor(newColor), ...
+                                                  obj);
             end
         end
         
@@ -347,7 +350,8 @@ classdef FeaturesPanel < TimelinePanel
                 
                 obj.controller.addUndoableAction(['Remove ' obj.reporter.typeName], ...
                                                   @() controllerHandle.addReporter(reporterHandle), ...
-                                                  @() controllerHandle.removeReporter(reporterHandle));
+                                                  @() controllerHandle.removeReporter(reporterHandle), ...
+                                                  obj);
                 
                 obj.controller.removeReporter(obj.reporter);
             end
@@ -382,7 +386,8 @@ classdef FeaturesPanel < TimelinePanel
                 reporterHandle = obj.reporter;
                 obj.controller.addUndoableAction('Add Feature', ...
                                                   @() reporterHandle.removeFeatures(features), ...
-                                                  @() reporterHandle.addFeatures(features));
+                                                  @() reporterHandle.addFeatures(features), ...
+                                                  obj);
             end
         end
         
@@ -446,13 +451,17 @@ classdef FeaturesPanel < TimelinePanel
                 reporterHandle = obj.reporter;
                 obj.controller.addUndoableAction('Add Feature', ...
                                                   @() reporterHandle.addFeatures({feature}), ...
-                                                  @() reporterHandle.removeFeatures({feature}));
+                                                  @() reporterHandle.removeFeatures({feature}), ...
+                                                  obj);
             end
         end
         
         
         function handleSelectFeature(obj, ~, ~)
             feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
+            
+            % TODO: Really select it so it can be the target of action menu items?
+            %       e.g. obj.selectedFeatures = {feature};
             
             obj.controller.selectRange(feature.range);
         end

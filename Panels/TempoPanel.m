@@ -313,6 +313,9 @@ classdef TempoPanel < handle
             % Delete any listeners.
             cellfun(@(x) delete(x), obj.listeners);
             
+            % Remove any undoable actions that had been added for this panel.
+            obj.controller.clearUndoContext(obj);
+            
             % Remove the uipanel from the figure.
             if ishandle(obj.panel)
                 delete(obj.panel);

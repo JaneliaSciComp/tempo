@@ -1082,11 +1082,12 @@ classdef TempoController < handle
                     end
                     
                     % Create a panel to show the features that were found.
-                    obj.addReporter(detector);
+                    panel = obj.addReporter(detector);
                     
                     obj.addUndoableAction(['Detect ' detector.typeName], ...
                                           @() obj.removeReporter(detector), ...
-                                          @() obj.addReporter(detector));
+                                          @() obj.addReporter(detector), ...
+                                          panel);
                     
 % TODO:                 handles = updateFeatureTimes(handles);
                 end
@@ -1582,11 +1583,12 @@ classdef TempoController < handle
         %% Toolbar callbacks
         
         
-        function addReporter(obj, reporter)
+        function panel = addReporter(obj, reporter)
             obj.reporters{end + 1} = reporter;
             
             % Open a features panel for the reporter.
-            obj.timelinePanels{end + 1} = FeaturesPanel(reporter);
+            panel = FeaturesPanel(reporter);
+            obj.timelinePanels{end + 1} = panel;
             obj.arrangeTimelinePanels();
             obj.showTimelinePanels(true);
         end
@@ -2203,11 +2205,12 @@ classdef TempoController < handle
         
         % TODO: move this to an UndoManager class
         
-        function addUndoableAction(obj, actionName, undoAction, redoAction)
+        function addUndoableAction(obj, actionName, undoAction, redoAction, context)
             % Create a new action.
             action.name = actionName;
             action.undo = undoAction;
             action.redo = redoAction;
+            action.context = context;
             action.displayRange = obj.displayRange;
             action.selectedRange = obj.selectedRange;
             
@@ -2265,6 +2268,27 @@ classdef TempoController < handle
                 
                 obj.updateEditMenuItems();
            end
+        end
+        
+        
+        function clearUndoContext(obj, context)
+            % Remove all actions associated with the context.
+            i = length(obj.undoStack);
+            while i > 0
+                if obj.undoStack{i}.context == context
+                    % Remove the action.
+                    obj.undoStack(i) = [];
+                    
+                    % Make sure the index points to the first action prior to its current 
+                    % action that is _not_ associated with the context being removed.
+                    if obj.undoIndex >= i
+                        obj.undoIndex = obj.undoIndex - 1;
+                    end
+                end
+                i = i - 1;
+            end
+            
+            obj.updateEditMenuItems();
         end
         
         
