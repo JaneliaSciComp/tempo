@@ -69,11 +69,11 @@ classdef FeatureReporter < handle
         
         
         function f = features(obj, featureType)
-            f = [obj.featureList{1:obj.featureCount}];
+            f = obj.featureList(1:obj.featureCount);
             
             if nargin > 1
                 inds = strcmp({f.type}, featureType);
-                f = f(inds);
+                f = f{inds};
             end
         end
         
@@ -123,23 +123,19 @@ classdef FeatureReporter < handle
         function removeFeatures(obj, features)
             featureWasRemoved = false;
             
-            for i = 1:obj.featureCount
-                for j = 1:length(features)
-                    if iscell(features)
-                        feature = features{j};
-                    else
-                        feature = features(j);
-                    end
-                    
-                    if obj.featureList{i} == feature
-                        obj.featureList(i) = [];
-                        obj.featureListSize = obj.featureListSize - 1;
-
-                        featureWasRemoved = true;
-
-                        break;
-                    end
+            for j = 1:length(features)
+                if iscell(features)
+                    feature = features{j};
+                else
+                    feature = features(j);
                 end
+                
+                pos = cellfun(@(f) eq(f, feature), {obj.featureList{1:obj.featureCount}});
+                obj.featureList(pos) = [];
+                obj.featureListSize = obj.featureListSize - 1;
+                obj.featureCount = obj.featureCount - 1;
+                
+                featureWasRemoved = true;
             end
             
             if featureWasRemoved
@@ -155,7 +151,7 @@ classdef FeatureReporter < handle
             if isempty(fs)
                 d = 0;
             else
-                d = max([fs.endTime]);
+                d = max(cellfun(@(f) f.endTime, fs));
             end
         end
         

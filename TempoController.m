@@ -1104,8 +1104,6 @@ classdef TempoController < handle
                                           @() obj.closePanel(panel), ...
                                           @() obj.addReporter(detector, panel), ...
                                           panel);
-                    
-% TODO:                 handles = updateFeatureTimes(handles);
                 end
             end
         end
@@ -1627,8 +1625,6 @@ classdef TempoController < handle
             % Remove the reporter.
             obj.reporters(cellfun(@(x) x == reporter, obj.reporters)) = [];
             
-% TODO:     handles = updateFeatureTimes(handles);
-            
             for j = 1:length(obj.timelinePanels)
                 panel = obj.timelinePanels{j};
                 if isa(panel, 'SpectrogramPanel')
@@ -1666,9 +1662,10 @@ classdef TempoController < handle
             
             obj.currentTime = range(1);
             
-            % TODO: Move the selection into view if necessary
-%             newRange = ...
-%             obj.displayRange = newRange;
+            % Move the selection into view if necessary
+            if obj.selectedRange(1) > obj.displayRange(2) || obj.selectedRange(2) < obj.displayRange(1)
+                obj.centerDisplayAtTime(mean(obj.selectedRange(1:2)));
+            end
         end
         
         

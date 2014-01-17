@@ -14,6 +14,8 @@ classdef FeaturesPanel < TimelinePanel
         showReporterSettingsMenuItem
         
         featureChangeListener
+        
+        selectedFeature
     end
     
 	
@@ -138,8 +140,8 @@ classdef FeaturesPanel < TimelinePanel
                 lowFreqs = [];
                 highFreqs = [];
             else
-                lowFreqs = [features.lowFreq];
-                highFreqs = [features.highFreq];
+                lowFreqs = cellfun(@(f) f.lowFreq, features);
+                highFreqs = cellfun(@(f) f.highFreq, features);
             end
             minFreq = min(lowFreqs(lowFreqs > -Inf));
             if isempty(minFreq)
@@ -149,7 +151,8 @@ classdef FeaturesPanel < TimelinePanel
             if isempty(maxFreq)
                 maxFreq = Inf;
             end
-            for feature = features
+            for i = 1:length(features)
+                feature = features{i};
                 y = find(strcmp(featureTypes, feature.type));
                 if isempty(feature.contextualMenu)
                     if feature.startTime == feature.endTime
@@ -221,52 +224,45 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function handled = keyWasPressed(obj, keyEvent)
-            % Handle option/alt arrow keys to jump from feature to feature.
-            % TODO: how will this work with multiple panels?
-            
-            timeChange = 0;
-            shiftDown = any(ismember(keyEvent.Modifier, 'shift'));
-            if any(ismember(keyEvent.Modifier, 'alt'));
-                if strcmp(keyEvent.Key, 'leftarrow')
-                    handles = updateFeatureTimes(handles);
-                    earlierFeatureTimes = handles.featureTimes(handles.featureTimes < handles.currentTime);
-                    if isempty(earlierFeatureTimes)
-                        beep;
-                    else
-                        timeChange = earlierFeatureTimes(end) - handles.currentTime;
-                    end
-                elseif strcmp(keyEvent.Key, 'rightarrow')
-                    handles = updateFeatureTimes(handles);
-                    laterFeatureTimes = handles.featureTimes(handles.featureTimes > handles.currentTime);
-                    if isempty(laterFeatureTimes)
-                        beep;
-                    else
-                        timeChange = laterFeatureTimes(1) - handles.currentTime;
-                    end
+            handled = false;
+            altDown = any(ismember(keyEvent.Modifier, 'alt'));
+            if altDown && strcmp(keyEvent.Key, 'leftarrow')
+                % Move the selection to the previous feature.
+                features = obj.reporter.features();
+                earlierFeatures = features(cellfun(@(f) f.endTime < obj.controller.selectedRange(1), features));
+                if isempty(earlierFeatures)
+                    beep
+                else
+                    [~, ind] = max(cellfun(@(f) f.endTime, earlierFeatures));
+                    obj.selectFeature(earlierFeatures{ind});
+                end
+                handled = true;
+            elseif altDown && strcmp(keyEvent.Key, 'rightarrow')
+                % Move the selection to the next feature.
+                features = obj.reporter.features();
+                laterFeatures = features(cellfun(@(f) f.startTime > obj.controller.selectedRange(2), features));
+                if isempty(laterFeatures)
+                    beep
+                else
+                    [~, ind] = min(cellfun(@(f) f.startTime, laterFeatures));
+                    obj.selectFeature(laterFeatures{ind});
+                end
+                handled = true;
+            elseif strcmp(keyEvent.Key, 'backspace')
+                % Delete the selected feature.
+                if ~isempty(obj.selectedFeature)
+                    obj.removeFeature(obj.selectedFeature);
                 end
             end
             
-            if timeChange ~= 0
-                newTime = max([0 min([obj.controller.duration obj.controller.currentTime + timeChange])]);
-                if shiftDown
-                    if obj.controller.currentTime == obj.controller.selectedRange(1)
-                        obj.controller.selectedRange = [sort([obj.controller.selectedRange(2) newTime]) obj.selectedRange(3:4)];
-                    else
-                        obj.controller.selectedRange = [sort([newTime obj.controller.selectedRange(1)]) obj.selectedRange(3:4)];
-                    end
-                else
-                    obj.controller.selectedRange = [newTime newTime obj.selectedRange(3:4)];
-                end
-                obj.controller.currentTime = newTime;
-                obj.controller.centerDisplayAtTime(newTime);
-                
-                handled = true;
-            else
+            % Let the reporter respond to the key.
+            if ~handled
                 handled = obj.reporter.keyWasPressedInPanel(keyEvent, obj);
-                
-                if ~handled
-                    handled = keyWasPressed@TimelinePanel(obj, keyEvent);
-                end
+            end
+            
+            % Otherwise pass it up the chain.
+            if ~handled
+                handled = keyWasPressed@TimelinePanel(obj, keyEvent);
             end
         end
         
@@ -444,8 +440,17 @@ classdef FeaturesPanel < TimelinePanel
         function handleRemoveFeature(obj, ~, ~)
             feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
             
+            obj.removeFeature(feature);
+        end
+        
+        
+        function removeFeature(obj, feature)
             answer = questdlg('Are you sure you wish to remove this feature?', 'Removing Feature', 'Cancel', 'Remove', 'Cancel');
             if strcmp(answer, 'Remove')
+                if obj.selectedFeature == feature
+                    obj.selectedFeature = [];
+                end
+                
                 obj.reporter.removeFeatures({feature});
                 
                 % Create a new reference to the reporter object so it doesn't get destroyed when this panel does.
@@ -459,12 +464,27 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function handleSelectFeature(obj, ~, ~)
-            feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
+            % Get the feature instance from the clicked rectangle's UserData.
+            obj.selectFeature(get(gco, 'UserData'));
+        end
+        
+        
+        function selectFeature(obj, feature)
+            % Loosely remember that the user chose this feature.  If the selection gets changed then it won't be considered selected any more.
+            obj.selectedFeature = feature;
             
-            % TODO: Really select it so it can be the target of action menu items?
-            %       e.g. obj.selectedFeatures = {feature};
+            % Also set the timeline's selection.
+            obj.controller.selectRange(obj.selectedFeature.range);
+        end
+        
+        
+        function handleSelectedRangeChanged(obj, ~, ~)
+            % De-select our current feature if the selection changes.
+            if ~isempty(obj.selectedFeature) && ~all(obj.controller.selectedRange == obj.selectedFeature.range)
+                obj.selectedFeature = [];
+            end
             
-            obj.controller.selectRange(feature.range);
+            handleSelectedRangeChanged@TimelinePanel(obj);
         end
         
         

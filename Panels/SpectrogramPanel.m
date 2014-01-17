@@ -312,7 +312,8 @@ classdef SpectrogramPanel < TimelinePanel
             
             % Draw the features that have been reported.
             features = reporter.features();
-            for feature = features
+            for i = 1:length(features)
+                feature = features{i};
                 x0=feature.range(1);
                 y0=feature.range(3);
                 x1=feature.range(2);
