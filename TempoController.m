@@ -2085,6 +2085,8 @@ classdef TempoController < handle
         
         
         function saveWorkspace(obj, filePath)
+            s.version = 1.0;
+            
             s.displayRange = obj.displayRange;
             s.selectedRange = obj.selectedRange;
             s.currentTime = obj.currentTime;
