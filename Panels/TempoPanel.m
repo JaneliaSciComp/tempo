@@ -217,7 +217,7 @@ classdef TempoPanel < handle
                 obj.controller.closePanel(obj);
                 
                 % Remove any undoable actions that had been added for this panel.
-                obj.controller.clearUndoContext(obj);
+                obj.controller.undoManager.clearContext(obj);
             end
         end
         

@@ -107,7 +107,7 @@ classdef UndoManager < handle
         end
         
         
-        function clearUndoContext(obj, context)
+        function clearContext(obj, context)
             % Remove all actions associated with the context.
             i = length(obj.undoStack);
             while i > 0
