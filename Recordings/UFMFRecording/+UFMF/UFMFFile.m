@@ -17,7 +17,6 @@ classdef UFMFFile < handle
         frameCount = 0          % The number of frames in the movie.
         
         printStats = false
-        showBoxes = false       % TODO: should be a parameter to getFrame?
     end
     
     properties (Dependent)
@@ -706,17 +705,6 @@ classdef UFMFFile < handle
                     frameImage(:, box(2):box(2)+box(4)-1, box(1):box(1)+box(3) - 1) = data{i};
                     if makeMask
                         frameMask(box(2):box(2)+box(4)-1, box(1):box(1)+box(3) - 1) = any(data{i}, 1);
-                    end
-                end
-                if obj.showBoxes
-                    % Outline each box in red.
-                    boxColor = [255; 0; 0];
-                    for i = 1:boxCount
-                        box = boxes(i, :);
-                        frameImage(:, box(2):box(2)+box(4)-1, box(1)) = repmat(boxColor, [1 box(4)]);
-                        frameImage(:, box(2):box(2)+box(4)-1, box(1)+box(3)-1) = repmat(boxColor, [1 box(4)]);
-                        frameImage(:, box(2)+box(4)-1, box(1):box(1)+box(3)-1) = repmat(boxColor, [1 box(3)]);
-                        frameImage(:, box(2),          box(1):box(1)+box(3)-1) = repmat(boxColor, [1 box(3)]);
                     end
                 end
             end
