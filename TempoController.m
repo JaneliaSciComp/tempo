@@ -136,7 +136,7 @@ classdef TempoController < handle
             obj.undoManager = UndoManager();
             addlistener(obj.undoManager, 'UndoStackChanged', @(source, event)handleUndoStackChanged(obj, source, event));
             
-            % Insert a splitter at the top level to separate the video and timeline panels.
+            % Create top-level panels to hold the video and timeline panels.
             obj.videosPanel = uipanel(obj.figure, ...
                 'BorderType', 'none', ...
                 'BorderWidth', 0, ...
@@ -151,15 +151,17 @@ classdef TempoController < handle
                 'SelectionHighlight', 'off', ...
                 'ResizeFcn', @(source, event)arrangeTimelinePanels(obj, source, event), ...
                 'Visible', onOff(getpref('Tempo', 'ViewShowTimeline', true)));
+            
+            % Create the time indicator at the bottom of the timelines.
+            obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
+            
+            % Insert a splitter at the top level to separate the video and timeline panels.
             if strcmp(getpref('Tempo', 'VideoPlacement', 'left'), 'left')
                 orientation = 'horizontal';
             else
                 orientation = 'vertical';
             end
             obj.splitter = UISplitter(obj.figure, obj.videosPanel, obj.timelinesPanel, orientation);
-            
-            % Create the time indicator at the bottom of the timelines.
-            obj.timeIndicatorPanel = TimeIndicatorPanel(obj);
             
             obj.createMenuBar();
             if getpref('Tempo', 'ViewShowToolbar', true)
