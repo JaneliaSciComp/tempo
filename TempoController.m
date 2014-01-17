@@ -1943,7 +1943,7 @@ classdef TempoController < handle
                     end
                 end
                 
-                if ~isempty(keyEvent.Character) && isempty(obj.panelHandlingKeyPress)
+                if isempty(keyEvent.Modifier) && ~isempty(keyEvent.Character) && isempty(obj.panelHandlingKeyPress)
                     % The key wasn't handle by anyone.
                     beep
                 end
