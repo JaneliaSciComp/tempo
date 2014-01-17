@@ -43,8 +43,8 @@ classdef FlySongImporter < FeatureImporter
         end
         
         
-        function n = importFeatures(obj)
-            n = 0;
+        function features = importFeatures(obj)
+            features = {};
             
             fieldInfo = whos('song_path', 'daq_channel', '-file', obj.featuresFilePath);
             if length(fieldInfo) == 2
@@ -65,9 +65,13 @@ classdef FlySongImporter < FeatureImporter
                     
                     % TODO: check if audio file is already open
                     
-                    channel = S.daq_channel;
-                    rec = Recording(obj.controller, audioPath, 'Channel', channel);
-                    obj.controller.addAudioRecording(rec);
+                    try
+                        channel = S.daq_channel;
+                        rec = DAQRecording(obj.controller, audioPath, 'Channel', channel);
+                        obj.controller.addAudioRecording(rec);
+                    catch ME
+                        uiwait(warndlg(['Could not open the audio file associated with this file.' char(10) char(10) ME.message], 'Tempo', 'modal'));
+                    end
                 end
             else
                 % Require an audio file to already be open?
@@ -76,32 +80,35 @@ classdef FlySongImporter < FeatureImporter
             obj.updateProgress('Loading events from file...', 1/4)
             s = load(obj.featuresFilePath, 'winnowed_sine', 'pulseInfo2');
             
-            obj.updateProgress('Adding sine song events...', 2/4)
             if s.winnowed_sine.num_events > 0 && ~isempty(s.winnowed_sine.events)
-                for i = 1:size(s.winnowed_sine.start, 1)
-                    x_start = s.winnowed_sine.start(i);
-                    x_stop = s.winnowed_sine.stop(i);
-                    obj.addFeature(Feature('Sine Song', [x_start x_stop], ...
-                                           'duration', s.winnowed_sine.length(i), ...
-                                           'meanFundFreq', s.winnowed_sine.MeanFundFreq(i), ...
-                                           'medianFundFreq', s.winnowed_sine.MedianFundFreq(i)));
-                end
-                n = n + size(s.winnowed_sine.start, 1);
+                sineCount = size(s.winnowed_sine.start, 1);
+            else
+                sineCount = 0;
+            end
+            pulseCount = length(s.pulseInfo2.wc);
+            features = cell(1, sineCount + pulseCount);
+            
+            obj.updateProgress('Adding sine song events...', 2/4)
+            for i = 1:sineCount
+                x_start = s.winnowed_sine.start(i);
+                x_stop = s.winnowed_sine.stop(i);
+                features{i} = Feature('Sine Song', [x_start x_stop], ...
+                                      'boutLength', s.winnowed_sine.length(i), ...
+                                      'meanFundFreq', s.winnowed_sine.MeanFundFreq(i), ...
+                                      'medianFundFreq', s.winnowed_sine.MedianFundFreq(i));
             end
             
             obj.updateProgress('Adding pulse events...', 3/4)
-            pulseCount = length(s.pulseInfo2.wc);
             for i = 1:pulseCount
                 x = double(s.pulseInfo2.wc(i)) / rec.sampleRate;
                 a = double(s.pulseInfo2.w0(i)) / rec.sampleRate;
                 b = double(s.pulseInfo2.w1(i)) / rec.sampleRate;
-                obj.addFeature(Feature('Pulse', x, ...
-                                       'pulseWindow', [a b], ...
-                                       'dogOrder', s.pulseInfo2.dog(i), ...
-                                       'frequencyAtMax', s.pulseInfo2.fcmx(i), ...
-                                       'scaleAtMax', s.pulseInfo2.scmx(i)));
+                features{sineCount + i} = Feature('Pulse', x, ...
+                                                  'pulseWindow', [a b], ...
+                                                  'dogOrder', s.pulseInfo2.dog(i), ...
+                                                  'frequencyAtMax', s.pulseInfo2.fcmx(i), ...
+                                                  'scaleAtMax', s.pulseInfo2.scmx(i));
             end
-            n = n + pulseCount;
         end
         
     end

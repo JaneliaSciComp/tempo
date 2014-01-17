@@ -825,7 +825,7 @@ classdef TempoController < handle
                             importer = constructor(obj, fullPath);
                             importer.startProgress();
                             try
-                                n = importer.importFeatures();
+                                features = importer.importFeatures();
                                 importer.endProgress();
                                 obj.importing = false;
                                 
@@ -839,9 +839,11 @@ classdef TempoController < handle
                                 end
                                 obj.recordingsToAdd = {};
                                 
-                                if n == 0
+                                if isempty(features)
                                     waitfor(msgbox('No features were imported.', obj.importerTypeNames{index}, 'warn', 'modal'));
                                 else
+                                    importer.addFeatures(features);
+                                    
                                     obj.reporters{end + 1} = importer;
                                     obj.timelinePanels{end + 1} = FeaturesPanel(importer);
                                     

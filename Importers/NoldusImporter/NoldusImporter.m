@@ -43,7 +43,7 @@ classdef NoldusImporter < FeatureImporter
         end
         
         
-        function n = importFeatures(obj)
+        function features = importFeatures(obj)
             obj.updateProgress('Loading events from file...', 0/3)
             
             fid = fopen(obj.featuresFilePath);
@@ -56,10 +56,9 @@ classdef NoldusImporter < FeatureImporter
             stopTimes = rawEvents{1}(stopIdxs);
             featureTypes = rawEvents{2}(startIdxs);
             
-            n = length(featureTypes);
-            
-            for i = 1:n
-                obj.addFeature(Feature(featureTypes{i}, [startTimes(i) stopTimes(i)]));
+            features = cell(1, length(featureTypes));
+            for i = 1:length(featureTypes)
+                features{i} = Feature(featureTypes{i}, [startTimes(i) stopTimes(i)]);
             end
         end
         

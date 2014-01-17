@@ -33,16 +33,11 @@ classdef SavedFeaturesImporter < FeatureImporter
         end
         
         
-        function n = importFeatures(obj)
+        function features = importFeatures(obj)
             obj.updateProgress('Loading events from file...', 0/3)
             
-            s = load(obj.featuresFilePath, 'features', 'featureTypes', 'startTimes', 'stopTimes');
-            
-            n = length(s.features);
-            for i = 1:n
-                s.features(i).contextualMenu = [];
-                obj.addFeature(s.features(i));
-            end
+            s = load(obj.featuresFilePath, 'features');
+            features = s.features;
         end
         
     end

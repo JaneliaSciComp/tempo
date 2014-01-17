@@ -37,15 +37,16 @@ classdef MouseVocImporter < FeatureImporter
         end
         
         
-        function n = importFeatures(obj)
+        function features = importFeatures(obj)
+            features = {};
+            
             obj.updateProgress('Loading events from file...', 0/2)
             s = load(obj.featuresFilePath, '-ascii');
             
             obj.updateProgress('Adding events...', 1/2)
             for i = 1:size(s, 1)
-                obj.addFeature(Feature('Vocalization', s(i,1:4)));
+                features{end + 1} = Feature('Vocalization', s(i,1:4)); %#ok<AGROW>
             end
-            n=size(s,1);
         end
         
     end

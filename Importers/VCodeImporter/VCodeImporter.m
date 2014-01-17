@@ -39,7 +39,7 @@ classdef VCodeImporter < FeatureImporter
         end
         
         
-        function n = importFeatures(obj)
+        function features = importFeatures(obj)
             obj.updateProgress('Loading events from file...', 0/3)
             
             fid = fopen(obj.featuresFilePath);
@@ -47,9 +47,9 @@ classdef VCodeImporter < FeatureImporter
             fclose(fid);
             
             n = length(c{1});
-            
+            features = cell(1, n);
             for i = 1:n
-                obj.addFeature(Feature(c{3}{i}, [c{1}(i) c{1}(i)+c{2}(i)] / 1000));
+                features{i} = Feature(c{3}{i}, [c{1}(i) c{1}(i)+c{2}(i)] / 1000);
             end
         end
         
