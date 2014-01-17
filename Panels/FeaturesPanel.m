@@ -252,6 +252,7 @@ classdef FeaturesPanel < TimelinePanel
                 % Delete the selected feature.
                 if ~isempty(obj.selectedFeature)
                     obj.removeFeature(obj.selectedFeature);
+                    handled = true;
                 end
             end
             

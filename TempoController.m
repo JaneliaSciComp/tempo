@@ -1942,6 +1942,11 @@ classdef TempoController < handle
                         break
                     end
                 end
+                
+                if isempty(obj.panelHandlingKeyPress)
+                    % The key wasn't handle by anyone.
+                    beep
+                end
             end
         end
         
