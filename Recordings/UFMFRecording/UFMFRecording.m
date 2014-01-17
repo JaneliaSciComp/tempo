@@ -1,7 +1,13 @@
 classdef UFMFRecording < VideoRecording
     
+    properties
+        highlightForeground = false     % TODO: expose a UI to set this
+    end
+    
     properties (Transient)
         ufmfFile
+        
+        haveImageToolbox
     end
     
     
@@ -20,6 +26,8 @@ classdef UFMFRecording < VideoRecording
         
         function obj = UFMFRecording(controller, varargin)
             obj = obj@VideoRecording(controller, varargin{:});
+            
+            obj.haveImageToolbox = license('checkout', 'image_toolbox');
         end
         
         
@@ -38,7 +46,27 @@ classdef UFMFRecording < VideoRecording
         
         
         function [frameImage, frameNum] = frameAtTime(obj, time)
-            [frameImage, frameNum] = obj.ufmfFile.getFrameAtTime(obj.timeOffset + time);
+            if obj.highlightForeground
+                % Highlight the difference between the pixels in the frame and the background.
+                
+                % Get the frame and the mask from the UFMF.
+                [frameImage, frameNum, frameMask] = obj.ufmfFile.getFrameAtTime(obj.timeOffset + time);
+                
+                % Darken the background pixels.
+                fullMask = repmat(frameMask, [1 1 3]);
+                frameImage(~fullMask) = frameImage(~fullMask) * 0.2;
+                
+                if obj.haveImageToolbox
+                    % Also lighten the perimiter of the foreground pixels.
+                    % This lets you see dark foreground pixels on a dark background.
+                    perimMask = bwperim(frameMask);
+                    fullPerimMask = repmat(perimMask, [1 1 3]);
+                    frameImage(fullPerimMask) = uint8(power(double(frameImage(fullPerimMask)), 1.1));
+                end
+            else
+                % Just get the frame.
+                [frameImage, frameNum] = obj.ufmfFile.getFrameAtTime(obj.timeOffset + time);
+            end
         end
         
         
