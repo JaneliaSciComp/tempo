@@ -68,12 +68,12 @@ classdef FeatureReporter < handle
         end
         
         
-        function f = features(obj, featureType)
-            f = obj.featureList(1:obj.featureCount);
+        function fs = features(obj, featureType)
+            fs = obj.featureList(1:obj.featureCount);
             
             if nargin > 1
-                inds = strcmp({f.type}, featureType);
-                f = f{inds};
+                inds = cellfun(@(f) strcmp(f.type, featureType), fs);
+                fs = fs(inds);
             end
         end
         
@@ -165,22 +165,24 @@ classdef FeatureReporter < handle
             [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', 'features.mat');
             
             if ischar(fileName)
-                features = sort(obj.features());
+                features = obj.features();
+                [~, ind] = sort(cellfun(@(f) f.startTime, features));
+                features = features(ind);
                 
-                lowFreqs = [features.lowFreq];
-                highFreqs = [features.highFreq];
+                lowFreqs = cellfun(@(f) f.lowFreq, features);
+                highFreqs = cellfun(@(f) f.highFreq, features);
                 haveFreqRanges = any(~isinf(lowFreqs)) || any(~isinf(highFreqs));
                 
                 if filterIndex == 1
                     % Export as a MATLAB file
                     s.features = features;
-                    s.featureTypes = {features.type};
-                    s.startTimes = [features.startTime];
-                    s.stopTimes = [features.endTime];
+                    s.featureTypes = cellfun(@(f) f.type, features, 'UniformOutput', false);
+                    s.startTimes = cellfun(@(f) f.startTime, features);
+                    s.stopTimes = cellfun(@(f) f.endTime, features);
                     
                     if haveFreqRanges
                         s.lowFreqs = lowFreqs;
-                        s.highFreqs = highFreqs; %#ok<STRNU>
+                        s.highFreqs = highFreqs; 
                     end
                     
                     save(fullfile(pathName, fileName), '-struct', 's');
