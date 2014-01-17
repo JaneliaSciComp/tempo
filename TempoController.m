@@ -2055,11 +2055,12 @@ classdef TempoController < handle
         function updateOverallDuration(obj)
             obj.duration = max([cellfun(@(r) r.duration, obj.recordings) cellfun(@(r) r.duration, obj.reporters)]);
             
+            set(obj.videoSlider, 'Max', obj.duration);
             if ~isempty(obj.videoPanels)
                 meanFrameRate = mean(cellfun(@(v) v.video.sampleRate, obj.videoPanels));
-                set(obj.videoSlider, 'Max', obj.duration, ...
-                                     'SliderStep', [1.0 / meanFrameRate / obj.duration, 5.0 / obj.duration]);
+                set(obj.videoSlider, 'SliderStep', [1.0 / meanFrameRate / obj.duration, 5.0 / obj.duration]);
             end
+            
             set(obj.timelineSlider, 'Max', obj.duration);
             
             % Alter the zoom so that the same window of time is visible.
