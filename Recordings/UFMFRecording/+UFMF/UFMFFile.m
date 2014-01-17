@@ -158,7 +158,7 @@ classdef UFMFFile < handle
         end
         
         
-        function [im, frameNum] = getFrame(obj, frameNum)
+        function [im, frameNum, frameMask] = getFrame(obj, frameNum)
             % Read in a frame from the UFMF file by specifying a frame number or just getting the next one.
             % If the last frame has been read or there is no frame at the given number then an empty matrix will be returned.
             %
@@ -166,6 +166,7 @@ classdef UFMFFile < handle
             % >> im = ufmfFile.getFrame();              % Get the next frame.
             % >> im = ufmfFile.getFrame(132);           % Get a specific frame.
             % >> [im, frameNum] = ufmfFile.getFrame();  % Get the next frame and which number it is.
+            % >> [im, ~, mask] = ufmfFile.getFrame();   % Also return a logical mask of where the image differs from the background.
             
             % TODO: Cache recent frames to speed up video scrubbing.
             
@@ -184,18 +185,24 @@ classdef UFMFFile < handle
                 frameNum = obj.lastFrameNumRead + 1;
             end
             
-            im = obj.readFrame(uint64(frameNum));
+            if nargout == 2
+                % TODO: why ignore the frame num returned by readFrame?
+                im = obj.readFrame(uint64(frameNum));
+            else
+                [im, ~, frameMask] = obj.readFrame(uint64(frameNum));
+            end
             
             obj.lastFrameNumRead = frameNum;
         end
         
         
-        function [im, frameNum] = getFrameAtTime(obj, frameTime)
+        function [im, frameNum, frameMask] = getFrameAtTime(obj, frameTime)
             % Read in a frame from the UFMF file at a specific time.
             %
             % >> ufmfFile = UFMF.openFile('my.ufmf');
-            % >> im = ufmfFile.getFrame(33.3);              % Get the frame at 33.3 seconds into the movie.
-            % >> [im, frameNum] = ufmfFile.getFrame(33.3);	% Also return the frame number.
+            % >> im = ufmfFile.getFrameAtTime(33.3);                % Get the frame at 33.3 seconds into the movie.
+            % >> [im, frameNum] = ufmfFile.getFrameAtTime(33.3);	% Also return the frame number.
+            % >> [im, ~, mask] = ufmfFile.getFrameAtTime(62.9);     % Also return a logical mask of where the image differs from the background.
             
             % TODO: this assumes a constant frame rate, would be better to lookup the index from the time stamps but it will be slow...
             
@@ -214,9 +221,16 @@ classdef UFMFFile < handle
             else
                 frameNum = ceil(obj.frameRate * frameTime);
             end
+            if nargout > 2
+                frameMask = [];
+            end
             
             if frameNum > 0 && frameNum <= obj.frameCount
-                im = obj.getFrame(frameNum);
+                if nargout > 2
+                    [im, ~, frameMask] = obj.getFrame(frameNum);
+                else
+                    im = obj.getFrame(frameNum);
+                end
             else
                 im = [];
             end
@@ -585,8 +599,10 @@ classdef UFMFFile < handle
         end
         
         
-        function [frameImage, timeStamp] = readFrame(obj, frameNum)
+        function [frameImage, timeStamp, frameMask] = readFrame(obj, frameNum)
             frame = obj.frames(frameNum);
+            
+            makeMask = nargout > 2;
             
             fseek(obj.fileID, frame.fileLoc, 'bof');
             
@@ -667,15 +683,30 @@ classdef UFMFFile < handle
                     tmp = false(size(frameImage, 2), size(frameImage, 3));
                     tmp(sub2ind(size(tmp),boxes(:,2),boxes(:,1))) = true;
                     frameImage(:,tmp) = data;
+                    if makeMask
+                        frameMask = tmp;
+                    end
                 else
+                    if makeMask
+                        frameMask = false(size(frameImage, 2), size(frameImage, 3));
+                    end
                     for i = 1:boxCount
                         frameImage(:,boxes(i,2):boxes(i,2)+max_height-1,boxes(i,1):boxes(i,1)+max_width-1) = data(:,i,:,:);
+                        if makeMask
+                            frameMask(boxes(i,2):boxes(i,2)+max_height-1,boxes(i,1):boxes(i,1)+max_width-1) = any(data(:,i,:,:), 1);
+                        end
                     end
                 end
             else
+                if makeMask
+                    frameMask = false(size(frameImage, 2), size(frameImage, 3));
+                end
                 for i = 1:boxCount
                     box = boxes(i, :);
                     frameImage(:, box(2):box(2)+box(4)-1, box(1):box(1)+box(3) - 1) = data{i};
+                    if makeMask
+                        frameMask(box(2):box(2)+box(4)-1, box(1):box(1)+box(3) - 1) = any(data{i}, 1);
+                    end
                 end
                 if obj.showBoxes
                     % Outline each box in red.
@@ -690,7 +721,10 @@ classdef UFMFFile < handle
                 end
             end
 
-            frameImage = permute(frameImage,[3,2,1]);
+            frameImage = permute(frameImage, [3,2,1]);
+            if makeMask
+                frameMask = permute(frameMask, [2,1]);
+            end
         end
         
     end
