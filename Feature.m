@@ -3,6 +3,7 @@ classdef Feature < dynamicprops
     properties
         type
         range
+        color
     end
     
     properties (Hidden, Transient)
@@ -55,8 +56,14 @@ classdef Feature < dynamicprops
             %% Add any optional attributes.
             % TODO: any value in having known attribute types like 'confidence'?
             for argIndex = 1:numel(varargin) / 2;
-                addprop(obj, varargin{argIndex * 2 - 1});
-                obj.(varargin{argIndex * 2 - 1}) = varargin{argIndex * 2};
+                propName = varargin{argIndex * 2 - 1};
+                propValue = varargin{argIndex * 2};
+                if strcmpi(propName, 'color')
+                    obj.color = propValue;
+                else
+                    addprop(obj, propName);
+                    obj.(varargin{argIndex * 2 - 1}) = varargin{argIndex * 2};
+                end
             end
         end
         
@@ -83,6 +90,15 @@ classdef Feature < dynamicprops
         
         function t = get.highFreq(obj)
             t = obj.range(4);
+        end
+        
+        
+        function c = get.color(obj)
+            if isempty(obj.color)
+                c = obj.reporter.featuresColor;
+            else
+                c = obj.color;
+            end
         end
         
         function [obj, idx] = sort(obj, varargin)

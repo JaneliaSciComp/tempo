@@ -1,4 +1,4 @@
-classdef FeatureImporter < FeatureReporter
+classdef FeaturesImporter < FeaturesReporter
     
     properties
         featuresFilePath
@@ -31,8 +31,8 @@ classdef FeatureImporter < FeatureReporter
     
     methods
         
-        function obj = FeatureImporter(controller, featuresFilePath, varargin)
-            obj = obj@FeatureReporter(controller, varargin{:});
+        function obj = FeaturesImporter(controller, featuresFilePath, varargin)
+            obj = obj@FeaturesReporter(controller, varargin{:});
             
             obj.featuresFilePath = featuresFilePath;
             

@@ -1,7 +1,7 @@
 classdef UISplitter < handle
     
     properties
-        position = 0.5
+        position = 0.4
         orientation = 'horizontal'
         paneOneMinSize = 200
         paneTwoMinSize = 200

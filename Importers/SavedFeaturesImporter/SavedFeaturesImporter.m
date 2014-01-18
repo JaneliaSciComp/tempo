@@ -1,4 +1,4 @@
-classdef SavedFeaturesImporter < FeatureImporter
+classdef SavedFeaturesImporter < FeaturesImporter
     
     properties
     end
@@ -29,7 +29,7 @@ classdef SavedFeaturesImporter < FeatureImporter
     methods
         
         function obj = SavedFeaturesImporter(controller, featuresFilePath)
-            obj = obj@FeatureImporter(controller, featuresFilePath);
+            obj = obj@FeaturesImporter(controller, featuresFilePath);
         end
         
         

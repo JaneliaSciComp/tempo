@@ -42,6 +42,7 @@ classdef TempoController < handle
         playFasterTool
         
         detectPopUpTool
+        annotatePopUpTool
         
         timeLabelFormat = 1     % default to displaying time in minutes and seconds
         
@@ -99,7 +100,7 @@ classdef TempoController < handle
                 'NumberTitle', 'off', ...
                 'Toolbar', 'none', ...
                 'MenuBar', 'none', ...
-                'Position', getpref('Tempo', 'MainWindowPosition', [100 100 400 200]), ...
+                'Position', getpref('Tempo', 'MainWindowPosition', [100 100 1000 500]), ...
                 'Color', [0.4 0.4 0.4], ...
                 'Renderer', 'opengl', ...
                 'ResizeFcn', @(source, event)handleResize(obj, source, event), ...
@@ -347,6 +348,10 @@ classdef TempoController < handle
                                      'Callback', @(hObject, eventdata)handleZoomToSelection(obj, hObject, eventdata), ...
                                      'Accelerator', '', ...
                                      'Tag', 'zoomToSelection');
+            uimenu(obj.timelineMenu, 'Label', 'Annotate Features...', ...
+                                     'Callback', @(hObject, eventdata)handleAnnotateFeatures(obj, hObject, eventdata, true, false), ...
+                                     'Separator', 'on', ...
+                                     'Tag', 'addManualAnnotations');
             uimenu(obj.timelineMenu, 'Label', 'Open Waveform for New Recordings', ...
                                      'Callback', @(hObject, eventdata)handleShowWaveformAndOrSpectrogramOnOpen(obj, hObject, eventdata, true, false), ...
                                      'Separator', 'on', ...
@@ -462,7 +467,7 @@ classdef TempoController < handle
                 'TooltipString', 'Save a screenshot',...
                 'ClickedCallback', @(hObject, eventdata)handleSaveScreenshot(obj, hObject, eventdata));
             
-            % Detect features
+            % Detect and annotate features
             iconData = double(imread(fullfile(iconRoot, 'detect.png'), 'BackgroundColor', defaultBackground)) / 255;
             obj.detectPopUpTool = uisplittool('Parent', obj.toolbar, ...
                 'Tag', 'detectFeatures', ...
@@ -470,6 +475,13 @@ classdef TempoController < handle
                 'TooltipString', 'Detect features',... 
                 'Separator', 'on', ...
                 'ClickedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata));
+            iconData = double(imread(fullfile(iconRoot, 'Annotate.png'), 'BackgroundColor', defaultBackground)) / 255;
+            obj.annotatePopUpTool = uipushtool('Parent', obj.toolbar, ...
+                'Tag', 'annotate', ...
+                'CData', iconData, ...
+                'TooltipString', 'Annotate features',... 
+                'Separator', 'on', ...
+                'ClickedCallback', @(hObject, eventdata)handleAnnotateFeatures(obj, hObject, eventdata));
             
             % Playback
             forwardIcon = double(imread(fullfile(iconRoot, 'play.png'), 'BackgroundColor', defaultBackground)) / 255;
@@ -533,14 +545,14 @@ classdef TempoController < handle
                 end
                 
                 % Try to replace the playback tools with Java buttons that can display the play rate, etc.
-                obj.replaceToolbarTool(9, 'playSlowerTool', 'PlaySlower');
-                obj.replaceToolbarTool(10, 'playBackwardsTool', 'PlayBackwards');
-                obj.replaceToolbarTool(11, 'pauseTool');
+                obj.replaceToolbarTool(10, 'playSlowerTool', 'PlaySlower');
+                obj.replaceToolbarTool(11, 'playBackwardsTool', 'PlayBackwards');
+                obj.replaceToolbarTool(12, 'pauseTool');
                 if isjava(obj.pauseTool)
                     obj.pauseTool.setText('1x');
                 end
-                obj.replaceToolbarTool(12, 'playForwardsTool', 'PlayForwards');
-                obj.replaceToolbarTool(13, 'playFasterTool', 'PlayFaster');
+                obj.replaceToolbarTool(13, 'playForwardsTool', 'PlayForwards');
+                obj.replaceToolbarTool(14, 'playFasterTool', 'PlayFaster');
 
                 try
                     obj.jToolbar(1).repaint;
@@ -1296,6 +1308,23 @@ classdef TempoController < handle
         end
         
         
+        function handleAnnotateFeatures(obj, ~, ~)
+            % Create a new feature annotator.
+            annotator = FeaturesAnnotator(obj);
+
+            % Let the user tweak its settings.
+            if annotator.editSettings()
+                % Create a panel to show the annotator.
+                panel = obj.addReporter(annotator);
+
+                obj.addUndoableAction('Annotate Features', ...
+                                      @() obj.closePanel(panel), ...
+                                      @() obj.addReporter(annotator, panel), ...
+                                      panel);
+            end
+        end
+        
+        
         function handleShowWaveformAndOrSpectrogramOnOpen(obj, ~, ~, showWaveform, showSpectrogram)
             % Remember the user's choice.
             setpref('Tempo', 'ShowWaveforms', showWaveform);
@@ -2023,6 +2052,7 @@ classdef TempoController < handle
                     obj.openSpectrogram(recording);
                 end
                 
+                obj.showTimelinePanels();
                 obj.arrangeTimelinePanels();
                 
                 addlistener(recording, 'timeOffset', 'PostSet', @(source, event)handleRecordingDurationChanged(obj, source, event));
@@ -2048,6 +2078,7 @@ classdef TempoController < handle
                 panel.showFrameNumber(getpref('Tempo', 'VideoShowFrameNumber', true));
                 obj.videoPanels{end + 1} = panel;
                 
+                obj.showVideoPanels();
                 obj.arrangeVideoPanels();
                 
                 addlistener(recording, 'timeOffset', 'PostSet', @(source, event)handleRecordingDurationChanged(obj, source, event));
@@ -2158,15 +2189,23 @@ classdef TempoController < handle
             for i = 1:length(obj.recordings)
                 recording = obj.recordings{i};
                 recording.controller = obj;
-                recording.loadData();
-                if ~havePanels
+                try
+                    recording.loadData();
+                catch ME
+                    % TODO: prompt the user to locate a moved file?
+                    uiwait(errordlg(['One of the recordings could not be opened.' char(10) char(10) ME.message], 'Tempo', 'modal'));
+                    recording = [];
+                end
+                if ~isempty(recording) && ~havePanels
                     if isa(recording, 'AudioRecording')
                         % TODO: check prefs?
                         obj.openWaveform(recording);
                         obj.openSpectrogram(recording);
+                        obj.showTimelinePanels();
                     elseif isa(recording, 'VideoRecording')
                         panel = VideoPanel(obj, recording);
                         obj.videoPanels{end + 1} = panel;
+                        obj.showVideoPanels();
                     end
                 end
             end

@@ -1,4 +1,4 @@
-classdef FeatureDetector < FeatureReporter
+classdef FeaturesDetector < FeaturesReporter
     
     properties
         detectedTimeRanges;    % An nx2 matrix of non-overlapping time ranges (start, end) in ascending order.
@@ -26,8 +26,8 @@ classdef FeatureDetector < FeatureReporter
     
     methods
         
-        function obj = FeatureDetector(controller, varargin)
-            obj = obj@FeatureReporter(controller, varargin{:});
+        function obj = FeaturesDetector(controller, varargin)
+            obj = obj@FeaturesReporter(controller, varargin{:});
             
             % Default the name of the reporter to the reporter type.
             obj.name = obj.typeName();

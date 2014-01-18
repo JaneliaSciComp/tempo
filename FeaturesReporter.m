@@ -1,4 +1,4 @@
-classdef FeatureReporter < handle
+classdef FeaturesReporter < handle
     
     properties
         name;
@@ -57,7 +57,7 @@ classdef FeatureReporter < handle
     
     methods
         
-        function obj = FeatureReporter(controller, varargin)
+        function obj = FeaturesReporter(controller, varargin)
             obj = obj@handle();
             
             obj.controller = controller;

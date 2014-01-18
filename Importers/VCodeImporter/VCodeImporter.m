@@ -1,4 +1,4 @@
-classdef VCodeImporter < FeatureImporter
+classdef VCodeImporter < FeaturesImporter
     
     properties
     end
@@ -35,7 +35,7 @@ classdef VCodeImporter < FeatureImporter
     methods
         
         function obj = VCodeImporter(controller, featuresFilePath)
-            obj = obj@FeatureImporter(controller, featuresFilePath);
+            obj = obj@FeaturesImporter(controller, featuresFilePath);
         end
         
         

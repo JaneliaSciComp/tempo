@@ -1,4 +1,4 @@
-classdef MouseVocImporter < FeatureImporter
+classdef MouseVocImporter < FeaturesImporter
     
     properties
     end
@@ -33,7 +33,7 @@ classdef MouseVocImporter < FeatureImporter
     methods
         
         function obj = MouseVocImporter(controller, featuresFilePath)
-            obj = obj@FeatureImporter(controller, featuresFilePath);
+            obj = obj@FeaturesImporter(controller, featuresFilePath);
         end
         
         

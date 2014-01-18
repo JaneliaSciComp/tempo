@@ -49,7 +49,7 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function addActionMenuItems(obj, actionMenu)
-            if isa(obj.reporter, 'FeatureDetector')
+            if isa(obj.reporter, 'FeaturesDetector')
                 uimenu(actionMenu, ...
                     'Label', 'Show Reporter Settings', ...
                     'Callback', @(source, event)handleShowReporterSettings(obj, source, event));
@@ -83,7 +83,7 @@ classdef FeaturesPanel < TimelinePanel
         
         function updateActionMenu(obj, ~)
             selectionIsEmpty = obj.controller.selectedRange(2) == obj.controller.selectedRange(1);
-            if isa(obj.reporter, 'FeatureDetector')
+            if isa(obj.reporter, 'FeaturesDetector')
                 set(obj.actionMenuItem('detectFeaturesInSelection'), 'Enable', onOff(~selectionIsEmpty));
             end
         end
@@ -118,7 +118,7 @@ classdef FeaturesPanel < TimelinePanel
             
             % Indicate the time spans in which feature detection has occurred for each reporter.
             lastTime = 0.0;
-            if isa(reporter, 'FeatureDetector')
+            if isa(reporter, 'FeaturesDetector')
                 for j = 1:size(reporter.detectedTimeRanges, 1)
                     detectedTimeRange = reporter.detectedTimeRanges(j, :);
                     
@@ -171,7 +171,7 @@ classdef FeaturesPanel < TimelinePanel
                            'HorizontalAlignment', 'center', ...
                            'VerticalAlignment', 'middle', ...
                            'UIContextMenu', feature.contextualMenu, ...
-                           'Color', reporter.featuresColor, ...
+                           'Color', feature.color(), ...
                            'Clipping', 'on', ...
                            'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
                            'UserData', feature);
@@ -192,11 +192,11 @@ classdef FeaturesPanel < TimelinePanel
                         y1 = maxY;
                     end
                     
-                    fillColor = reporter.featuresColor;
-                    fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
+                    edgeColor = feature.color();
+                    fillColor = edgeColor + ([1 1 1] - edgeColor) * 0.5;
                     
                     h=patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
-                            'EdgeColor', reporter.featuresColor, ...
+                            'EdgeColor', edgeColor, ...
                             'UIContextMenu', feature.contextualMenu, ...
                             'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
                             'UserData', feature);
@@ -264,6 +264,17 @@ classdef FeaturesPanel < TimelinePanel
             % Otherwise pass it up the chain.
             if ~handled
                 handled = keyWasPressed@TimelinePanel(obj, keyEvent);
+            end
+        end
+        
+        
+        function handled = keyWasReleased(obj, keyEvent)
+            % Let the reporter respond to the key.
+            handled = obj.reporter.keyWasReleasedInPanel(keyEvent, obj);
+            
+            % Otherwise pass it up the chain.
+            if ~handled
+                handled = keyWasReleased@TimelinePanel(obj, keyEvent);
             end
         end
         

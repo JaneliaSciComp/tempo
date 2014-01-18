@@ -1,4 +1,4 @@
-classdef PulseTrainDetector < FeatureDetector
+classdef PulseTrainDetector < FeaturesDetector
     
     properties    
         baseReporter
@@ -24,7 +24,7 @@ classdef PulseTrainDetector < FeatureDetector
     methods
         
         function obj = PulseTrainDetector(controller)
-            obj = obj@FeatureDetector(controller);
+            obj = obj@FeaturesDetector(controller);
         end
         
         

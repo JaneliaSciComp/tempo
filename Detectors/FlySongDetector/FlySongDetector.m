@@ -1,4 +1,4 @@
-classdef FlySongDetector < FeatureDetector
+classdef FlySongDetector < FeaturesDetector
     
     properties
         recording
@@ -58,7 +58,7 @@ classdef FlySongDetector < FeatureDetector
     methods
         
         function obj = FlySongDetector(controller)
-            obj = obj@FeatureDetector(controller);
+            obj = obj@FeaturesDetector(controller);
         end
         
         

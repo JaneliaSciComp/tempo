@@ -1,4 +1,4 @@
-classdef NoldusImporter < FeatureImporter
+classdef NoldusImporter < FeaturesImporter
     
     properties
     end
@@ -39,7 +39,7 @@ classdef NoldusImporter < FeatureImporter
     methods
         
         function obj = NoldusImporter(controller, featuresFilePath)
-            obj = obj@FeatureImporter(controller, featuresFilePath);
+            obj = obj@FeaturesImporter(controller, featuresFilePath);
         end
         
         

@@ -1,4 +1,4 @@
-classdef MouseVocDetector < FeatureDetector
+classdef MouseVocDetector < FeaturesDetector
     
     properties
         recording
@@ -49,7 +49,7 @@ classdef MouseVocDetector < FeatureDetector
     methods
         
         function obj = MouseVocDetector(recording)
-            obj = obj@FeatureDetector(recording);
+            obj = obj@FeaturesDetector(recording);
         end
         
         
@@ -62,7 +62,7 @@ classdef MouseVocDetector < FeatureDetector
         
         
         function setRecording(obj, recording)
-            setRecording@FeatureDetector(obj, recording);
+            setRecording@FeaturesDetector(obj, recording);
         end
         
         
