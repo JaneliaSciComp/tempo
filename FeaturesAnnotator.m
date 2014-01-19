@@ -81,11 +81,12 @@ classdef FeaturesAnnotator < FeaturesReporter
                         if panel.controller.isPlaying
                             % Allow the user to create a range feature during playback.
                             % Wait until the key release to add the feature.
-                            obj.rangeFeatureBeingAdded = Feature(featureDef.type, panel.controller.currentTime);
-                            obj.rangeFeatureBeingAdded.color = featureDef.color;
+                            obj.rangeFeatureBeingAdded = Feature(featureDef.type, panel.controller.currentTime, ...
+                                                                 'Color', featureDef.color);
                         elseif panel.controller.selectedRange(2) > panel.controller.selectedRange(1)
                             % Add the current selection as a new feature.
-                            feature = Feature(featureDef.type, panel.controller.selectedRange, 'color', featureDef.color);
+                            feature = Feature(featureDef.type, panel.controller.selectedRange, ...
+                                              'Color', featureDef.color);
                         else
                             % The selection is not a range.
                             beep
@@ -93,7 +94,7 @@ classdef FeaturesAnnotator < FeaturesReporter
                     else
                         % Add a point feature at the start of the current time.
                         feature = Feature(featureDef.type, panel.controller.currentTime, ...
-                                          'color', featureDef.color);
+                                          'Color', featureDef.color);
                     end
                     
                     if ~isempty(feature)
@@ -122,7 +123,7 @@ classdef FeaturesAnnotator < FeaturesReporter
             
             if ~isempty(obj.rangeFeatureBeingAdded)
                 % Update the end time of the feature.
-                obj.rangeFeatureBeingAdded.range(2) = panel.controller.currentTime;
+                obj.rangeFeatureBeingAdded.endTime = panel.controller.currentTime;
                 
                 obj.addFeatures({obj.rangeFeatureBeingAdded});
                 

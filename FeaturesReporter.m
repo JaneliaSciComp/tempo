@@ -7,12 +7,12 @@ classdef FeaturesReporter < handle
     
     
     properties (Transient)
+        controller
         featuresRange
     end
     
     
     properties (Transient, Access = private)
-        controller
         waitBarHandle
         cachedFeatureTypes
     end
@@ -121,7 +121,7 @@ classdef FeaturesReporter < handle
             end
             
             % Check if any of the new features have a new type.
-            if ~all(ismember({features.type}, obj.featureTypes()))
+            if ~all(ismember({features{:}.type}, obj.featureTypes()))
                 obj.cachedFeatureTypes = [];    % indicate that the types must be recalculated
                 notify(obj, 'FeatureTypesDidChange', FeaturesChangedEventData('add', features));
             end
@@ -170,18 +170,36 @@ classdef FeaturesReporter < handle
             if isempty(obj.featuresRange)
                 % Calculate the maximum range of all features.
                 obj.featuresRange = [-inf inf -inf inf];
+                features = {obj.featureList{1:obj.featureCount}};
                 if ~isempty(features)
+                    % Get the min and max in time and frequency of all features.
+                    % (There's got to be an easier way to do this.)
+                    
+                    startTimes = cellfun(@(f) f.startTime, features);
+                    minTime = min(startTimes(startTimes > -Inf));
+                    if isempty(minTime)
+                        minTime = -Inf;
+                    end
+                    
+                    endTimes = cellfun(@(f) f.endTime, features);
+                    maxTime = min(endTimes(endTimes > -Inf));
+                    if isempty(maxTime)
+                        maxTime = -Inf;
+                    end
+                    
                     lowFreqs = cellfun(@(f) f.lowFreq, features);
                     minFreq = min(lowFreqs(lowFreqs > -Inf));
                     if isempty(minFreq)
                         minFreq = -Inf;
                     end
-                    maxFreq = max(cellfun(@(f) f.highFreq, features));
+                    
+                    maxFreqs = cellfun(@(f) f.highFreq, features);
+                    maxFreq = max(maxFreqs(maxFreqs < Inf));
+                    if isempty(maxFreq)
+                        maxFreq = Inf;
+                    end
+                    
                     obj.featuresRange = [minTime maxTime minFreq maxFreq];
-                end
-                maxFreq = max(highFreqs(highFreqs < Inf));
-                if isempty(maxFreq)
-                    maxFreq = Inf;
                 end
             end
             

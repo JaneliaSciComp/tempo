@@ -11,6 +11,11 @@ classdef TempoPanel < handle
         controller
         panel
         
+        axes
+        
+    end
+    
+    properties (Transient, Access = private)
         titlePanel
         closeButton
         showHideButton
@@ -20,8 +25,6 @@ classdef TempoPanel < handle
         actionMenu
         titleText
         helpButton
-        
-        axes
         
         listeners = {}
     end

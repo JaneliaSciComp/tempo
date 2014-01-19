@@ -9,11 +9,10 @@ classdef FeaturesPanel < TimelinePanel
         featureTypeShadows
         featureHandles
         
-        contextualMenu
+        timeRangeRectangles
+        
         detectFeaturesInSelectionMenuItem
         showReporterSettingsMenuItem
-        
-        featureChangeListener
         
         selectedFeature
     end
@@ -28,8 +27,6 @@ classdef FeaturesPanel < TimelinePanel
             
             obj.reporter = reporter;
             obj.setTitle(reporter.name);
-            
-            obj.featureHandles = obj.populateFeatures();
         end
         
         
@@ -40,10 +37,16 @@ classdef FeaturesPanel < TimelinePanel
                 obj.reporter = varargin{1};
             end
             
-            obj.featureHandles = obj.populateFeatures(obj.reporter);
+            obj.updateFeatureTypes();
+            obj.updateTimeRanges();
+            obj.updateFeatures('add', obj.reporter.features());
             
-            % Listen for whenever the reporter changes its features.
+            % Listen for whenever the reporter changes its features or types.
+            obj.addListener(obj.reporter, 'FeatureTypesDidChange', @(source, event)handleFeatureTypesDidChange(obj, source, event));
             obj.addListener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
+            if isa(obj.reporter, 'FeaturesDetector')
+                obj.addListener(obj.reporter, 'DetectedTimeRangesDidChange', @(source, event)handleTimeRangesDidChange(obj, source, event));
+            end
         end
         
         
@@ -88,38 +91,67 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function handleFeaturesDidChange(obj, ~, ~)
-            obj.featureHandles=obj.populateFeatures();
+        function handleFeatureTypesDidChange(obj, ~, ~)
+            obj.updateFeatureTypes();
         end
         
         
-        function hh=populateFeatures(obj, reporter)
-            if nargin < 2
-                reporter = obj.reporter;
+        function handleFeaturesDidChange(obj, ~, eventData)
+            obj.updateFeatures(eventData.type, eventData.features);
+        end
+        
+        
+        function updateFeatureTypes(obj)
+            if ~isempty(obj.reporter)
+                axes(obj.axes);
+                
+                % Get rid of the previous elements.
+                delete(obj.featureTypeLabels);
+                delete(obj.featureTypeShadows);
+                
+                featureTypes = obj.reporter.featureTypes();
+                typeCount = length(featureTypes);
+                spacing = 1 / length(featureTypes);
+                obj.featureTypeLabels = [];
+                obj.featureTypeShadows = [];
+                
+                % Draw the feature type names with a shadow.
+                axesPos = get(obj.axes, 'Position');
+                for i = 1:typeCount
+                    featureType = featureTypes{i};
+                    obj.featureTypeShadows(i) = text(6, (typeCount - i + 0.75) * spacing * axesPos(4) - 1, ...
+                                                     featureType, ...
+                                                     'VerticalAlignment', 'middle', ...
+                                                     'Units', 'pixels', ...
+                                                     'HitTest', 'off', ...
+                                                     'Color', [0.75 0.75 0.75]);
+                    obj.featureTypeLabels(i) = text(5, (typeCount - i + 0.75) * spacing * axesPos(4), ...
+                                                    featureType, ...
+                                                    'VerticalAlignment', 'middle', ...
+                                                    'Units', 'pixels', ...
+                                                    'HitTest', 'off', ...
+                                                    'Color', [0.25 0.25 0.25]);
+                end
             end
+        end
+        
+        
+        function updateTimeRanges(obj)
+            % Indicate the time spans in which feature detection has occurred.
             
-            hh=[];
-            
-            if isempty(reporter)
-                return;
-            end
-            
-            axes(obj.axes);
-            cla;
-            
-            obj.featureTypeLabels= {};
-            obj.featureTypeShadows = {};
-            
-            featureTypes = reporter.featureTypes();
-            
-            spacing = 1 / length(featureTypes);
-            axesPos = get(obj.axes, 'Position');
-            
-            % Indicate the time spans in which feature detection has occurred for each reporter.
-            lastTime = 0.0;
-            if isa(reporter, 'FeaturesDetector')
-                for j = 1:size(reporter.detectedTimeRanges, 1)
-                    detectedTimeRange = reporter.detectedTimeRanges(j, :);
+            % Features importers and annotators don't have time ranges.
+            % TODO: Would it help to do this for annotation to keep track of what's been looked at?
+            %       How would you know what's been looked at?
+            if ~isempty(obj.reporter) && isa(obj.reporter, 'FeaturesDetector')
+                axes(obj.axes);
+                
+                % Clear any existing rectangles.
+                delete(obj.timeRangeRectangles);
+                
+                lastTime = 0.0;
+                
+                for j = 1:size(obj.reporter.detectedTimeRanges, 1)
+                    detectedTimeRange = obj.reporter.detectedTimeRanges(j, :);
                     
                     if detectedTimeRange(1) > lastTime
                         % Add a gray background before the current range.
@@ -132,82 +164,80 @@ classdef FeaturesPanel < TimelinePanel
                     rectangle('Position', [lastTime 0 obj.controller.duration - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
                 end
             end
+        end
+        
+        
+        function updateFeatures(obj, updateType, features)
+            % Add or remove the features from the display.
+            % updateType will be 'add' or 'remove'.
+            % Features is a cell array as there may be sub-classes.
             
-            % Draw the features that have been reported.
-            features = reporter.features();
-            if isempty(features)
-                lowFreqs = [];
-                highFreqs = [];
-            else
-                lowFreqs = cellfun(@(f) f.lowFreq, features);
-                highFreqs = cellfun(@(f) f.highFreq, features);
-            end
-            minFreq = min(lowFreqs(lowFreqs > -Inf));
-            if isempty(minFreq)
-                minFreq = -Inf;
-            end
-            maxFreq = max(highFreqs(highFreqs < Inf));
-            if isempty(maxFreq)
-                maxFreq = Inf;
-            end
-            for i = 1:length(features)
-                feature = features{i};
-                y = find(strcmp(featureTypes, feature.type));
-                if isempty(feature.contextualMenu)
-                    if feature.startTime == feature.endTime
-                        label = [feature.type ' @ ' secondstr(feature.startTime, obj.controller.timeLabelFormat)];
-                    else
-                        label = [feature.type ' @ ' secondstr(feature.startTime, obj.controller.timeLabelFormat) ' - ' secondstr(feature.endTime, obj.controller.timeLabelFormat)];
+            if ~isempty(obj.reporter)
+                axes(obj.axes);
+                
+                featureTypes = obj.reporter.featureTypes();
+                
+                if strcmp(updateType, 'add')
+                    % New features were added.
+                    
+                    featuresRange = obj.reporter.featuresRange();
+                    minFreq = featuresRange(3);
+                    maxFreq = featuresRange(4);
+                    
+                    spacing = 1 / length(featureTypes);
+                    
+                    % Add a text or patch for each new feature.
+                    for i = 1:length(features)
+                        feature = features{i};
+                        y = find(strcmp(featureTypes, feature.type));
+                        yCen = (length(featureTypes) - y + 0.5) * spacing;
+                        if feature.startTime == feature.endTime
+                            % Show a point feature.
+                            
+                            obj.featureHandles(end + 1) = text(feature.startTime, yCen, 'x', ...
+                                   'HorizontalAlignment', 'center', ...
+                                   'VerticalAlignment', 'middle', ...
+                                   'Color', feature.color(), ...
+                                   'Clipping', 'on', ...
+                                   'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
+                                   'UserData', feature);
+                        else
+                            % Show a range feature.
+                            
+                            x0 = feature.startTime;
+                            x1 = feature.endTime;
+                            
+                            minY = yCen - spacing * 0.45;
+                            maxY = minY + spacing * 0.9;
+                            if feature.lowFreq > -Inf && feature.highFreq < Inf
+                                % Scale the upper and lower edges of the patch to the feature's frequency range.
+                                y0 = (feature.lowFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
+                                y1 = (feature.highFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
+                            else
+                                % Have the patch cover the full vertical space for this feature type.
+                                y0 = minY;
+                                y1 = maxY;
+                            end
+                            
+                            edgeColor = feature.color();
+                            fillColor = edgeColor + ([1 1 1] - edgeColor) * 0.5;
+                            
+                            obj.featureHandles(end + 1) = patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
+                                    'EdgeColor', edgeColor, ...
+                                    'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
+                                    'UserData', feature);
+                        end
                     end
-                    feature.contextualMenu = uicontextmenu();
-                    uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
-                    uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', @(source, event)handleShowFeatureProperties(obj, source, event), 'Separator', 'on');
-                    uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)handleRemoveFeature(obj, source, event), 'Separator', 'off');
-                end
-                yCen = (length(featureTypes) - y + 0.5) * spacing;
-                if feature.startTime == feature.endTime
-                    h=text(feature.startTime, yCen, 'x', ...
-                           'HorizontalAlignment', 'center', ...
-                           'VerticalAlignment', 'middle', ...
-                           'UIContextMenu', feature.contextualMenu, ...
-                           'Color', feature.color(), ...
-                           'Clipping', 'on', ...
-                           'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
-                           'UserData', feature);
-                    hh=[hh h];
+                elseif strcmp(updateType, 'remove')
+                    % Features were removed.
+                    for i = 1:length(features)
+                        uiElement = findobj(obj.featureHandles, 'UserData', features{i});
+                        delete(uiElement);
+                        obj.featureHandles(obj.featureHandles == uiElement) = [];
+                    end
                 else
-                    x0 = feature.startTime;
-                    x1 = feature.endTime;
-                    
-                    minY = yCen - spacing * 0.45;
-                    maxY = minY + spacing * 0.9;
-                    if feature.lowFreq > -Inf && feature.highFreq < Inf
-                        % Scale the upper and lower edges of the patch to the feature's frequency range.
-                        y0 = (feature.lowFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
-                        y1 = (feature.highFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
-                    else
-                        % Have the patch cover the full vertical space for this feature type.
-                        y0 = minY;
-                        y1 = maxY;
-                    end
-                    
-                    edgeColor = feature.color();
-                    fillColor = edgeColor + ([1 1 1] - edgeColor) * 0.5;
-                    
-                    h=patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
-                            'EdgeColor', edgeColor, ...
-                            'UIContextMenu', feature.contextualMenu, ...
-                            'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
-                            'UserData', feature);
-                    hh=[hh h];
+                    error('Tempo:Panel:Features:UnknownUpdateType', 'Unknown feature update type: %s', updateType);
                 end
-            end
-            
-            % Draw the feature type names.
-            for y = 1:length(featureTypes)
-                featureType = featureTypes{y};
-                obj.featureTypeShadows{end + 1} = text(6, (length(featureTypes) - y + 0.75) * spacing * axesPos(4) - 1, featureType, 'VerticalAlignment', 'middle', 'Units', 'pixels', 'HitTest', 'off', 'Color', [0.75 0.75 0.75]);
-                obj.featureTypeLabels{end + 1} = text(5, (length(featureTypes) - y + 0.75) * spacing * axesPos(4), featureType, 'VerticalAlignment', 'middle', 'Units', 'pixels', 'HitTest', 'off', 'Color', [0.25 0.25 0.25]);
             end
         end
         
@@ -216,8 +246,8 @@ classdef FeaturesPanel < TimelinePanel
             % Update the position of the feature type names.
             spacing = 1 / length(obj.featureTypeLabels);
             for i = 1:length(obj.featureTypeLabels)
-                set(obj.featureTypeShadows{i}, 'Position', [6, (length(obj.featureTypeLabels) - i + 0.65) * spacing * panelSize(2) - 1]);
-                set(obj.featureTypeLabels{i}, 'Position', [5, (length(obj.featureTypeLabels) - i + 0.65) * spacing * panelSize(2)]);
+                set(obj.featureTypeShadows(i), 'Position', [6, (length(obj.featureTypeLabels) - i + 0.65) * spacing * panelSize(2) - 1]);
+                set(obj.featureTypeLabels(i), 'Position', [5, (length(obj.featureTypeLabels) - i + 0.65) * spacing * panelSize(2)]);
             end
         end
         
@@ -424,7 +454,7 @@ classdef FeaturesPanel < TimelinePanel
                 msg = sprintf('%sFrequency: %.0f - %.0f Hz\n', msg, feature.lowFreq, feature.highFreq);
             end
             props = sort(properties(feature));
-            ignoreProps = {'type', 'range', 'startTime', 'endTime', 'duration', 'highFreq', 'lowFreq', 'contextualMenu'};
+            ignoreProps = {'type', 'range', 'startTime', 'endTime', 'duration', 'highFreq', 'lowFreq'};
             addedSeparator = false;
             for i = 1:length(props)
                 if ~ismember(props{i}, ignoreProps)

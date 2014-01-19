@@ -78,7 +78,7 @@ classdef Feature < dynamicprops
             if obj.range(1) ~= time
                 obj.range(1) = time;
                 
-                notify('RangeChanged');
+                notify(obj, 'RangeChanged');
             end
         end
         
@@ -92,7 +92,7 @@ classdef Feature < dynamicprops
             if obj.range(2) ~= time
                 obj.range(2) = time;
                 
-                notify('RangeChanged');
+                notify(obj, 'RangeChanged');
             end
         end
         
@@ -111,7 +111,7 @@ classdef Feature < dynamicprops
             if obj.range(3) ~= freq
                 obj.range(3) = freq;
                 
-                notify('RangeChanged');
+                notify(obj, 'RangeChanged');
             end
         end
         
@@ -125,7 +125,7 @@ classdef Feature < dynamicprops
             if obj.range(4) ~= freq
                 obj.range(4) = freq;
                 
-                notify('RangeChanged');
+                notify(obj, 'RangeChanged');
             end
         end
         
