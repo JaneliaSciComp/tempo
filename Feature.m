@@ -6,10 +6,6 @@ classdef Feature < dynamicprops
         color
     end
     
-    properties (Hidden, Transient)
-        contextualMenu
-    end
-    
     properties (Dependent = true)
         startTime
         endTime

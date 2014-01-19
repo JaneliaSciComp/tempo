@@ -7,16 +7,21 @@ classdef FeaturesReporter < handle
     
     
     properties (Transient)
+        featuresRange
+    end
+    
+    
+    properties (Transient, Access = private)
         controller
-        waitBarHandle;
-        contextualMenu;
+        waitBarHandle
+        cachedFeatureTypes
     end
     
     
     properties (Access = private)
-        featureList;
-        featureListSize;
-        featureCount;
+        featureList
+        featureListSize
+        featureCount
     end
     
     
@@ -26,6 +31,7 @@ classdef FeaturesReporter < handle
     
     
     events
+        FeatureTypesDidChange
         FeaturesDidChange
     end
     
@@ -87,15 +93,13 @@ classdef FeaturesReporter < handle
         end
         
         
-        function ft = featureTypes(obj)
-            % Return the list of feature types that are being reported.  (a subset of the list returned by possibleFeatureTypes)
-            % The list of types could be cached but this code is pretty fast.
-            f = [obj.featureList{1:obj.featureCount}];
-            if isempty(f)
-                ft = {};
-            else
-                ft = unique({f.type});
+        function types = featureTypes(obj)
+            % Return the list of feature types that are being reported.
+            if isempty(obj.cachedFeatureTypes)
+                obj.cachedFeatureTypes = unique(cellfun(@(f) f.type, [obj.featureList{1:obj.featureCount}]));
             end
+            
+            types = obj.cachedFeatureTypes;
         end
         
         
@@ -116,7 +120,15 @@ classdef FeaturesReporter < handle
                 end
             end
             
-            notify(obj, 'FeaturesDidChange');
+            % Check if any of the new features have a new type.
+            if ~all(ismember({features.type}, obj.featureTypes()))
+                obj.cachedFeatureTypes = [];    % indicate that the types must be recalculated
+                notify(obj, 'FeatureTypesDidChange', FeaturesChangedEventData('add', features));
+            end
+            
+            obj.featuresRange = [];         % indicate that the range must be recalculated
+            
+            notify(obj, 'FeaturesDidChange', FeaturesChangedEventData('add', features));
         end
         
         
@@ -139,20 +151,41 @@ classdef FeaturesReporter < handle
             end
             
             if featureWasRemoved
-                notify(obj, 'FeaturesDidChange');
+                obj.featuresRange = []; % indicate that the range must be recalculated
+                
+                notify(obj, 'FeaturesDidChange', FeaturesChangedEventData('remove', features));
             end
             
         end
         
         
         function d = get.duration(obj)
-            % TODO: this value could be pre-computed
-            fs = obj.features();
-            if isempty(fs)
-                d = 0;
-            else
-                d = max(cellfun(@(f) f.endTime, fs));
+            range = obj.featuresRange();
+            d = range(2);
+        end
+        
+        
+        function range = get.featuresRange(obj)
+            % Return the maximum range of all features in time and frequency.
+            if isempty(obj.featuresRange)
+                % Calculate the maximum range of all features.
+                obj.featuresRange = [-inf inf -inf inf];
+                if ~isempty(features)
+                    lowFreqs = cellfun(@(f) f.lowFreq, features);
+                    minFreq = min(lowFreqs(lowFreqs > -Inf));
+                    if isempty(minFreq)
+                        minFreq = -Inf;
+                    end
+                    maxFreq = max(cellfun(@(f) f.highFreq, features));
+                    obj.featuresRange = [minTime maxTime minFreq maxFreq];
+                end
+                maxFreq = max(highFreqs(highFreqs < Inf));
+                if isempty(maxFreq)
+                    maxFreq = Inf;
+                end
             end
+            
+            range = obj.featuresRange;
         end
         
         
@@ -191,7 +224,7 @@ classdef FeaturesReporter < handle
                     fid = fopen(fullfile(pathName, fileName), 'w');
                     
                     propNames = {};
-                    ignoreProps = {'type', 'range', 'contextualMenu', 'startTime', 'endTime', 'lowFreq', 'highFreq', 'duration'};
+                    ignoreProps = {'type', 'range', 'color', 'startTime', 'endTime', 'lowFreq', 'highFreq', 'duration'};
                     
                     % Find all of the feature properties so we know how many columns there will be.
                     for f = 1:length(features)
