@@ -19,6 +19,11 @@ classdef Feature < dynamicprops
     end
     
     
+    events
+        RangeChanged
+    end
+    
+    
     methods
         
         function obj = Feature(featureType, featureRange, varargin)
@@ -73,8 +78,26 @@ classdef Feature < dynamicprops
         end
         
         
+        function set.startTime(obj, time)
+            if obj.range(1) ~= time
+                obj.range(1) = time;
+                
+                notify('RangeChanged');
+            end
+        end
+        
+        
         function t = get.endTime(obj)
             t = obj.range(2);
+        end
+        
+        
+        function set.endTime(obj, time)
+            if obj.range(2) ~= time
+                obj.range(2) = time;
+                
+                notify('RangeChanged');
+            end
         end
         
         
@@ -88,8 +111,26 @@ classdef Feature < dynamicprops
         end
         
         
+        function set.lowFreq(obj, freq)
+            if obj.range(3) ~= freq
+                obj.range(3) = freq;
+                
+                notify('RangeChanged');
+            end
+        end
+        
+        
         function t = get.highFreq(obj)
             t = obj.range(4);
+        end
+        
+        
+        function set.highFreq(obj, freq)
+            if obj.range(4) ~= freq
+                obj.range(4) = freq;
+                
+                notify('RangeChanged');
+            end
         end
         
         
@@ -100,6 +141,7 @@ classdef Feature < dynamicprops
                 c = obj.color;
             end
         end
+        
         
         function [obj, idx] = sort(obj, varargin)
             [~, idx] = sort([obj.startTime], varargin{:});
