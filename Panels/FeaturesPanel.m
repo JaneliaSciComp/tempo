@@ -43,8 +43,7 @@ classdef FeaturesPanel < TimelinePanel
             obj.featureHandles = obj.populateFeatures(obj.reporter);
             
             % Listen for whenever the reporter changes its features.
-            obj.featureChangeListener = addlistener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
-            obj.listeners{end + 1} = obj.featureChangeListener;
+            obj.addListener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
         end
         
         

@@ -31,8 +31,8 @@ classdef TimelinePanel < TempoPanel
             obj.selectionPatch = patch([0 1 1 0], [-100000 -100000 200000 200000], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'Visible', 'off', 'HitTest', 'off', 'HandleVisibility', 'off');
             
             % Add listeners so we know when the current time and selection change.
-            obj.listeners{end + 1} = addlistener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
-            obj.listeners{end + 1} = addlistener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
+            obj.addListener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
+            obj.addListener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
             
             obj.axesXLim = [0 0];
 		end

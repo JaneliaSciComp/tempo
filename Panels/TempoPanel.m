@@ -144,7 +144,7 @@ classdef TempoPanel < handle
             end
             
             % Add listeners so we know when the current time and selection change.
-            obj.listeners{end + 1} = addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
+            obj.addListener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
         end
         
         
@@ -310,6 +310,11 @@ classdef TempoPanel < handle
         
         function currentTimeChanged(obj) %#ok<MANU>
             % TODO: make abstract?
+        end
+        
+        
+        function addListener(obj, varargin)
+            obj.listeners{end + 1} = addlistener(varargin{:});
         end
         
         
