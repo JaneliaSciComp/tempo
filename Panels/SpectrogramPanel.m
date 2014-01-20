@@ -19,6 +19,10 @@ classdef SpectrogramPanel < TimelinePanel
 
         reporter
         bounding_boxes
+        
+        windowSizeListener
+        displayRangeListener
+        listeners = {}
     end
 	
     
@@ -56,9 +60,9 @@ classdef SpectrogramPanel < TimelinePanel
             obj.otherLabel = text(5, panelSize(2), '', 'Units', 'pixels', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'BackgroundColor', 'white');
             obj.noDisplayLabel = text(panelSize(1) / 2, panelSize(2) / 2, 'Zoom in to see the spectrogram', 'Units', 'pixels', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'Visible', 'off');
             
-            obj.addListener(obj.controller, 'windowSize', 'PostSet', ...
+            obj.windowSizeListener = addlistener(obj.controller, 'windowSize', 'PostSet', ...
                 @(source, event)handleSpectrogramParametersChanged(obj, source, event));
-            obj.addListener(obj.controller, 'displayRange', 'PostSet', ...
+            obj.displayRangeListener = addlistener(obj.controller, 'displayRange', 'PostSet', ...
                 @(source, event)handleSpectrogramParametersChanged(obj, source, event));
         end
         
@@ -346,7 +350,25 @@ classdef SpectrogramPanel < TimelinePanel
                 obj.updateAxes(obj.controller.displayRange);
             end
         end
-      
+        
+        
+        function close(obj)
+            delete(obj.windowSizeListener);
+            obj.windowSizeListener = [];
+            delete(obj.displayRangeListener);
+            obj.displayRangeListener = [];
+            
+            close@TimelinePanel(obj);
+        end
+        
+        
+        function delete(obj)
+            delete(obj.windowSizeListener);
+            obj.windowSizeListener = [];
+            delete(obj.displayRangeListener);
+            obj.displayRangeListener = [];
+        end
+        
 	end
 	
 end

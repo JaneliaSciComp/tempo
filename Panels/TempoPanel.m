@@ -26,7 +26,7 @@ classdef TempoPanel < handle
         titleText
         helpButton
         
-        listeners = {}
+        currentTimeListener
     end
     
     
@@ -146,8 +146,8 @@ classdef TempoPanel < handle
                 obj.addActionMenuItems(obj.actionMenu);
             end
             
-            % Add listeners so we know when the current time and selection change.
-            obj.addListener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
+            % Add listeners so we know when the current time changes.
+            obj.currentTimeListener = addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
         end
         
         
@@ -316,22 +316,22 @@ classdef TempoPanel < handle
         end
         
         
-        function addListener(obj, varargin)
-            obj.listeners{end + 1} = addlistener(varargin{:});
-        end
-        
-        
         function close(obj)
             % Subclasses can override this if they need to do anything more.
             
-            % Delete any listeners.
-            cellfun(@(x) delete(x), obj.listeners);
-            obj.listeners = {};
+            delete(obj.currentTimeListener);
+            obj.currentTimeListener = [];
             
             % Remove the uipanel from the figure.
             if ishandle(obj.panel)
                 delete(obj.panel);
             end
+        end
+        
+        
+        function delete(obj)
+            delete(obj.currentTimeListener);
+            obj.currentTimeListener = [];
         end
         
     end

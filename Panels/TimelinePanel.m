@@ -9,6 +9,9 @@ classdef TimelinePanel < TempoPanel
         selectionPatch
         
         axesXLim = [0 0]
+        
+        displayRangeListener
+        selectedRangeListener
 	end
 	
 	methods
@@ -31,8 +34,8 @@ classdef TimelinePanel < TempoPanel
             obj.selectionPatch = patch([0 1 1 0], [-100000 -100000 200000 200000], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'Visible', 'off', 'HitTest', 'off', 'HandleVisibility', 'off');
             
             % Add listeners so we know when the current time and selection change.
-            obj.addListener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
-            obj.addListener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
+            obj.displayRangeListener = addlistener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
+            obj.selectedRangeListener = addlistener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
             
             obj.axesXLim = [0 0];
 		end
@@ -219,6 +222,24 @@ classdef TimelinePanel < TempoPanel
             elseif ~handled
                 handled = keyWasPressed@TempoPanel(obj, keyEvent);
             end
+        end
+        
+        
+        function close(obj)
+            delete(obj.displayRangeListener);
+            obj.displayRangeListener = [];
+            delete(obj.selectedRangeListener);
+            obj.selectedRangeListener = [];
+            
+            close@TimelinePanel(obj);
+        end
+        
+        
+        function delete(obj)
+            delete(obj.displayRangeListener);
+            obj.displayRangeListener = [];
+            delete(obj.selectedRangeListener);
+            obj.selectedRangeListener = [];
         end
         
 	end

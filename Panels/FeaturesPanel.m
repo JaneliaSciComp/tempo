@@ -15,6 +15,11 @@ classdef FeaturesPanel < TimelinePanel
         showReporterSettingsMenuItem
         
         selectedFeature
+        selectedFeatureListener
+        
+        featureTypesListener
+        featuresListener
+        timeRangesListener
     end
     
 	
@@ -42,10 +47,10 @@ classdef FeaturesPanel < TimelinePanel
             obj.updateFeatures('add', obj.reporter.features());
             
             % Listen for whenever the reporter changes its features or types.
-            obj.addListener(obj.reporter, 'FeatureTypesDidChange', @(source, event)handleFeatureTypesDidChange(obj, source, event));
-            obj.addListener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
+            obj.featureTypesListener = addlistener(obj.reporter, 'FeatureTypesDidChange', @(source, event)handleFeatureTypesDidChange(obj, source, event));
+            obj.featuresListener = addlistener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
             if isa(obj.reporter, 'FeaturesDetector')
-                obj.addListener(obj.reporter, 'DetectedTimeRangesDidChange', @(source, event)handleTimeRangesDidChange(obj, source, event));
+                obj.timeRangesListener = addlistener(obj.reporter, 'DetectedTimeRangesDidChange', @(source, event)handleTimeRangesDidChange(obj, source, event));
             end
         end
         
@@ -511,26 +516,78 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function selectFeature(obj, feature)
-            % Loosely remember that the user chose this feature.  If the selection gets changed then it won't be considered selected any more.
-            obj.selectedFeature = feature;
-            
-            % Also set the timeline's selection.
-            obj.controller.selectRange(obj.selectedFeature.range);
+            if obj.selectedFeature ~= feature
+                delete(obj.selectedFeatureListener);
+                obj.selectedFeatureListener = [];
+                
+                % Loosely remember that the user chose this feature.  If the selection gets changed then it won't be considered selected any more.
+                obj.selectedFeature = feature;
+                
+                if ~isempty(obj.selectedFeature)
+                    obj.selectedFeatureListener = addlistener(obj.reporter, 'RangeChanged', @(source, event)handleFeatureDidChange(obj, source, event));
+                    
+                    % Also set the timeline's selection.
+                    obj.controller.selectRange(obj.selectedFeature.range);
+                    
+                    % TODO: add cursor rects to show the resize cursors
+                end
+            end
         end
         
         
         function handleSelectedRangeChanged(obj, ~, ~)
             % De-select our current feature if the selection changes.
             if ~isempty(obj.selectedFeature) && ~all(obj.controller.selectedRange == obj.selectedFeature.range)
-                obj.selectedFeature = [];
+                obj.selectFeature([]);
             end
             
             handleSelectedRangeChanged@TimelinePanel(obj);
         end
         
         
+        function currentTimeChanged(obj)
+            if ~isempty(obj.selectedFeature)
+                % TODO
+            end
+            
+            currentTimeChanged@TimelinePanel(obj);
+        end
+        
+        
+        function handleFeatureDidChange(obj, feature, ~)
+            obj.updateFeatures('change', {feature});
+        end
+        
+        
         function close = shouldClose(obj)
             close = strcmp(questdlg('Are you sure you wish to close these features?', 'Tempo', 'Close', 'Cancel', 'Close'), 'Close');
+            
+            if close
+                delete(obj.selectedFeatureListener);
+                obj.selectedFeatureListener = [];
+            end
+        end
+        
+        
+        function close(obj)
+            delete(obj.featureTypesListener);
+            obj.featureTypesListener = [];
+            delete(obj.featuresListener);
+            obj.featuresListener = [];
+            delete(obj.timeRangesListener);
+            obj.timeRangesListener = [];
+            
+            close@TimelinePanel(obj);
+        end
+        
+        
+        function delete(obj)
+            delete(obj.featureTypesListener);
+            obj.featureTypesListener = [];
+            delete(obj.featuresListener);
+            obj.featuresListener = [];
+            delete(obj.timeRangesListener);
+            obj.timeRangesListener = [];
         end
         
     end
