@@ -1978,7 +1978,7 @@ classdef TempoController < handle
         
         
         function handleKeyPress(obj, ~, keyEvent)
-            if ~strcmp(keyEvent.Key, 'space')
+            if ~strcmp(keyEvent.Key, 'space') && isempty(obj.panelHandlingKeyPress)
                 % Let one of the panels handle the event.
                 % If the video panels are open they get first dibs.
                 panels = horzcat(obj.videoPanels, obj.timelinePanels);
@@ -2016,6 +2016,7 @@ classdef TempoController < handle
             elseif ~isempty(obj.panelHandlingKeyPress)
                 % Let the panel that handled the key press handle this key release as well.
                 obj.panelHandlingKeyPress.keyWasReleased(keyEvent);
+                obj.panelHandlingKeyPress = [];
             end
         end
         

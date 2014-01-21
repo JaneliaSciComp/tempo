@@ -6,7 +6,6 @@ classdef FeaturesAnnotator < FeaturesReporter
     
     properties (Transient)
         rangeFeatureBeingAdded
-        rangeFeatureStartTime
     end
     
     
@@ -51,7 +50,7 @@ classdef FeaturesAnnotator < FeaturesReporter
             
             obj.featureDefinitions(5).type = 'Abdominal grooming';
             obj.featureDefinitions(5).hotKey = 'a';
-            obj.featureDefinitions(5).color = [0 0.25 0];
+            obj.featureDefinitions(5).color = [0 0.5 0];
             obj.featureDefinitions(5).isRange = true;
             
         end
@@ -81,8 +80,9 @@ classdef FeaturesAnnotator < FeaturesReporter
                         if panel.controller.isPlaying
                             % Allow the user to create a range feature during playback.
                             % Wait until the key release to add the feature.
-                            obj.rangeFeatureBeingAdded = Feature(featureDef.type, panel.controller.currentTime, ...
-                                                                 'Color', featureDef.color);
+                            feature = Feature(featureDef.type, [panel.controller.currentTime panel.controller.currentTime + 0.01], ...
+                                              'Color', featureDef.color);
+                            obj.rangeFeatureBeingAdded = feature;
                         elseif panel.controller.selectedRange(2) > panel.controller.selectedRange(1)
                             % Add the current selection as a new feature.
                             feature = Feature(featureDef.type, panel.controller.selectedRange, ...
@@ -100,15 +100,12 @@ classdef FeaturesAnnotator < FeaturesReporter
                     if ~isempty(feature)
                         obj.addFeatures({feature});
                         
-                        % TODO: select the feature?
+                        panel.selectFeature(feature);
                         
                         panel.controller.addUndoableAction(['Add ' feature.type], ...
                                                            @() obj.removeFeatures({feature}), ...
                                                            @() obj.addFeatures({feature}), ...
                                                            panel);
-                        
-                        handled = true;
-                        break;
                     end
                     
                     handled = true;
@@ -118,20 +115,28 @@ classdef FeaturesAnnotator < FeaturesReporter
         end
         
         
-        function handled = keyWasReleasedInPanel(obj, ~, panel)
-            % Finish creating a range feature during playback.
-            
+        function currentTimeChangedInPanel(obj, panel)
             if ~isempty(obj.rangeFeatureBeingAdded)
                 % Update the end time of the feature.
-                obj.rangeFeatureBeingAdded.endTime = panel.controller.currentTime;
-                
-                obj.addFeatures({obj.rangeFeatureBeingAdded});
-                
-                panel.controller.addUndoableAction(['Add ' obj.rangeFeatureBeingAdded.type], ...
-                                                    @() obj.removeFeatures({obj.rangeFeatureBeingAdded}), ...
-                                                    @() obj.addFeatures({obj.rangeFeatureBeingAdded}), ...
-                                                    panel);
-                
+                % TODO: this isn't working: the patch created in keyPress is invalid when the code below triggers its update
+%                 endTime = panel.controller.currentTime;
+%                 if endTime < obj.rangeFeatureBeingAdded.startTime + 0.01
+%                     endTime = obj.rangeFeatureBeingAdded.startTime + 0.01;
+%                 end
+%                 obj.rangeFeatureBeingAdded.endTime = endTime;
+            end
+        end
+        
+        
+        function handled = keyWasReleasedInPanel(obj, ~, panel)
+            % Finish creating a range feature during playback.
+            if ~isempty(obj.rangeFeatureBeingAdded)
+                % Update the end time of the feature.
+                endTime = panel.controller.currentTime;
+                if endTime < obj.rangeFeatureBeingAdded.startTime + 0.01
+                    endTime = obj.rangeFeatureBeingAdded.startTime + 0.01;
+                end
+                obj.rangeFeatureBeingAdded.endTime = endTime;
                 obj.rangeFeatureBeingAdded = [];
                 
                 handled = true;

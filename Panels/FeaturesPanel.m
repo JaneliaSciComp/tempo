@@ -174,7 +174,7 @@ classdef FeaturesPanel < TimelinePanel
         
         function updateFeatures(obj, updateType, features)
             % Add or remove the features from the display.
-            % updateType will be 'add' or 'remove'.
+            % updateType will be 'add', 'update' or 'remove'.
             % Features is a cell array as there may be sub-classes.
             
             if ~isempty(obj.reporter)
@@ -182,32 +182,43 @@ classdef FeaturesPanel < TimelinePanel
                 
                 featureTypes = obj.reporter.featureTypes();
                 
-                if strcmp(updateType, 'add')
-                    % New features were added.
-                    
+                if strcmp(updateType, 'add') || strcmp(updateType, 'update')
+                    % Get the range of frequencies for the whole reporter so features can be positioned in that space.
                     featuresRange = obj.reporter.featuresRange();
                     minFreq = featuresRange(3);
                     maxFreq = featuresRange(4);
                     
                     spacing = 1 / length(featureTypes);
                     
-                    % Add a text or patch for each new feature.
+                    % Add or update a text or patch for each feature.
                     for i = 1:length(features)
                         feature = features{i};
+                        
+                        if strcmp(updateType, 'update')
+                            uiElement = findobj(obj.featureHandles, 'UserData', feature);
+                        end
+                        
                         y = find(strcmp(featureTypes, feature.type));
                         yCen = (length(featureTypes) - y + 0.5) * spacing;
                         if feature.startTime == feature.endTime
-                            % Show a point feature.
+                            % Add or update a point feature.
                             
-                            obj.featureHandles(end + 1) = text(feature.startTime, yCen, 'x', ...
-                                   'HorizontalAlignment', 'center', ...
-                                   'VerticalAlignment', 'middle', ...
-                                   'Color', feature.color(), ...
-                                   'Clipping', 'on', ...
-                                   'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
-                                   'UserData', feature);
+                            if strcmp(updateType, 'add')
+                                % Create a new text for the feature.
+                                obj.featureHandles(end + 1) = text(feature.startTime, yCen, 'x', ...
+                                       'HorizontalAlignment', 'center', ...
+                                       'VerticalAlignment', 'middle', ...
+                                       'Color', feature.color(), ...
+                                       'Clipping', 'on', ...
+                                       'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
+                                       'UserData', feature);
+                            else
+                                % Update the existing text.
+                                set(uiElement, 'Position', [feature.startTime, yCen], ...
+                                               'Color', feature.color());
+                            end
                         else
-                            % Show a range feature.
+                            % Add or update a range feature.
                             
                             x0 = feature.startTime;
                             x1 = feature.endTime;
@@ -224,17 +235,26 @@ classdef FeaturesPanel < TimelinePanel
                                 y1 = maxY;
                             end
                             
-                            edgeColor = feature.color();
-                            fillColor = edgeColor + ([1 1 1] - edgeColor) * 0.5;
+                            fillColor = feature.color();
+                            edgeColor = fillColor * 0.5;
                             
-                            obj.featureHandles(end + 1) = patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
-                                    'EdgeColor', edgeColor, ...
-                                    'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
-                                    'UserData', feature);
+                            if strcmp(updateType, 'add')
+                                % Create a new patch for the feature.
+                                obj.featureHandles(end + 1) = patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
+                                        'EdgeColor', edgeColor, ...
+                                        'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
+                                        'UserData', feature);
+                            else
+                                % Update the existing patch.
+                                set(uiElement, 'XData', [x0 x1 x1 x0 x0], ...
+                                               'YData', [y0 y0 y1 y1 y0], ...
+                                               'CData', fillColor, ...
+                                               'EdgeColor', edgeColor);
+                            end
                         end
                     end
                 elseif strcmp(updateType, 'remove')
-                    % Features were removed.
+                    % Remove the texts/patches for the features.
                     for i = 1:length(features)
                         uiElement = findobj(obj.featureHandles, 'UserData', features{i});
                         delete(uiElement);
@@ -516,7 +536,7 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function selectFeature(obj, feature)
-            if obj.selectedFeature ~= feature
+            if isempty(obj.selectedFeature) || isempty(feature) || obj.selectedFeature ~= feature
                 delete(obj.selectedFeatureListener);
                 obj.selectedFeatureListener = [];
                 
@@ -524,7 +544,7 @@ classdef FeaturesPanel < TimelinePanel
                 obj.selectedFeature = feature;
                 
                 if ~isempty(obj.selectedFeature)
-                    obj.selectedFeatureListener = addlistener(obj.reporter, 'RangeChanged', @(source, event)handleFeatureDidChange(obj, source, event));
+                    obj.selectedFeatureListener = addlistener(obj.selectedFeature, 'RangeChanged', @(source, event)handleFeatureDidChange(obj, source, event));
                     
                     % Also set the timeline's selection.
                     obj.controller.selectRange(obj.selectedFeature.range);
@@ -546,8 +566,9 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function currentTimeChanged(obj)
-            if ~isempty(obj.selectedFeature)
-                % TODO
+            if ~isempty(obj.selectedFeature) && isa(obj.reporter, 'FeaturesAnnotator')
+                % Let the annotator respond to the current time change.
+                obj.reporter.currentTimeChangedInPanel(obj);
             end
             
             currentTimeChanged@TimelinePanel(obj);
@@ -555,7 +576,12 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function handleFeatureDidChange(obj, feature, ~)
-            obj.updateFeatures('change', {feature});
+            obj.updateFeatures('update', {feature});
+            
+            if obj.selectedFeature == feature
+                % Update the timeline's selection.
+                obj.controller.selectRange(obj.selectedFeature.range);
+            end
         end
         
         
