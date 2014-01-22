@@ -231,7 +231,7 @@ classdef TimelinePanel < TempoPanel
             delete(obj.selectedRangeListener);
             obj.selectedRangeListener = [];
             
-            close@TimelinePanel(obj);
+            close@TempoPanel(obj);
         end
         
         

@@ -96,7 +96,7 @@ classdef FeaturesReporter < handle
         function types = featureTypes(obj)
             % Return the list of feature types that are being reported.
             if isempty(obj.cachedFeatureTypes)
-                obj.cachedFeatureTypes = unique(cellfun(@(f) f.type, [obj.featureList{1:obj.featureCount}]));
+                obj.cachedFeatureTypes = unique(cellfun(@(f) f.type, obj.featureList(1:obj.featureCount), 'UniformOutput', false));
             end
             
             types = obj.cachedFeatureTypes;
@@ -113,6 +113,7 @@ classdef FeaturesReporter < handle
                 obj.featureListSize = obj.featureListSize + 1000;
             end
             for i = 1:numFeatures
+                features{i}.reporter = obj;
                 if iscell(features)
                     obj.featureList{obj.featureCount - numFeatures + i} = features{i};
                 else
@@ -121,7 +122,7 @@ classdef FeaturesReporter < handle
             end
             
             % Check if any of the new features have a new type.
-            if ~all(ismember({features{:}.type}, obj.featureTypes()))
+            if ~all(ismember(cellfun(@(f) f.type, features, 'UniformOutput', false), obj.featureTypes()))
                 obj.cachedFeatureTypes = [];    % indicate that the types must be recalculated
                 notify(obj, 'FeatureTypesDidChange', FeaturesChangedEventData('add', features));
             end

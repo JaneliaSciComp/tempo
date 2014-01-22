@@ -6,6 +6,10 @@ classdef Feature < dynamicprops
         color
     end
     
+    properties (Transient)
+        reporter
+    end
+    
     properties (Dependent = true)
         startTime
         endTime

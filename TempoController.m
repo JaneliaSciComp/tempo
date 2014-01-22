@@ -1158,10 +1158,8 @@ classdef TempoController < handle
                 rethrow(ME);
             end
             
-            if ~isempty(features)
-                % Add the found features to the detector's list of features.
-                detector.addFeaturesInTimeRange(features, timeRange);
-            end
+            % Add the found features to the detector's list of features.
+            detector.addFeaturesInTimeRange(features, timeRange);
         end
         
         
@@ -2247,6 +2245,7 @@ classdef TempoController < handle
             end
             
             % Load the detectors and importers.
+            % TODO: do Feature's reporters need to be set?
             if isfield(s, 'reporters')
                 obj.reporters = s.reporters;
                 for i = 1:length(obj.reporters)

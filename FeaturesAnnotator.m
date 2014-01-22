@@ -337,12 +337,12 @@ classdef FeaturesAnnotator < FeaturesReporter
                         if panel.controller.isPlaying
                             % Allow the user to create a range feature during playback.
                             % Wait until the key release to add the feature.
-                            feature = Feature(featureDef.type, [panel.controller.currentTime panel.controller.currentTime + 0.01], ...
+                            feature = Feature(featureDef.name, [panel.controller.currentTime panel.controller.currentTime + 0.01], ...
                                               'Color', featureDef.color);
                             obj.rangeFeatureBeingAdded = feature;
                         elseif panel.controller.selectedRange(2) > panel.controller.selectedRange(1)
                             % Add the current selection as a new feature.
-                            feature = Feature(featureDef.type, panel.controller.selectedRange, ...
+                            feature = Feature(featureDef.name, panel.controller.selectedRange, ...
                                               'Color', featureDef.color);
                         else
                             % The selection is not a range.
@@ -350,7 +350,7 @@ classdef FeaturesAnnotator < FeaturesReporter
                         end
                     else
                         % Add a point feature at the start of the current time.
-                        feature = Feature(featureDef.type, panel.controller.currentTime, ...
+                        feature = Feature(featureDef.name, panel.controller.currentTime, ...
                                           'Color', featureDef.color);
                     end
                     

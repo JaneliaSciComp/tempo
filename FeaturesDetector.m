@@ -5,6 +5,11 @@ classdef FeaturesDetector < FeaturesReporter
     end
     
     
+    events
+        DetectedTimeRangesDidChange
+    end
+    
+    
     methods(Static)
         
         function n = typeName()
@@ -134,6 +139,8 @@ classdef FeaturesDetector < FeaturesReporter
             
             % Add the features after updating the time ranges so they get drawn correctly.
             obj.addFeatures(features);
+            
+            notify(obj, 'DetectedTimeRangesDidChange');
         end
         
         
@@ -142,6 +149,8 @@ classdef FeaturesDetector < FeaturesReporter
             
             % TODO: remove the time range from obj.detectedTimeRanges.
             %       may require truncating or splitting a range.
+            
+            notify(obj, 'DetectedTimeRangesDidChange');
         end
         
     end

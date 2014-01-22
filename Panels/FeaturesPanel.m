@@ -141,6 +141,11 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
+        function handleTimeRangesDidChange(obj, ~, ~)
+            obj.updateTimeRanges();
+        end
+        
+        
         function updateTimeRanges(obj)
             % Indicate the time spans in which feature detection has occurred.
             
@@ -152,6 +157,7 @@ classdef FeaturesPanel < TimelinePanel
                 
                 % Clear any existing rectangles.
                 delete(obj.timeRangeRectangles);
+                obj.timeRangeRectangles = [];
                 
                 lastTime = 0.0;
                 
@@ -160,13 +166,13 @@ classdef FeaturesPanel < TimelinePanel
                     
                     if detectedTimeRange(1) > lastTime
                         % Add a gray background before the current range.
-                        rectangle('Position', [lastTime 0 detectedTimeRange(1) - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
+                        obj.timeRangeRectangles(end + 1) = rectangle('Position', [lastTime 0 detectedTimeRange(1) - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
                     end
                     
                     lastTime = detectedTimeRange(2);
                 end
                 if lastTime < obj.controller.duration
-                    rectangle('Position', [lastTime 0 obj.controller.duration - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
+                    obj.timeRangeRectangles(end + 1) = rectangle('Position', [lastTime 0 obj.controller.duration - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
                 end
             end
         end
