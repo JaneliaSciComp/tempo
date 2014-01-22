@@ -142,7 +142,7 @@ classdef FeaturesReporter < handle
                     feature = features(j);
                 end
                 
-                pos = cellfun(@(f) eq(f, feature), {obj.featureList{1:obj.featureCount}});
+                pos = cellfun(@(f) eq(f, feature), obj.featureList(1:obj.featureCount));
                 obj.featureList(pos) = [];
                 obj.featureListSize = obj.featureListSize - 1;
                 obj.featureCount = obj.featureCount - 1;
@@ -169,23 +169,13 @@ classdef FeaturesReporter < handle
             % Return the maximum range of all features in time and frequency.
             if isempty(obj.featuresRange)
                 % Calculate the maximum range of all features.
-                obj.featuresRange = [-inf inf -inf inf];
-                features = {obj.featureList{1:obj.featureCount}};
+                obj.featuresRange = [0 0 -inf inf];
+                features = obj.featureList(1:obj.featureCount);
                 if ~isempty(features)
                     % Get the min and max in time and frequency of all features.
-                    % (There's got to be an easier way to do this.)
                     
-                    startTimes = cellfun(@(f) f.startTime, features);
-                    minTime = min(startTimes(startTimes > -Inf));
-                    if isempty(minTime)
-                        minTime = -Inf;
-                    end
-                    
-                    endTimes = cellfun(@(f) f.endTime, features);
-                    maxTime = min(endTimes(endTimes > -Inf));
-                    if isempty(maxTime)
-                        maxTime = -Inf;
-                    end
+                    minTime = min(cellfun(@(f) f.startTime, features));
+                    maxTime = max(cellfun(@(f) f.endTime, features));
                     
                     lowFreqs = cellfun(@(f) f.lowFreq, features);
                     minFreq = min(lowFreqs(lowFreqs > -Inf));
