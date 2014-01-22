@@ -49,7 +49,7 @@ classdef Feature < dynamicprops
             obj.type = featureType;
             
             if isscalar(featureRange)
-                obj.range = [featureRange featureRange 0 inf];
+                obj.range = [featureRange featureRange -inf inf];
             elseif size(featureRange, 2) == 2
                 obj.range = [featureRange 0 inf];
             elseif size(featureRange, 2) == 4
