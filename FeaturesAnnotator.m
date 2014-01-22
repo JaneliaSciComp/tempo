@@ -2,7 +2,6 @@ classdef FeaturesAnnotator < FeaturesReporter
     
     properties
         featureSet
-        featureSets
     end
     
     properties (Transient)
@@ -11,6 +10,9 @@ classdef FeaturesAnnotator < FeaturesReporter
         settingsEdited
         settingsTable
         selectedSet
+        
+        featureSetsPopup
+        lastChosenFeatureSetName
     end
     
     
@@ -33,31 +35,26 @@ classdef FeaturesAnnotator < FeaturesReporter
         function obj = FeaturesAnnotator(controller)
             obj = obj@FeaturesReporter(controller);
             
-            obj.featureSet(1).name = 'First leg';
-            obj.featureSet(1).key = '1';
-            obj.featureSet(1).color = [1 0 0];
-            obj.featureSet(1).isRange = true;
-            
-            obj.featureSet(2).name = 'Head grooming';
-            obj.featureSet(2).key = 'h';
-            obj.featureSet(2).color = [0.5 0 0];
-            obj.featureSet(2).isRange = true;
-            
-            obj.featureSet(3).name = 'Third leg';
-            obj.featureSet(3).key = '3';
-            obj.featureSet(3).color = [0.5 0.5 0.25];
-            obj.featureSet(3).isRange = true;
-            
-            obj.featureSet(4).name = 'Wing grooming';
-            obj.featureSet(4).key = 'w';
-            obj.featureSet(4).color = [0 0.25 0.5];
-            obj.featureSet(4).isRange = true;
-            
-            obj.featureSet(5).name = 'Abdominal grooming';
-            obj.featureSet(5).key = 'a';
-            obj.featureSet(5).color = [0 0.5 0];
-            obj.featureSet(5).isRange = true;
-            
+            savedSets = getpref('Tempo', 'AnnotationFeatureSets', []);
+            lastChosenSet = getpref('Tempo', 'AnnotationLastChosenFeatureSet', '');
+            if isempty(savedSets)
+                obj.featureSet(1).name = '';
+                obj.featureSet(1).key = '';
+                obj.featureSet(1).color = [1 0 0];
+                obj.featureSet(1).isRange = true;
+            else
+                for i = 1:length(savedSets)
+                    if strcmp(savedSets(i).name, lastChosenSet)
+                        obj.featureSet = savedSets(i).features;
+                        obj.lastChosenFeatureSetName = savedSets(i).name;
+                        break;
+                    end
+                end
+                if isempty(obj.featureSet)
+                    obj.featureSet = savedSets(1).features;
+                    obj.lastChosenFeatureSetName = savedSets(1).name;
+                end
+            end
         end
         
         
@@ -68,50 +65,56 @@ classdef FeaturesAnnotator < FeaturesReporter
         
         
         function edited = editSettings(obj)
-            windowSize = [400 200];
+            windowSize = [400 250];
             
             window = dialog(...
                 'Units', 'points', ...
-                'Name', 'Annotations', ...
+                'Name', 'Annotation Features', ...
                 'Position', [100, 100, windowSize(1:2)], ...
                 'Visible', 'off', ...
                 'WindowKeyPressFcn', @(source, event)handleEditSettingsKeyPress(obj, source, event));
             
+            uicontrol(...
+                'Parent', window, ...
+                'Units', 'points', ...
+                'Position', [10 windowSize(2) - 16, windowSize(1) - 20, 12], ...
+                'HorizontalAlignment', 'left', ...
+                'Style', 'text', ...
+                'String', 'Add the types of features to annotate:');
             obj.settingsTable = uitable(window, ...
-                'ColumnName', {'Name', 'Key', 'Color', 'Range'}, ...
-                'ColumnFormat', {'char', 'char', 'char', 'logical'}, ...
-                'ColumnEditable', [true, true, false, true], ...
-                'ColumnWidth', {windowSize(1) - 60 - 60 - 60 - 24, 60, 60, 60}, ...
+                'ColumnName',     {'Name', 'Key',  'Color', 'Type'}, ...
+                'ColumnFormat',   {'char', 'char', 'char',  {'Range', 'Point'}}, ...
+                'ColumnEditable', [ true,   true,   false,   true], ...
+                'ColumnWidth',    {windowSize(1) - 40 - 60 - 70 - 24, 40, 60, 70}, ...
                 'RowName', [], ...
-                'Data', obj.settingsData(), ...
+                'Data', {}, ...
                 'Units', 'pixels', ...
-                'Position', [10, 10 + 20 + 10 + 20, windowSize(1) - 10 - 10, windowSize(2) - 10 - 20 - 10 - 20 - 10], ...
+                'Position', [10, 10 + 20 + 10 + 20, windowSize(1) - 10 - 10, windowSize(2) - 10 - 20 - 10 - 20 - 12 - 10], ...
                 'CellEditCallback', @(source, event)handleSettingWasEdited(obj, source, event), ...
                 'CellSelectionCallback', @(source, event)handleFeatureSetWasSelected(obj, source, event));
-            % TODO: resize the name column to use any extra width
-            handles.addButton = uicontrol(...
+            uicontrol(...
                 'Parent', window,...
                 'Units', 'points', ...
                 'Callback', @(source, event)handleAddFeatureType(obj, source, event), ...
                 'Position', [10 - 1, 10 + 20 + 10 + 1, 20, 20], ...
                 'String', '+', ...
                 'Tag', 'addButton');
-            handles.removeButton = uicontrol(...
+            uicontrol(...
                 'Parent', window,...
                 'Units', 'points', ...
                 'Callback', @(source, event)handleRemoveFeatureType(obj, source, event), ...
                 'Position', [10 + 20 - 2, 10 + 20 + 10 + 1, 20, 20], ...
                 'String', '-', ...
                 'Tag', 'removeButton');
-            handles.baseReporterPopup = uicontrol(...
+            obj.featureSetsPopup = uicontrol(...
                 'Parent', window, ...
                 'Units', 'points', ...
                 'Position', [10 + 20 + 20 - 7, 10 + 20 + 10, windowSize(1) - 10 - 20 - 20 + 2, 20], ...
-                'Callback', @(source, event)handlePresetsPopupChanged(obj, source, event), ...
+                'Callback', @(source, event)handleFeatureSetsPopupChanged(obj, source, event), ...
                 'String', {'Save As...'}, ...
                 'Style', 'popupmenu', ...
                 'Value', 1, ...
-                'Tag', 'presetsPopup');
+                'Tag', 'featureSetsPopup');
             
             handles.cancelButton = uicontrol(...
                 'Parent', window,...
@@ -127,6 +130,9 @@ classdef FeaturesAnnotator < FeaturesReporter
                 'Position', [windowSize(1) - 10 - 56, 10, 56, 20], ...
                 'String', 'Save', ...
                 'Tag', 'saveButton');
+            
+            obj.updateSettingsData();
+            obj.updateFeatureSetsPopup();
             
             movegui(window, 'center');
             set(window, 'Visible', 'on');
@@ -148,16 +154,21 @@ classdef FeaturesAnnotator < FeaturesReporter
         end
         
         
-        function data = settingsData(obj)
+        function updateSettingsData(obj)
             data = cell(length(obj.featureSet), 4);
-            
             for i = 1:length(obj.featureSet)
                 data{i, 1} = obj.featureSet(i).name;
                 data{i, 2} = obj.featureSet(i).key;
                 rgbColor = uint8(obj.featureSet(i).color * 255);
                 data{i, 3} = sprintf('<html><div style="width: 100px; background-color: rgb(%d, %d, %d)">&nbsp;</div></html>', rgbColor);
-                data{i, 4} = obj.featureSet(i).isRange;
+                if obj.featureSet(i).isRange
+                    data{i, 4} = 'Range';
+                else
+                    data{i, 4} = 'Point';
+                end
             end
+            
+            set(obj.settingsTable, 'Data', data);
         end
         
         
@@ -166,12 +177,14 @@ classdef FeaturesAnnotator < FeaturesReporter
             if event.Indices(2) == 1
                 obj.featureSet(setNum).name = event.NewData;
             elseif event.Indices(2) == 2
-                obj.featureSet(setNum).key = event.NewData;
+                obj.featureSet(setNum).key = event.NewData(1);
             elseif event.Indices(2) == 3
                 obj.featureSet(setNum).color = event.NewData;
             elseif event.Indices(2) == 4
-                obj.featureSet(setNum).isRange = event.NewData;
+                obj.featureSet(setNum).isRange = strcmp(event.NewData, 'Range');
             end
+            
+            obj.updateSettingsData();
         end
         
         
@@ -183,7 +196,7 @@ classdef FeaturesAnnotator < FeaturesReporter
             
             obj.featureSet(end + 1) = newType;
             
-            set(obj.settingsTable, 'Data', obj.settingsData());
+            obj.updateSettingsData();
         end
         
         
@@ -197,7 +210,7 @@ classdef FeaturesAnnotator < FeaturesReporter
                     % Pick a new color.
                     obj.featureSet(obj.selectedSet).color = uisetcolor(obj.featureSet(obj.selectedSet).color);
                     
-                    set(obj.settingsTable, 'Data', obj.settingsData());
+                    obj.updateSettingsData();
                 end
             end
         end
@@ -210,12 +223,94 @@ classdef FeaturesAnnotator < FeaturesReporter
                 obj.featureSet(obj.selectedSet) = [];
                 obj.selectedSet = [];
                 
-                set(obj.settingsTable, 'Data', obj.settingsData());
+                obj.updateSettingsData();
             end
         end
         
         
-        function handlePresetsPopupChanged(obj, ~, ~)
+        function updateFeatureSetsPopup(obj)
+            menuItems = {};
+            curItem = [];
+            savedSets = getpref('Tempo', 'AnnotationFeatureSets', []);
+            for i = 1:length(savedSets)
+                menuItems{end + 1} = savedSets(i).name; %#ok<AGROW>
+                if strcmp(savedSets(i).name, obj.lastChosenFeatureSetName)
+                    curItem = i;
+                end
+            end
+            if ~isempty(menuItems)
+                menuItems{end + 1} = '';
+            end
+            menuItems{end + 1} = 'Save Features As...';
+            if isempty(curItem)
+                curItem = length(menuItems);
+            else
+                menuItems{end + 1} = ['Delete ' obj.lastChosenFeatureSetName '...'];
+            end
+            set(obj.featureSetsPopup, 'String', menuItems, 'Value', curItem);
+        end
+        
+        
+        function handleFeatureSetsPopupChanged(obj, ~, ~)
+            menuItems = get(obj.featureSetsPopup, 'String');
+            chosenItem = menuItems{get(obj.featureSetsPopup, 'Value')};
+            
+            if strncmp(chosenItem, 'Save', 4)
+                % Save the current set.
+                setName = inputdlg('Enter a name for the feature set...', 'Tempo');
+                if ~isempty(setName)
+                    newSet.name = setName{1};
+                    newSet.features = obj.featureSet;
+                    
+                    savedSets = getpref('Tempo', 'AnnotationFeatureSets', struct('name', {}, 'features', {}));
+                    
+                    if ismember(setName, menuItems(1:length(savedSets)))
+                        answer = questdlg(['Are you sure you wish to replace "' newSet.name '"?'], 'Tempo', 'Cancel', 'Replace', 'Replace');
+                        if strcmp(answer, 'Replace')
+                            for i = 1:length(savedSets)
+                                if strcmp(savedSets(i).name, newSet.name)
+                                    savedSets(i) = newSet;
+                                    setpref('Tempo', 'AnnotationFeatureSets', savedSets);
+                                    break;
+                                end
+                            end
+                        end
+                    else
+                        savedSets(end + 1) = newSet;
+                        setpref('Tempo', 'AnnotationFeatureSets', savedSets);
+                    end
+                    
+                    obj.updateFeatureSetsPopup();
+                end
+            elseif strncmp(chosenItem, 'Delete', 6)
+                % Delete a feature set from the prefs.
+                setName = chosenItem(8:end-3);
+                answer = questdlg(['Are you sure you wish to delete "' setName '"?'], 'Tempo', 'Cancel', 'Delete', 'Delete');
+                if strcmp(answer, 'Delete')
+                    savedSets = getpref('Tempo', 'AnnotationFeatureSets', []);
+                    for i = 1:length(savedSets)
+                        if strcmp(savedSets(i).name, setName)
+                            savedSets(i) = [];
+                            setpref('Tempo', 'AnnotationFeatureSets', savedSets);
+                            break;
+                        end
+                    end
+                end
+                obj.updateFeatureSetsPopup();
+            elseif ~isempty(chosenItem)
+                % Use a feature set.
+                savedSets = getpref('Tempo', 'AnnotationFeatureSets', []);
+                for i = 1:length(savedSets)
+                    if strcmp(savedSets(i).name, chosenItem)
+                        obj.lastChosenFeatureSetName = chosenItem;
+                        setpref('Tempo', 'AnnotationLastChosenFeatureSet', chosenItem);
+                        obj.featureSet = savedSets(i).features;
+                        obj.updateSettingsData();
+                        obj.updateFeatureSetsPopup();
+                        break;
+                    end
+                end
+            end
         end
         
         
@@ -277,7 +372,7 @@ classdef FeaturesAnnotator < FeaturesReporter
         end
         
         
-        function currentTimeChangedInPanel(obj, panel)
+        function currentTimeChangedInPanel(obj, panel) %#ok<INUSD>
             if ~isempty(obj.rangeFeatureBeingAdded)
                 % Update the end time of the feature.
                 % TODO: this isn't working: the patch created in keyPress is invalid when the code below triggers its update
