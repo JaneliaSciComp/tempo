@@ -2305,9 +2305,10 @@ classdef TempoController < handle
         
         
         function addUndoableAction(obj, actionName, undoAction, redoAction, context)
-            % Remember the display range and selection so they can be restored on undo/redo.
+            % Remember the display range, selection and current time so they can be restored on undo/redo.
             userData.displayRange = obj.displayRange;
             userData.selectedRange = obj.selectedRange;
+            userData.currentTime = obj.currentTime;
             
             % Mark the workspace as dirty.
             % TODO: can this be determined by the state of the undo stack?
@@ -2320,9 +2321,10 @@ classdef TempoController < handle
         function handleUndo(obj, ~, ~)
             userData = obj.undoManager.undo();
             
-            % Reset the display and selection to where it was when the action was performed.
+            % Reset the display, selection and current time to where they were when the action was performed.
             obj.displayRange = userData.displayRange;
             obj.selectedRange = userData.selectedRange;
+            obj.currentTime = userData.currentTime;
         end
         
         
