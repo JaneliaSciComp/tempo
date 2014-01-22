@@ -609,6 +609,13 @@ classdef FeaturesPanel < TimelinePanel
             delete(obj.timeRangesListener);
             obj.timeRangesListener = [];
             
+            delete(obj.featureTypeLabels);
+            obj.featureTypeLabels = [];
+            delete(obj.featureTypeShadows);
+            obj.featureTypeShadows = [];
+            delete(obj.timeRangeRectangles);
+            obj.timeRangeRectangles = [];
+            
             close@TimelinePanel(obj);
         end
         
