@@ -54,7 +54,7 @@ classdef UFMFRecording < VideoRecording
                 
                 % Darken the background pixels.
                 fullMask = repmat(frameMask, [1 1 3]);
-                frameImage(~fullMask) = frameImage(~fullMask) * 0.5;
+                frameImage(~fullMask) = frameImage(~fullMask) * 0.4;
                 
                 if obj.haveImageToolbox
                     % Also lighten the perimiter of the foreground pixels.
