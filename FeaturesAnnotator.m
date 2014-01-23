@@ -47,12 +47,14 @@ classdef FeaturesAnnotator < FeaturesReporter
                     if strcmp(savedSets(i).name, lastChosenSet)
                         obj.featureSet = savedSets(i).features;
                         obj.lastChosenFeatureSetName = savedSets(i).name;
+                        obj.name = savedSets(i).name;
                         break;
                     end
                 end
                 if isempty(obj.featureSet)
                     obj.featureSet = savedSets(1).features;
                     obj.lastChosenFeatureSetName = savedSets(1).name;
+                    obj.name = savedSets(1).name;
                 end
             end
         end
@@ -307,6 +309,9 @@ classdef FeaturesAnnotator < FeaturesReporter
                         obj.featureSet = savedSets(i).features;
                         obj.updateSettingsData();
                         obj.updateFeatureSetsPopup();
+                        if isempty(obj.name)
+                            obj.name = chosenItem;
+                        end
                         break;
                     end
                 end
