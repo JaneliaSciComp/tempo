@@ -1375,7 +1375,7 @@ classdef TempoController < handle
                 end
 
                 waveform = WaveformPanel(obj, recording);
-                waveform.handleTimeWindowChanged();
+                waveform.handleDisplayRangeChanged([], []);
                 obj.timelinePanels = {obj.timelinePanels{1:position}, waveform, obj.timelinePanels{position + 1:end}};
             end
             
@@ -1408,7 +1408,7 @@ classdef TempoController < handle
                 end
 
                 spectrogram = SpectrogramPanel(obj, recording);
-                spectrogram.handleTimeWindowChanged();
+                spectrogram.handleDisplayRangeChanged([], []);
                 obj.timelinePanels = {obj.timelinePanels{1:position}, spectrogram, obj.timelinePanels{position + 1:end}};
             end
             

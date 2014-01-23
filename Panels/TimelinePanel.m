@@ -20,7 +20,7 @@ classdef TimelinePanel < TempoPanel
 			obj = obj@TempoPanel(controller, varargin{:});
              
             obj.handleSelectedRangeChanged();
-%             obj.handleTimeWindowChanged();
+%             obj.handleDisplayRangeChanged();
         end
         
         
@@ -34,7 +34,7 @@ classdef TimelinePanel < TempoPanel
             obj.selectionPatch = patch([0 1 1 0], [-100000 -100000 200000 200000], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'Visible', 'off', 'HitTest', 'off', 'HandleVisibility', 'off');
             
             % Add listeners so we know when the current time and selection change.
-            obj.displayRangeListener = addlistener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
+            obj.displayRangeListener = addlistener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleDisplayRangeChanged(obj, source, event));
             obj.selectedRangeListener = addlistener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
             
             obj.axesXLim = [0 0];
@@ -83,7 +83,7 @@ classdef TimelinePanel < TempoPanel
         end
         
         
-        function handleTimeWindowChanged(obj, ~, ~)
+        function handleDisplayRangeChanged(obj, ~, ~)
             if ~obj.isHidden && ~isempty(obj.controller) && ~isempty(obj.controller.displayRange)
                 % For performance only update the axes if the time range has changed.
                 % The spectogram needs to update even when playback stops and the range doesn't change so it's special cased.
@@ -101,7 +101,7 @@ classdef TimelinePanel < TempoPanel
         function handleResize(obj, source, event)
             handleResize@TempoPanel(obj, source, event);
             if ~obj.isHidden
-                obj.handleTimeWindowChanged(source, event);
+                obj.handleDisplayRangeChanged(source, event);
             end
         end
         
@@ -143,7 +143,7 @@ classdef TimelinePanel < TempoPanel
             if ~obj.isHidden
                 % Make sure everything is in sync.
                 obj.handleSelectedRangeChanged([], []);
-                obj.handleTimeWindowChanged([], []);
+                obj.handleDisplayRangeChanged([], []);
             end
         end
         
