@@ -13,6 +13,7 @@ classdef FeaturesAnnotator < FeaturesReporter
         
         featureSetsPopup
         lastChosenFeatureSetName
+        reporterName
     end
     
     
@@ -47,14 +48,14 @@ classdef FeaturesAnnotator < FeaturesReporter
                     if strcmp(savedSets(i).name, lastChosenSet)
                         obj.featureSet = savedSets(i).features;
                         obj.lastChosenFeatureSetName = savedSets(i).name;
-                        obj.name = savedSets(i).name;
+                        obj.reporterName = savedSets(i).name;
                         break;
                     end
                 end
                 if isempty(obj.featureSet)
                     obj.featureSet = savedSets(1).features;
                     obj.lastChosenFeatureSetName = savedSets(1).name;
-                    obj.name = savedSets(1).name;
+                    obj.reporterName = savedSets(1).name;
                 end
             end
         end
@@ -187,6 +188,10 @@ classdef FeaturesAnnotator < FeaturesReporter
             end
             
             obj.updateSettingsData();
+            
+            if isempty(strfind(obj.reporterName, '(edited)'))
+                obj.reporterName = [obj.reporterName ' (edited)'];
+            end
         end
         
         
@@ -199,6 +204,10 @@ classdef FeaturesAnnotator < FeaturesReporter
             obj.featureSet(end + 1) = newType;
             
             obj.updateSettingsData();
+            
+            if isempty(strfind(obj.reporterName, '(edited)'))
+                obj.reporterName = [obj.reporterName ' (edited)'];
+            end
         end
         
         
@@ -213,6 +222,10 @@ classdef FeaturesAnnotator < FeaturesReporter
                     obj.featureSet(obj.selectedSet).color = uisetcolor(obj.featureSet(obj.selectedSet).color);
                     
                     obj.updateSettingsData();
+                    
+                    if isempty(strfind(obj.reporterName, '(edited)'))
+                        obj.reporterName = [obj.reporterName ' (edited)'];
+                    end
                 end
             end
         end
@@ -226,6 +239,10 @@ classdef FeaturesAnnotator < FeaturesReporter
                 obj.selectedSet = [];
                 
                 obj.updateSettingsData();
+                
+                if isempty(strfind(obj.reporterName, '(edited)'))
+                    obj.reporterName = [obj.reporterName ' (edited)'];
+                end
             end
         end
         
@@ -305,13 +322,11 @@ classdef FeaturesAnnotator < FeaturesReporter
                 for i = 1:length(savedSets)
                     if strcmp(savedSets(i).name, chosenItem)
                         obj.lastChosenFeatureSetName = chosenItem;
+                        obj.reporterName = chosenItem;
                         setpref('Tempo', 'AnnotationLastChosenFeatureSet', chosenItem);
                         obj.featureSet = savedSets(i).features;
                         obj.updateSettingsData();
                         obj.updateFeatureSetsPopup();
-                        if isempty(obj.name)
-                            obj.name = chosenItem;
-                        end
                         break;
                     end
                 end
@@ -326,7 +341,12 @@ classdef FeaturesAnnotator < FeaturesReporter
         
         
         function handleSaveEditSettings(obj, ~, ~)
+            if isempty(obj.name)
+                obj.name = obj.reporterName;
+            end
+            
             obj.settingsEdited = true;
+            
             uiresume;
         end
         
