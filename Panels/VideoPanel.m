@@ -130,6 +130,7 @@ classdef VideoPanel < TempoPanel
             % Command+arrow keys moves to the beginning/end of the video.
             timeChange = 0;
             stepSize = 1 / obj.video.sampleRate;
+            shiftDown = any(ismember(keyEvent.Modifier, 'shift'));
             cmdDown = any(ismember(keyEvent.Modifier, 'command'));
             
             if strcmp(keyEvent.Key, 'leftarrow')
@@ -148,6 +149,15 @@ classdef VideoPanel < TempoPanel
             
             if timeChange ~= 0
                 newTime = max([stepSize / 2.0, min([obj.controller.duration - stepSize / 2.0, obj.controller.currentTime + timeChange])]);
+                if shiftDown
+                    if obj.controller.currentTime == obj.controller.selectedRange(1)
+                        obj.controller.selectedRange = [sort([obj.controller.selectedRange(2) newTime]) obj.controller.selectedRange(3:4)];
+                    else
+                        obj.controller.selectedRange = [sort([newTime obj.controller.selectedRange(1)]) obj.controller.selectedRange(3:4)];
+                    end
+                else
+                    obj.controller.selectedRange = [newTime newTime obj.controller.selectedRange(3:4)];
+                end
                 obj.controller.currentTime = newTime;
                 obj.controller.centerDisplayAtTime(newTime);
                 
