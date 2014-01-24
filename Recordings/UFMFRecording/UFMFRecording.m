@@ -53,8 +53,13 @@ classdef UFMFRecording < VideoRecording
                 [frameImage, frameNum, frameMask] = obj.ufmfFile.getFrameAtTime(obj.timeOffset + time);
                 
                 % Darken the background pixels.
-                fullMask = repmat(frameMask, [1 1 3]);
-                frameImage(~fullMask) = frameImage(~fullMask) * 0.4;
+                if ismatrix(frameImage)
+                    frameImage(~frameMask) = frameImage(~frameMask) * 0.4;
+                    frameImage = repmat(frameImage / 255, [1 1 3]);
+                else
+                    fullMask = repmat(frameMask, [1 1 3]);
+                    frameImage(~fullMask) = frameImage(~fullMask) * 0.4;
+                end
                 
                 if obj.haveImageToolbox
                     % Also lighten the perimiter of the foreground pixels.
@@ -66,6 +71,9 @@ classdef UFMFRecording < VideoRecording
             else
                 % Just get the frame.
                 [frameImage, frameNum] = obj.ufmfFile.getFrameAtTime(obj.timeOffset + time);
+                if ismatrix(frameImage)
+                    frameImage = repmat(frameImage / 255, [1 1 3]);
+                end
             end
         end
         
