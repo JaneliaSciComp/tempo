@@ -106,6 +106,23 @@ classdef TimelinePanel < TempoPanel
         end
         
         
+        function setEditedRange(obj, editedObject, range)
+            if editedObject == obj.axes
+                % The user modified the selection with the mouse.
+                
+                % If the current time was at the beginning or end of the selection then keep it there.
+                % TODO: does this still work with modifying a feature?
+                if obj.controller.currentTime == obj.controller.selectedRange(1)
+                    obj.controller.currentTime = range(1);
+                elseif obj.controller.currentTime == obj.controller.selectedRange(2)
+                    obj.controller.currentTime = range(2);
+                end
+                
+                obj.controller.selectedRange = range;
+            end
+        end
+        
+        
         function showSelection(obj, flag)
             if ~obj.isHidden
                 % Show or hide the current time line and selected time indicators.

@@ -73,6 +73,15 @@ classdef Feature < dynamicprops
         end
         
         
+        function set.range(obj, range)
+            if isempty(obj.range) || isempty(range) || any(obj.range ~= range)
+                obj.range = range;
+                
+                notify(obj, 'RangeChanged');
+            end
+        end
+        
+        
         function t = get.startTime(obj)
             t = obj.range(1);
         end

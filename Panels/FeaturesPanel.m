@@ -15,6 +15,7 @@ classdef FeaturesPanel < TimelinePanel
         showReporterSettingsMenuItem
         
         selectedFeature
+        selectedFeatureHandle
         selectedFeatureListener
         
         featureTypesListener
@@ -520,7 +521,7 @@ classdef FeaturesPanel < TimelinePanel
             answer = questdlg('Are you sure you wish to remove this feature?', 'Removing Feature', 'Cancel', 'Remove', 'Cancel');
             if strcmp(answer, 'Remove')
                 if obj.selectedFeature == feature
-                    obj.selectedFeature = [];
+                    obj.selectFeature([]);
                 end
                 
                 obj.reporter.removeFeatures({feature});
@@ -546,11 +547,21 @@ classdef FeaturesPanel < TimelinePanel
                 delete(obj.selectedFeatureListener);
                 obj.selectedFeatureListener = [];
                 
+                if ~isempty(obj.selectedFeature) && ishandle(obj.selectedFeatureHandle)
+                    % Restore the button down callback for feature selection.
+                    set(obj.selectedFeatureHandle, 'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event));
+                    obj.selectedFeatureHandle = [];
+                end
+                
                 % Loosely remember that the user chose this feature.  If the selection gets changed then it won't be considered selected any more.
                 obj.selectedFeature = feature;
                 
                 if ~isempty(obj.selectedFeature)
                     obj.selectedFeatureListener = addlistener(obj.selectedFeature, 'RangeChanged', @(source, event)handleFeatureDidChange(obj, source, event));
+                    
+                    % Temporarily clear the button down function so the user can edit the bounds of the feature.
+                    obj.selectedFeatureHandle = findobj(obj.featureHandles, 'UserData', obj.selectedFeature);
+                    set(obj.selectedFeatureHandle, 'ButtonDownFcn', []);
                     
                     % Also set the timeline's selection.
                     obj.controller.selectRange(obj.selectedFeature.range);
@@ -568,6 +579,15 @@ classdef FeaturesPanel < TimelinePanel
             end
             
             handleSelectedRangeChanged@TimelinePanel(obj);
+        end
+        
+        
+        function setEditedRange(obj, editedObject, range)
+            if editedObject == obj.selectedFeatureHandle
+                obj.selectedFeature.range = range;
+            else
+                setEditedRange@TimelinePanel(obj, editedObject, range);
+            end
         end
         
         

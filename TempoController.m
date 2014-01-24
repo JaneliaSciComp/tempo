@@ -48,10 +48,11 @@ classdef TempoController < handle
         
         timeLabelFormat = 1     % default to displaying time in minutes and seconds
         
-        panelSelectingTime
+        panelEditingRange
+        objectBeingEdited
+        originalRangeBeingEdited
         mouseConstraintTime
         mouseConstraintFreq
-        originalSelectedRange
         mouseOffset
         
         isPlaying = false
@@ -1746,9 +1747,9 @@ classdef TempoController < handle
             %  topl  top   topr
             %  left fleur  right
             %  botl bottom botr
-            if obj.panelSelectingTime.showsFrequencyRange && strcmp(yConstraint, 'min')
+            if obj.panelEditingRange.showsFrequencyRange && strcmp(yConstraint, 'min')
                 pointer = 'bot';
-            elseif obj.panelSelectingTime.showsFrequencyRange && strcmp(yConstraint, 'max')
+            elseif obj.panelEditingRange.showsFrequencyRange && strcmp(yConstraint, 'max')
                 pointer = 'top';
             else
                 pointer = '';
@@ -1782,29 +1783,42 @@ classdef TempoController < handle
             
             clickedObject = get(obj.figure, 'CurrentObject');
             
-            % TODO: allow panels to handle clicks on their objects?
-            %
-            %     handled = panel{i}.handleMouseDown(...);
-            %     if ~handled
-            %         ...
-            
+            % Figure out what was clicked on.
+            clickedType = get(clickedObject, 'Type');
+            if strcmp(clickedType, 'axes')
+                clickedAxes = clickedObject;
+            else
+                if isempty(get(clickedObject, 'ButtonDownFcn'))
+                    clickedAxes = get(clickedObject, 'Parent');
+                else
+                    clickedAxes = [];
+                end
+            end
+            clickedPanel = [];
             for i = 1:length(obj.timelinePanels)
-                timelinePanel = obj.timelinePanels{i};
-                if clickedObject == timelinePanel.axes
-                    clickedPoint = get(clickedObject, 'CurrentPoint');
+                if clickedAxes == obj.timelinePanels{i}.axes
+                    clickedPanel = obj.timelinePanels{i};
+                    break;
+                end
+            end
+            
+            if ~isempty(clickedPanel)
+                % Figure out the time and frequency of the clicked point.
+                clickedPoint = get(clickedAxes, 'CurrentPoint');
                     clickedTime = clickedPoint(1, 1);
-                    if timelinePanel.showsFrequencyRange
+                if clickedPanel.showsFrequencyRange
                         % Get the frequency from the clicked point.
                         % TODO: this doesn't work if the spectrogram is hidden when zoomed out.  Probably just need to have YLim set.
                         clickedFreq = clickedPoint(1, 2);
                     else
-                        % Pick a dummy frequency at the middle of the selected range.
+                    % Pick a frequency at the middle of the selected range.
                         if isinf(obj.selectedRange(3)) && isinf(obj.selectedRange(4))
                             clickedFreq = 0;
                         else
                             clickedFreq = mean(obj.selectedRange(3:4));
                         end
                     end
+                
                     if strcmp(get(gcf, 'SelectionType'), 'extend')
                         % Extend the time range.
                         if obj.currentTime == obj.selectedRange(1) || obj.currentTime ~= obj.selectedRange(2)
@@ -1814,7 +1828,7 @@ classdef TempoController < handle
                         end
                         
                         % Extend the frequency range if appropriate.
-                        if timelinePanel.showsFrequencyRange && ~isinf(obj.selectedRange(3)) && ~isinf(obj.selectedRange(4))
+                    if clickedPanel.showsFrequencyRange && ~isinf(obj.selectedRange(3)) && ~isinf(obj.selectedRange(4))
                             if clickedFreq < obj.selectedRange(3)
                                 obj.selectedRange(3) = clickedFreq;
                             else
@@ -1824,66 +1838,76 @@ classdef TempoController < handle
                             obj.selectedRange(3:4) = [-inf inf];
                         end
                     else
-                        obj.panelSelectingTime = timelinePanel;
-                        obj.originalSelectedRange = obj.selectedRange;
-                        if clickedTime > obj.selectedRange(1) && clickedTime < obj.selectedRange(2) && ...
-                           clickedFreq > obj.selectedRange(3) && clickedFreq < obj.selectedRange(4)
-                            % The user clicked inside of the existing selection, figure out which part was clicked on.
-                            % TODO: only allow mid/mid if box is too small?
+                    obj.panelEditingRange = clickedPanel;
+                    obj.objectBeingEdited = clickedObject;
+                    
+                    if clickedObject == clickedAxes
+                        % Potentially edit the global selected range.
+                        rangeBeingEdited = obj.selectedRange;
                             
-                            if timelinePanel.showsFrequencyRange && isinf(obj.selectedRange(3))
-                                obj.selectedRange(3:4) = obj.displayRange(3:4);
+                        if clickedPanel.showsFrequencyRange && isinf(rangeBeingEdited(3))
+                            % The selection is infinite but if the user clicks on the displayed edges then
+                            % use the displayed range as the starting point of the new selection.
+                            rangeBeingEdited(3:4) = obj.displayRange(3:4);
+                        end
+                    elseif isa(clickedPanel, 'FeaturesPanel')
+                        % Potentially edit the range of the panel's selected object.
+                        rangeBeingEdited = clickedPanel.selectedFeature.range;
                             end
+                    obj.originalRangeBeingEdited = rangeBeingEdited;
+                    if clickedTime > rangeBeingEdited(1) && clickedTime < rangeBeingEdited(2) && ...
+                       clickedFreq > rangeBeingEdited(3) && clickedFreq < rangeBeingEdited(4)
+                        % The user clicked inside of the existing selection, figure out which part was clicked on.
+                        % TODO: only allow mid/mid if box is too small?
                             
-                            axesPos = get(timelinePanel.axes, 'Position');
+                        % Clicking within 10 pixels of an edge will resize that edge (constraint = min/max), 
+                        % otherwise drag the whole selection (constraint = mid).
+                        axesPos = get(clickedAxes, 'Position');
                             timeMargin = 10 * (obj.displayRange(2) - obj.displayRange(1)) / (axesPos(3) - axesPos(1));
                             freqMargin = 10 * (obj.displayRange(4) - obj.displayRange(3)) / (axesPos(4) - axesPos(2));
-                            if clickedTime < obj.selectedRange(1) + timeMargin && clickedTime < obj.selectedRange(2) - timeMargin
+                        if clickedTime < rangeBeingEdited(1) + timeMargin && clickedTime < rangeBeingEdited(2) - timeMargin
                                 obj.mouseConstraintTime = 'min';
-                            elseif clickedTime > obj.selectedRange(2) - timeMargin && clickedTime > obj.selectedRange(1) + timeMargin
+                        elseif clickedTime > rangeBeingEdited(2) - timeMargin && clickedTime > rangeBeingEdited(1) + timeMargin
                                 obj.mouseConstraintTime = 'max';
                             else
                                 obj.mouseConstraintTime = 'mid';
                             end
-                            if clickedFreq < obj.selectedRange(3) + freqMargin && clickedFreq < obj.selectedRange(4) - freqMargin
+                        if clickedFreq < rangeBeingEdited(3) + freqMargin && clickedFreq < rangeBeingEdited(4) - freqMargin
                                 obj.mouseConstraintFreq = 'min';
-                            elseif clickedFreq > obj.selectedRange(4) - freqMargin && clickedFreq > obj.selectedRange(3) + freqMargin
+                        elseif clickedFreq > rangeBeingEdited(4) - freqMargin && clickedFreq > rangeBeingEdited(3) + freqMargin
                                 obj.mouseConstraintFreq = 'max';
                             else
                                 obj.mouseConstraintFreq = 'mid';
                             end
                         else
-                            % The user clicked outside of the existing selection.
-                            if timelinePanel.showsFrequencyRange
-                                obj.selectedRange = [clickedTime clickedTime clickedFreq clickedFreq];
+                        % The user clicked outside of the existing selection, make a new one.
+                        if clickedPanel.showsFrequencyRange
+                            rangeBeingEdited = [clickedTime clickedTime clickedFreq clickedFreq];
                             else
-                                obj.selectedRange = [clickedTime clickedTime -inf inf];    %obj.displayRange(3:4)];
+                            rangeBeingEdited = [clickedTime clickedTime -inf inf];    %obj.displayRange(3:4)];
                             end
-                            obj.originalSelectedRange = obj.selectedRange;
+                        obj.originalRangeBeingEdited = rangeBeingEdited;
                             obj.mouseConstraintTime = 'max';
                             obj.mouseConstraintFreq = 'max';
                             obj.currentTime = clickedTime;
                         end
-                        obj.mouseOffset = [clickedTime - obj.selectedRange(1), clickedFreq - obj.selectedRange(3)];
-                    end
-                    
-                    break
+                    obj.mouseOffset = [clickedTime - rangeBeingEdited(1), clickedFreq - rangeBeingEdited(3)];
                 end
             end
         end
         
         
-        function updateSelectedRange(obj)
-            clickedPoint = get(obj.panelSelectingTime.axes, 'CurrentPoint');
+        function updateEditedRange(obj)
+            clickedPoint = get(obj.panelEditingRange.axes, 'CurrentPoint');
             clickedTime = clickedPoint(1, 1);
             clickedFreq = clickedPoint(1, 2);
-            newRange = obj.originalSelectedRange;
+            newRange = obj.originalRangeBeingEdited;
             
             xConstraint = obj.mouseConstraintTime;
             if strcmp(obj.mouseConstraintTime, 'min')
                 newRange(1) = clickedTime;
             elseif strcmp(obj.mouseConstraintTime, 'mid') && strcmp(obj.mouseConstraintFreq, 'mid')
-                width = obj.originalSelectedRange(2) - obj.originalSelectedRange(1);
+                width = obj.originalRangeBeingEdited(2) - obj.originalRangeBeingEdited(1);
                 newRange(1) = clickedTime - obj.mouseOffset(1);
                 newRange(2) = newRange(1) + width;
             elseif strcmp(obj.mouseConstraintTime, 'max')
@@ -1901,12 +1925,12 @@ classdef TempoController < handle
             end
             
             yConstraint = obj.mouseConstraintFreq;
-            if obj.panelSelectingTime.showsFrequencyRange
+            if obj.panelEditingRange.showsFrequencyRange
                 if strcmp(obj.mouseConstraintFreq, 'min')
                     newRange(3) = clickedFreq;
                 elseif strcmp(obj.mouseConstraintFreq, 'mid') && strcmp(obj.mouseConstraintTime, 'mid')
                     if ~isinf(newRange(3)) && ~isinf(newRange(3))
-                        height = obj.originalSelectedRange(4) - obj.originalSelectedRange(3);
+                        height = obj.originalRangeBeingEdited(4) - obj.originalRangeBeingEdited(3);
                         newRange(3) = clickedFreq - obj.mouseOffset(2);
                         newRange(4) = newRange(3) + height;
                     end
@@ -1927,20 +1951,13 @@ classdef TempoController < handle
             
             set(gcf, 'Pointer', obj.resizePointer(xConstraint, yConstraint));
             
-            % If the current time was at the beginning or end of the selection then keep it there.
-            if obj.currentTime == obj.selectedRange(1)
-                obj.currentTime = newRange(1);
-            elseif obj.currentTime == obj.selectedRange(2)
-                obj.currentTime = newRange(2);
-            end
-            
-            obj.selectedRange = newRange;
+            obj.panelEditingRange.setEditedRange(obj.objectBeingEdited, newRange);
         end
         
         
         function handleMouseMotion(obj, varargin)
-            if ~isempty(obj.panelSelectingTime)
-                obj.updateSelectedRange();
+            if ~isempty(obj.panelEditingRange)
+                obj.updateEditedRange();
             elseif false    %handles.showSpectrogram && isfield(handles, 'spectrogramTooltip')
 % TODO:
 %                 currentPoint = get(handles.spectrogram, 'CurrentPoint');
@@ -1964,12 +1981,13 @@ classdef TempoController < handle
 
 
         function handleMouseButtonUp(obj, ~, ~)
-            if ~isempty(obj.panelSelectingTime)
-                obj.updateSelectedRange();
+            if ~isempty(obj.panelEditingRange)
+                obj.updateEditedRange();
                 if obj.selectedRange(3) == obj.selectedRange(4)
                     obj.selectedRange(3:4) = [-inf inf];
                 end
-                obj.panelSelectingTime = [];
+                obj.panelEditingRange = [];
+                obj.objectBeingEdited = [];
                 set(gcf, 'Pointer', 'arrow');
             end
         end
