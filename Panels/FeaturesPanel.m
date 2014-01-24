@@ -330,8 +330,12 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function handled = keyWasReleased(obj, keyEvent)
-            % Let the reporter respond to the key.
-            handled = obj.reporter.keyWasReleasedInPanel(keyEvent, obj);
+            if isa(obj.reporter, 'FeaturesAnnotator')
+                % Let the reporter respond to the key.
+                handled = obj.reporter.keyWasReleasedInPanel(keyEvent, obj);
+            else
+                handled = false;
+            end
             
             % Otherwise pass it up the chain.
             if ~handled
