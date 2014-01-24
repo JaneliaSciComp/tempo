@@ -48,6 +48,13 @@ classdef SpectrogramPanel < TimelinePanel
         end
         
         
+        function handleTimeWindowChanged(obj, ~, ~)
+            if ~isempty(obj.controller.displayRange) && ~obj.isHidden
+                obj.updateAxes(obj.controller.displayRange);
+            end
+        end
+        
+        
         function createControls(obj, panelSize)
             obj.imageHandle = image(panelSize(1), panelSize(2), zeros(panelSize), ...
                 'CDataMapping', 'scaled', ...
@@ -61,8 +68,7 @@ classdef SpectrogramPanel < TimelinePanel
             obj.otherLabel = text(5, panelSize(2), '', 'Units', 'pixels', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'BackgroundColor', 'white');
             obj.noDisplayLabel = text(panelSize(1) / 2, panelSize(2) / 2, 'Zoom in to see the spectrogram', 'Units', 'pixels', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'Visible', 'off');
             
-            obj.windowSizeListener = addlistener(obj.controller, 'windowSize', 'PostSet', ...
-                @(source, event)handleSpectrogramParametersChanged(obj, source, event));
+            obj.windowSizeListener = addlistener(obj.controller, 'windowSize', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
         end
         
         
