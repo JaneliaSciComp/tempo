@@ -106,7 +106,7 @@ classdef TimelinePanel < TempoPanel
         end
         
         
-        function setEditedRange(obj, editedObject, range)
+        function setEditedRange(obj, editedObject, range, ~)
             if editedObject == obj.axes
                 % The user modified the selection with the mouse.
                 

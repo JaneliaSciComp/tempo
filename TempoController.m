@@ -1897,7 +1897,7 @@ classdef TempoController < handle
         end
         
         
-        function updateEditedRange(obj)
+        function updateEditedRange(obj, endOfUpdate)
             clickedPoint = get(obj.panelEditingRange.axes, 'CurrentPoint');
             clickedTime = clickedPoint(1, 1);
             clickedFreq = clickedPoint(1, 2);
@@ -1951,13 +1951,13 @@ classdef TempoController < handle
             
             set(gcf, 'Pointer', obj.resizePointer(xConstraint, yConstraint));
             
-            obj.panelEditingRange.setEditedRange(obj.objectBeingEdited, newRange);
+            obj.panelEditingRange.setEditedRange(obj.objectBeingEdited, newRange, endOfUpdate);
         end
         
         
         function handleMouseMotion(obj, varargin)
             if ~isempty(obj.panelEditingRange)
-                obj.updateEditedRange();
+                obj.updateEditedRange(false);
             elseif false    %handles.showSpectrogram && isfield(handles, 'spectrogramTooltip')
 % TODO:
 %                 currentPoint = get(handles.spectrogram, 'CurrentPoint');
@@ -1982,7 +1982,7 @@ classdef TempoController < handle
 
         function handleMouseButtonUp(obj, ~, ~)
             if ~isempty(obj.panelEditingRange)
-                obj.updateEditedRange();
+                obj.updateEditedRange(true);
                 if obj.selectedRange(3) == obj.selectedRange(4)
                     obj.selectedRange(3:4) = [-inf inf];
                 end

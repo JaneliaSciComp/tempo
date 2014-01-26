@@ -17,6 +17,7 @@ classdef FeaturesPanel < TimelinePanel
         selectedFeature
         selectedFeatureHandle
         selectedFeatureListener
+        selectedFeatureOriginalRange
         
         featureTypesListener
         featuresListener
@@ -586,9 +587,29 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function setEditedRange(obj, editedObject, range)
+        function setFeatureRange(obj, feature, range)
+            obj.selectFeature(feature);
+            feature.range = range;
+        end
+        
+        
+        function setEditedRange(obj, editedObject, range, endOfUpdate)
             if editedObject == obj.selectedFeatureHandle
+                if isempty(obj.selectedFeatureOriginalRange)
+                    obj.selectedFeatureOriginalRange = obj.selectedFeature.range;
+                end
+                
                 obj.selectedFeature.range = range;
+                
+                if endOfUpdate
+                    feature = obj.selectedFeature;
+                    prevRange = obj.selectedFeatureOriginalRange;
+                    obj.controller.addUndoableAction(['Edit ' obj.selectedFeature.type], ...
+                                                      @() obj.setFeatureRange(feature, prevRange), ...
+                                                      @() obj.setFeatureRange(feature, range), ...
+                                                      obj);
+                    obj.selectedFeatureOriginalRange = [];
+                end
             else
                 setEditedRange@TimelinePanel(obj, editedObject, range);
             end
