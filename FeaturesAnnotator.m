@@ -397,15 +397,16 @@ classdef FeaturesAnnotator < FeaturesReporter
         end
         
         
-        function currentTimeChangedInPanel(obj, panel)
+        function currentTimeChangedInPanel(obj, panel) %#ok<INUSD>
             if ~isempty(obj.rangeFeatureBeingAdded)
                 % Update the start or end time of a range feature during playback.
-                newTime = panel.controller.currentTime;
-                if panel.controller.playRate > 0
-                    obj.rangeFeatureBeingAdded.endTime = newTime;
-                else
-                    obj.rangeFeatureBeingAdded.startTime = newTime;
-                end
+                % TODO: This isn't working.  The key release event comes in during the key press and messes things up.
+%                 newTime = panel.controller.currentTime;
+%                 if panel.controller.playRate > 0
+%                     obj.rangeFeatureBeingAdded.endTime = newTime;
+%                 else
+%                     obj.rangeFeatureBeingAdded.startTime = newTime;
+%                 end
             end
         end
         

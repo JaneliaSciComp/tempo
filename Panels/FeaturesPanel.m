@@ -155,7 +155,7 @@ classdef FeaturesPanel < TimelinePanel
             % TODO: Would it help to do this for annotation to keep track of what's been looked at?
             %       How would you know what's been looked at?
             if ~isempty(obj.reporter) && isa(obj.reporter, 'FeaturesDetector')
-                axes(obj.axes);
+                set(obj.controller.figure, 'CurrentAxes', obj.axes);
                 
                 % Clear any existing rectangles.
                 delete(obj.timeRangeRectangles);
@@ -186,8 +186,6 @@ classdef FeaturesPanel < TimelinePanel
             % Features is a cell array as there may be sub-classes.
             
             if ~isempty(obj.reporter)
-                axes(obj.axes);
-                
                 featureTypes = obj.reporter.featureTypes();
                 
                 if strcmp(updateType, 'add') || strcmp(updateType, 'update')
@@ -208,16 +206,18 @@ classdef FeaturesPanel < TimelinePanel
                         else
                             uiElement = findobj(obj.featureHandles, 'UserData', feature);
                             
-                            % If the feature changed from a range to a point or vice-versa then the UI element needs to be recreated.
-                            uiElementType = get(uiElement, 'Type');
-                            if (featureIsPoint && ~strcmp(uiElementType, 'text')) || ...
-                               (~featureIsPoint && ~strcmp(uiElementType, 'patch'))
-                                obj.featureHandles(obj.featureHandles == uiElement) = [];
-                                if obj.selectedFeature == feature
-                                    obj.selectedFeatureHandle = [];
+                            if ~isempty(uiElement)
+                                % If the feature changed from a range to a point or vice-versa then the UI element needs to be recreated.
+                                uiElementType = get(uiElement, 'Type');
+                                if (featureIsPoint && ~strcmp(uiElementType, 'text')) || ...
+                                   (~featureIsPoint && ~strcmp(uiElementType, 'patch'))
+                                    obj.featureHandles(obj.featureHandles == uiElement) = [];
+                                    if obj.selectedFeature == feature
+                                        obj.selectedFeatureHandle = [];
+                                    end
+                                    delete(uiElement);
+                                    uiElement = [];
                                 end
-                                delete(uiElement);
-                                uiElement = [];
                             end
                         end
                         
@@ -228,14 +228,15 @@ classdef FeaturesPanel < TimelinePanel
                             
                             if isempty(uiElement)
                                 % Create a new text for the feature.
+                                set(obj.controller.figure, 'CurrentAxes', obj.axes);
                                 obj.featureHandles(end + 1) = text(feature.startTime, yCen, 'x', ...
-                                       'Parent', obj.axes, ...
-                                       'HorizontalAlignment', 'center', ...
-                                       'VerticalAlignment', 'middle', ...
-                                       'Color', feature.color(), ...
-                                       'Clipping', 'on', ...
-                                       'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
-                                       'UserData', feature);
+                                    'Parent', obj.axes, ...
+                                    'HorizontalAlignment', 'center', ...
+                                    'VerticalAlignment', 'middle', ...
+                                    'Color', feature.color(), ...
+                                    'Clipping', 'on', ...
+                                    'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
+                                    'UserData', feature);
                                 if obj.selectedFeature == feature
                                     obj.selectedFeatureHandle = obj.featureHandles(end);
                                 end
@@ -267,6 +268,7 @@ classdef FeaturesPanel < TimelinePanel
                             
                             if isempty(uiElement)
                                 % Create a new patch for the feature.
+                                set(obj.controller.figure, 'CurrentAxes', obj.axes);
                                 obj.featureHandles(end + 1) = patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
                                     'Parent', obj.axes, ...
                                     'EdgeColor', edgeColor, ...
@@ -575,13 +577,13 @@ classdef FeaturesPanel < TimelinePanel
                 delete(obj.selectedFeatureListener);
                 obj.selectedFeatureListener = [];
                 
-                if ~isempty(obj.selectedFeature) && ishandle(obj.selectedFeatureHandle)
+                if ~isempty(obj.selectedFeature)
                     % Restore the button down callback for feature selection.
                     set(obj.selectedFeatureHandle, 'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event));
                     obj.selectedFeatureHandle = [];
                 end
                 
-                % Loosely remember that the user chose this feature.  If the selection gets changed then it won't be considered selected any more.
+                % Remember that the user chose this feature.  If the selection gets changed then it won't be considered selected any more.
                 obj.selectedFeature = feature;
                 
                 if ~isempty(obj.selectedFeature)

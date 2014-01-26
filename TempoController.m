@@ -1560,8 +1560,9 @@ classdef TempoController < handle
 
                 obj.isPlaying = false;
                 
-                elapsedTime = (now - obj.playStartTime) * (24*60*60);
-                fprintf('FPS: %g (%d/%g)\n', obj.fpsFrameCount / elapsedTime, obj.fpsFrameCount, elapsedTime);
+% Debug code:
+%                 elapsedTime = (now - obj.playStartTime) * (24*60*60);
+%                 fprintf('FPS: %g\n', obj.fpsFrameCount / elapsedTime);  % should be divided by number of videos playing
                 
                 if isempty(hObject)
                     % The recordings played to the end without the user clicking the pause button.
@@ -1805,39 +1806,39 @@ classdef TempoController < handle
             if ~isempty(clickedPanel)
                 % Figure out the time and frequency of the clicked point.
                 clickedPoint = get(clickedAxes, 'CurrentPoint');
-                    clickedTime = clickedPoint(1, 1);
+                clickedTime = clickedPoint(1, 1);
                 if clickedPanel.showsFrequencyRange
-                        % Get the frequency from the clicked point.
-                        % TODO: this doesn't work if the spectrogram is hidden when zoomed out.  Probably just need to have YLim set.
-                        clickedFreq = clickedPoint(1, 2);
+                    % Get the frequency from the clicked point.
+                    % TODO: this doesn't work if the spectrogram is hidden when zoomed out.  Probably just need to have YLim set.
+                    clickedFreq = clickedPoint(1, 2);
+                else
+                % Pick a frequency at the middle of the selected range.
+                    if isinf(obj.selectedRange(3)) && isinf(obj.selectedRange(4))
+                        clickedFreq = 0;
                     else
-                    % Pick a frequency at the middle of the selected range.
-                        if isinf(obj.selectedRange(3)) && isinf(obj.selectedRange(4))
-                            clickedFreq = 0;
-                        else
-                            clickedFreq = mean(obj.selectedRange(3:4));
-                        end
+                        clickedFreq = mean(obj.selectedRange(3:4));
                     end
+                end
                 
-                    if strcmp(get(gcf, 'SelectionType'), 'extend')
-                        % Extend the time range.
-                        if obj.currentTime == obj.selectedRange(1) || obj.currentTime ~= obj.selectedRange(2)
-                            obj.selectedRange(1:2) = sort([obj.selectedRange(1) clickedTime]);
-                        else
-                            obj.selectedRange(1:2) = sort([clickedTime obj.selectedRange(2)]);
-                        end
+                if strcmp(get(gcf, 'SelectionType'), 'extend')
+                    % Extend the time range.
+                    if obj.currentTime == obj.selectedRange(1) || obj.currentTime ~= obj.selectedRange(2)
+                        obj.selectedRange(1:2) = sort([obj.selectedRange(1) clickedTime]);
+                    else
+                        obj.selectedRange(1:2) = sort([clickedTime obj.selectedRange(2)]);
+                    end
                         
-                        % Extend the frequency range if appropriate.
+                    % Extend the frequency range if appropriate.
                     if clickedPanel.showsFrequencyRange && ~isinf(obj.selectedRange(3)) && ~isinf(obj.selectedRange(4))
-                            if clickedFreq < obj.selectedRange(3)
-                                obj.selectedRange(3) = clickedFreq;
-                            else
-                                obj.selectedRange(4) = clickedFreq;
-                            end
+                        if clickedFreq < obj.selectedRange(3)
+                            obj.selectedRange(3) = clickedFreq;
                         else
-                            obj.selectedRange(3:4) = [-inf inf];
+                            obj.selectedRange(4) = clickedFreq;
                         end
                     else
+                        obj.selectedRange(3:4) = [-inf inf];
+                    end
+                else
                     obj.panelEditingRange = clickedPanel;
                     obj.objectBeingEdited = clickedObject;
                     
@@ -1853,7 +1854,7 @@ classdef TempoController < handle
                     elseif isa(clickedPanel, 'FeaturesPanel')
                         % Potentially edit the range of the panel's selected object.
                         rangeBeingEdited = clickedPanel.selectedFeature.range;
-                            end
+                    end
                     obj.originalRangeBeingEdited = rangeBeingEdited;
                     if clickedTime > rangeBeingEdited(1) && clickedTime < rangeBeingEdited(2) && ...
                        clickedFreq > rangeBeingEdited(3) && clickedFreq < rangeBeingEdited(4)
@@ -1869,28 +1870,28 @@ classdef TempoController < handle
                                 obj.mouseConstraintTime = 'min';
                         elseif clickedTime > rangeBeingEdited(2) - timeMargin && clickedTime > rangeBeingEdited(1) + timeMargin
                                 obj.mouseConstraintTime = 'max';
-                            else
-                                obj.mouseConstraintTime = 'mid';
-                            end
+                        else
+                            obj.mouseConstraintTime = 'mid';
+                        end
                         if clickedFreq < rangeBeingEdited(3) + freqMargin && clickedFreq < rangeBeingEdited(4) - freqMargin
                                 obj.mouseConstraintFreq = 'min';
                         elseif clickedFreq > rangeBeingEdited(4) - freqMargin && clickedFreq > rangeBeingEdited(3) + freqMargin
                                 obj.mouseConstraintFreq = 'max';
-                            else
-                                obj.mouseConstraintFreq = 'mid';
-                            end
                         else
+                            obj.mouseConstraintFreq = 'mid';
+                        end
+                    else
                         % The user clicked outside of the existing selection, make a new one.
                         if clickedPanel.showsFrequencyRange
                             rangeBeingEdited = [clickedTime clickedTime clickedFreq clickedFreq];
-                            else
+                        else
                             rangeBeingEdited = [clickedTime clickedTime -inf inf];    %obj.displayRange(3:4)];
-                            end
+                        end
                         obj.originalRangeBeingEdited = rangeBeingEdited;
                             obj.mouseConstraintTime = 'max';
                             obj.mouseConstraintFreq = 'max';
                             obj.currentTime = clickedTime;
-                        end
+                    end
                     obj.mouseOffset = [clickedTime - rangeBeingEdited(1), clickedFreq - rangeBeingEdited(3)];
                 end
             end
@@ -1996,13 +1997,15 @@ classdef TempoController < handle
         function handleKeyPress(obj, ~, keyEvent)
             if ~strcmp(keyEvent.Key, 'space') && isempty(obj.panelHandlingKeyPress)
                 % Let one of the panels handle the event.
-                % If the video panels are open they get first dibs.
+                % If any video panels are open they get first dibs.
                 panels = horzcat(obj.videoPanels, obj.timelinePanels);
-                obj.panelHandlingKeyPress = [];
                 for i = 1:length(panels)
-                    if ~panels{i}.isHidden && panels{i}.keyWasPressed(keyEvent)
-                        obj.panelHandlingKeyPress = panels{i};
-                        break
+                    if ~panels{i}.isHidden
+                        handled = panels{i}.keyWasPressed(keyEvent);
+                        if handled
+                            obj.panelHandlingKeyPress = panels{i};
+                            break
+                        end
                     end
                 end
                 
