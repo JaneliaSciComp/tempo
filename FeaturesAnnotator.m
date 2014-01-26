@@ -399,24 +399,26 @@ classdef FeaturesAnnotator < FeaturesReporter
         
         function currentTimeChangedInPanel(obj, panel)
             if ~isempty(obj.rangeFeatureBeingAdded)
-                % Update the end time of the feature during playback.
-                endTime = panel.controller.currentTime;
-                if endTime < obj.rangeFeatureBeingAdded.startTime + 0.01
-                    endTime = obj.rangeFeatureBeingAdded.startTime + 0.01;
+                % Update the start or end time of a range feature during playback.
+                newTime = panel.controller.currentTime;
+                if panel.controller.playRate > 0
+                    obj.rangeFeatureBeingAdded.endTime = newTime;
+                else
+                    obj.rangeFeatureBeingAdded.startTime = newTime;
                 end
-                obj.rangeFeatureBeingAdded.endTime = endTime;
             end
         end
         
         
         function handled = keyWasReleasedInPanel(obj, ~, panel)
-            % Finish creating a range feature during playback.
             if ~isempty(obj.rangeFeatureBeingAdded)
-                % Update the end time of the feature.
-                % Sometimes (?) the currentTime is incorrectly the feature's start time.
-                endTime = panel.controller.currentTime;
-                if endTime > obj.rangeFeatureBeingAdded.endTime
-                    obj.rangeFeatureBeingAdded.endTime = endTime;
+                % Finish creating a range feature during playback.
+                % Sometimes the currentTime is incorrectly the time of the key down (?)
+                newTime = panel.controller.currentTime;
+                if panel.controller.playRate > 0
+                    obj.rangeFeatureBeingAdded.endTime = max([newTime obj.rangeFeatureBeingAdded.endTime]);
+                else
+                    obj.rangeFeatureBeingAdded.startTime = min([newTime obj.rangeFeatureBeingAdded.startTime]);
                 end
                 obj.rangeFeatureBeingAdded = [];
                 
