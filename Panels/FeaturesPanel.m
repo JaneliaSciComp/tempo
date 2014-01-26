@@ -201,25 +201,44 @@ classdef FeaturesPanel < TimelinePanel
                     % Add or update a text or patch for each feature.
                     for i = 1:length(features)
                         feature = features{i};
+                        featureIsPoint = (feature.startTime == feature.endTime);
                         
-                        if strcmp(updateType, 'update')
+                        if strcmp(updateType, 'add')
+                            uiElement = [];
+                        else
                             uiElement = findobj(obj.featureHandles, 'UserData', feature);
+                            
+                            % If the feature changed from a range to a point or vice-versa then the UI element needs to be recreated.
+                            uiElementType = get(uiElement, 'Type');
+                            if (featureIsPoint && ~strcmp(uiElementType, 'text')) || ...
+                               (~featureIsPoint && ~strcmp(uiElementType, 'patch'))
+                                obj.featureHandles(obj.featureHandles == uiElement) = [];
+                                if obj.selectedFeature == feature
+                                    obj.selectedFeatureHandle = [];
+                                end
+                                delete(uiElement);
+                                uiElement = [];
+                            end
                         end
                         
                         y = find(strcmp(featureTypes, feature.type));
                         yCen = (length(featureTypes) - y + 0.5) * spacing;
-                        if feature.startTime == feature.endTime
+                        if featureIsPoint
                             % Add or update a point feature.
                             
-                            if strcmp(updateType, 'add')
+                            if isempty(uiElement)
                                 % Create a new text for the feature.
                                 obj.featureHandles(end + 1) = text(feature.startTime, yCen, 'x', ...
+                                       'Parent', obj.axes, ...
                                        'HorizontalAlignment', 'center', ...
                                        'VerticalAlignment', 'middle', ...
                                        'Color', feature.color(), ...
                                        'Clipping', 'on', ...
                                        'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
                                        'UserData', feature);
+                                if obj.selectedFeature == feature
+                                    obj.selectedFeatureHandle = obj.featureHandles(end);
+                                end
                             else
                                 % Update the existing text.
                                 set(uiElement, 'Position', [feature.startTime, yCen], ...
@@ -246,12 +265,16 @@ classdef FeaturesPanel < TimelinePanel
                             fillColor = feature.color();
                             edgeColor = fillColor * 0.5;
                             
-                            if strcmp(updateType, 'add')
+                            if isempty(uiElement)
                                 % Create a new patch for the feature.
                                 obj.featureHandles(end + 1) = patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
-                                        'EdgeColor', edgeColor, ...
-                                        'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
-                                        'UserData', feature);
+                                    'Parent', obj.axes, ...
+                                    'EdgeColor', edgeColor, ...
+                                    'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
+                                    'UserData', feature);
+                                if obj.selectedFeature == feature
+                                    obj.selectedFeatureHandle = obj.featureHandles(end);
+                                end
                             else
                                 % Update the existing patch.
                                 set(uiElement, 'XData', [x0 x1 x1 x0 x0], ...

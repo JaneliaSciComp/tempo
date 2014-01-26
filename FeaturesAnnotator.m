@@ -397,15 +397,14 @@ classdef FeaturesAnnotator < FeaturesReporter
         end
         
         
-        function currentTimeChangedInPanel(obj, panel) %#ok<INUSD>
+        function currentTimeChangedInPanel(obj, panel)
             if ~isempty(obj.rangeFeatureBeingAdded)
-                % Update the end time of the feature.
-                % TODO: this isn't working: the patch created in keyPress is invalid when the code below triggers its update
-%                 endTime = panel.controller.currentTime;
-%                 if endTime < obj.rangeFeatureBeingAdded.startTime + 0.01
-%                     endTime = obj.rangeFeatureBeingAdded.startTime + 0.01;
-%                 end
-%                 obj.rangeFeatureBeingAdded.endTime = endTime;
+                % Update the end time of the feature during playback.
+                endTime = panel.controller.currentTime;
+                if endTime < obj.rangeFeatureBeingAdded.startTime + 0.01
+                    endTime = obj.rangeFeatureBeingAdded.startTime + 0.01;
+                end
+                obj.rangeFeatureBeingAdded.endTime = endTime;
             end
         end
         
@@ -414,11 +413,11 @@ classdef FeaturesAnnotator < FeaturesReporter
             % Finish creating a range feature during playback.
             if ~isempty(obj.rangeFeatureBeingAdded)
                 % Update the end time of the feature.
+                % Sometimes (?) the currentTime is incorrectly the feature's start time.
                 endTime = panel.controller.currentTime;
-                if endTime < obj.rangeFeatureBeingAdded.startTime + 0.01
-                    endTime = obj.rangeFeatureBeingAdded.startTime + 0.01;
+                if endTime > obj.rangeFeatureBeingAdded.endTime
+                    obj.rangeFeatureBeingAdded.endTime = endTime;
                 end
-                obj.rangeFeatureBeingAdded.endTime = endTime;
                 obj.rangeFeatureBeingAdded = [];
                 
                 handled = true;
