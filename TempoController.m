@@ -386,6 +386,11 @@ classdef TempoController < handle
                                      'Callback', @(hObject, eventdata)handleZoomToSelection(obj, hObject, eventdata), ...
                                      'Accelerator', '', ...
                                      'Tag', 'zoomToSelection');
+            uimenu(obj.timelineMenu, 'Label', 'Go To Time...', ...
+                                     'Callback', @(hObject, eventdata)handleGoToTime(obj, hObject, eventdata), ...
+                                     'Separator', 'on', ...
+                                     'Accelerator', 't', ...
+                                     'Tag', 'goToTime');
             uimenu(obj.timelineMenu, 'Label', 'Annotate Features...', ...
                                      'Callback', @(hObject, eventdata)handleAnnotateFeatures(obj, hObject, eventdata, true, false), ...
                                      'Separator', 'on', ...
@@ -1384,6 +1389,47 @@ classdef TempoController < handle
             else
                 % Keep the current zoom but center the selection line.
                 obj.centerDisplayAtTime(mean(obj.selectedRange(1:2)));
+            end
+        end
+        
+        
+        function handleGoToTime(obj, ~, ~)
+            % Use the current time/selection as the default.
+            startTime = obj.currentTime;
+            if obj.selectedRange(1) == startTime && obj.selectedRange(2) > obj.selectedRange(1)
+                endTime = obj.selectedRange(2);
+            else
+                endTime = startTime;
+            end
+            if endTime > startTime
+                default = [convertTime(startTime) '-' convertTime(endTime)];
+            else
+                default = convertTime(startTime);
+            end
+            
+            answer = inputdlg('Go to time:', 'Tempo', 1, {default});
+            
+            if ~isempty(answer)
+                try
+                    parts = regexp(answer{1}, '-', 'split');
+                    if length(parts) == 1
+                        startTime = convertTime(parts{1});
+                        endTime = startTime;
+                    elseif length(parts) == 2
+                        startTime = convertTime(parts{1});
+                        endTime = convertTime(parts{2});
+                    else
+                        error('bad time');
+                    end
+                    
+                    % Constrain to the max duration of all the recordings.
+                    startTime = max([0 min([startTime obj.duration])]);
+                    endTime = max([0 min([endTime obj.duration])]);
+                    
+                    obj.selectRange([startTime endTime -Inf Inf]);
+                catch
+                    beep
+                end
             end
         end
         

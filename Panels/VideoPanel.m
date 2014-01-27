@@ -63,6 +63,18 @@ classdef VideoPanel < TempoPanel
         end
         
         
+        function addActionMenuItems(obj, actionMenu)
+            uimenu(actionMenu, ...
+                'Label', 'Video settings...', ...
+                'Enable', 'off', ...
+                'Callback', @(hObject,eventdata)handleVideoSettings(obj, hObject, eventdata));
+            uimenu(actionMenu, ...
+                'Label', 'Go To Frame...', ...
+                'Separator', 'on', ...
+                'Callback', @(hObject,eventdata)handleGoToFrame(obj, hObject, eventdata));
+        end
+        
+        
         function showFrameNumber(obj, show)
             if obj.showFrameNum ~= show
                 obj.showFrameNum = show;
@@ -167,6 +179,19 @@ classdef VideoPanel < TempoPanel
             end
         end
         
+        
+        function handleGoToFrame(obj, ~, ~)
+            answer = inputdlg('Enter frame number:', 'Tempo', 1, {num2str(obj.currentFrameNum)});
+            if ~isempty(answer)
+                frameNum = str2double(answer{1});
+                if ~isnan(frameNum) && frameNum > 0 && frameNum <= obj.video.sampleCount
+                    newTime = (frameNum - 0.5) / obj.video.sampleRate;
+                    obj.controller.selectRange([newTime newTime -Inf Inf]);
+                else
+                    beep
+                end
+            end
+        end
         
 	end
 	
