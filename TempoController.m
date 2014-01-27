@@ -41,10 +41,12 @@ classdef TempoController < handle
         exportVideoTool
         zoomOutTool
         
-        playSlowerTool
         playBackwardsTool
         pauseTool
         playForwardsTool
+        
+        playSlowerTool
+        playbackSpeedTool
         playFasterTool
         
         detectPopUpTool
@@ -513,29 +515,32 @@ classdef TempoController < handle
                 'ClickedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata));
             
             % Playback
-            forwardIcon = obj.loadIcon('play');
-            pauseIcon = obj.loadIcon('pause');
-            backwardsIcon = flipdim(forwardIcon, 2);
-            obj.playSlowerTool = uipushtool(obj.toolbar, ...
-                'CData', backwardsIcon, ...
-                'Separator', 'on', ...
-                'TooltipString', 'Decrease the speed of playback',... 
-                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'slower'));
             obj.playBackwardsTool = uipushtool(obj.toolbar, ...
-                'CData', backwardsIcon, ...
+                'CData', obj.loadIcon('PlayBackwards'), ...
                 'TooltipString', 'Play backwards',... 
+                'Separator', 'on', ...
                 'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'backwards'));
             obj.pauseTool = uipushtool(obj.toolbar, ...
-                'CData', pauseIcon, ...
+                'CData', obj.loadIcon('pause'), ...
                 'TooltipString', 'Pause playback',... 
                 'ClickedCallback', @(hObject, eventdata)handlePause(obj, hObject, eventdata), ...
                 'Enable', 'off');
             obj.playForwardsTool = uipushtool(obj.toolbar, ...
-                'CData', forwardIcon, ...
+                'CData', obj.loadIcon('PlayForwards'), ...
                 'TooltipString', 'Play forwards',... 
                 'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'forwards'));
+            
+            obj.playSlowerTool = uipushtool(obj.toolbar, ...
+                'CData', obj.loadIcon('PlaySlower'), ...
+                'Separator', 'on', ...
+                'TooltipString', 'Decrease the speed of playback',... 
+                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'slower'));
+            obj.playbackSpeedTool = uipushtool(obj.toolbar, ...
+                'CData', zeros(16, 16, 3), ...
+                'TooltipString', 'Choose the speed of playback',... 
+                'ClickedCallback', @(hObject, eventdata)handleChoosePlaybackSpeed(obj, hObject, eventdata));
             obj.playFasterTool = uipushtool(obj.toolbar, ...
-                'CData', forwardIcon, ...
+                'CData', obj.loadIcon('PlayFaster'), ...
                 'TooltipString', 'Increase the speed of playback',... 
                 'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'faster'));
             
@@ -571,15 +576,12 @@ classdef TempoController < handle
                         'UserData', actionIdx);
                 end
                 
-                % Try to replace the playback tools with Java buttons that can display the play rate, etc.
-                obj.replaceToolbarTool(11, 'playSlowerTool', 'PlaySlower');
-                obj.replaceToolbarTool(12, 'playBackwardsTool', 'PlayBackwards');
-                obj.replaceToolbarTool(13, 'pauseTool');
-                if isjava(obj.pauseTool)
-                    obj.pauseTool.setText('1x');
+                % Try to replace the 'choose playback speed' tool with a Java button that can display the play rate.
+                obj.replaceToolbarTool(18, 'playbackSpeedTool');
+                if isjava(obj.playbackSpeedTool)
+                    obj.playbackSpeedTool.setBorderPainted(false);
+                    obj.playbackSpeedTool.setText('1x');
                 end
-                obj.replaceToolbarTool(14, 'playForwardsTool', 'PlayForwards');
-                obj.replaceToolbarTool(15, 'playFasterTool', 'PlayFaster');
 
                 try
                     obj.jToolbar(1).repaint;
@@ -1663,20 +1665,23 @@ classdef TempoController < handle
             set(findobj(obj.playbackMenu, 'Tag', 'decreaseSpeed'), ...
                 'Enable', onOff(~obj.isPlaying));
             
-            oldWarn = warning('off', 'MATLAB:hg:JavaSetHGPropertyParamValue');
-            set(obj.playSlowerTool, 'Enable', onOff(~obj.isPlaying));
             set(obj.playForwardsTool, 'Enable', onOff(~obj.isPlaying));
             set(obj.pauseTool, 'Enable', onOff(obj.isPlaying));
             set(obj.playBackwardsTool, 'Enable', onOff(~obj.isPlaying));
+            set(obj.playSlowerTool, 'Enable', onOff(~obj.isPlaying));
+            if isjava(obj.playbackSpeedTool)
+                obj.playbackSpeedTool.setEnabled(~obj.isPlaying);
+            else
+                set(obj.playbackSpeedTool, 'Enable', onOff(~obj.isPlaying));
+            end
             set(obj.playFasterTool, 'Enable', onOff(~obj.isPlaying));
-            warning(oldWarn);
             
             % Show the play rate in the toolbar icon
-            if isjava(obj.pauseTool)
+            if isjava(obj.playbackSpeedTool)
                 if obj.playRate < 1
-                    obj.pauseTool.setText(sprintf('1/%dx', 1.0 / obj.playRate));
+                    obj.playbackSpeedTool.setText(sprintf('1/%dx', 1.0 / obj.playRate));
                 else
-                    obj.pauseTool.setText(sprintf('%dx', obj.playRate));
+                    obj.playbackSpeedTool.setText(sprintf('%dx', obj.playRate));
                 end
             end
         end
@@ -2469,20 +2474,8 @@ classdef TempoController < handle
                     set(jMenuItems(i), 'ActionPerformedCallback', []);
                 end
             end
-            if isjava(obj.playSlowerTool)
-                set(obj.playSlowerTool, 'ActionPerformedCallback', []);
-            end
-            if isjava(obj.playBackwardsTool)
-                set(obj.playBackwardsTool, 'ActionPerformedCallback', []);
-            end
-            if isjava(obj.pauseTool)
-                set(obj.pauseTool, 'ActionPerformedCallback', []);
-            end
-            if isjava(obj.playForwardsTool)
-                set(obj.playForwardsTool, 'ActionPerformedCallback', []);
-            end
-            if isjava(obj.playFasterTool)
-                set(obj.playFasterTool, 'ActionPerformedCallback', []);
+            if isjava(obj.playbackSpeedTool)
+                set(obj.playbackSpeedTool, 'ActionPerformedCallback', []);
             end
             warning(oldWarn);
             warning(oldWarn2);
