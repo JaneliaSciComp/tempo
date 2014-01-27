@@ -180,7 +180,13 @@ classdef FeaturesAnnotator < FeaturesReporter
             if event.Indices(2) == 1
                 obj.featureSet(setNum).name = event.NewData;
             elseif event.Indices(2) == 2
-                obj.featureSet(setNum).key = event.NewData(1);
+                newKey = lower(event.NewData(1));
+                % Only a-z and 0-9 are allowed.
+                if ~isempty(regexp(newKey, '[a-z0-9]', 'start', 'once'))
+                    obj.featureSet(setNum).key = newKey;
+                else
+                    beep;
+                end
             elseif event.Indices(2) == 3
                 obj.featureSet(setNum).color = event.NewData;
             elseif event.Indices(2) == 4
