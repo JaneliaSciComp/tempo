@@ -289,6 +289,10 @@ classdef FeaturesPanel < TimelinePanel
                 elseif strcmp(updateType, 'remove')
                     % Remove the texts/patches for the features.
                     for i = 1:length(features)
+                        if features{i} == obj.selectedFeature
+                            obj.selectFeature([]);
+                        end
+                        
                         uiElement = findobj(obj.featureHandles, 'UserData', features{i});
                         delete(uiElement);
                         obj.featureHandles(obj.featureHandles == uiElement) = [];
