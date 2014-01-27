@@ -20,7 +20,7 @@ classdef FeaturesAnnotator < FeaturesReporter
     methods(Static)
         
         function n = typeName()
-            n = 'Manual Annotations';
+            n = 'Annotations';
         end
         
         function ft = possibleFeatureTypes()

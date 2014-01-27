@@ -58,12 +58,14 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function addActionMenuItems(obj, actionMenu)
+            if isa(obj.reporter, 'FeaturesDetector') || isa(obj.reporter, 'FeaturesAnnotator')
+                uimenu(actionMenu, ...
+                    'Label', ['Show ' obj.reporter.typeName() ' Settings...'], ...
+                    'Callback', @(source, event)handleShowReporterSettings(obj, source, event));
+            end
             if isa(obj.reporter, 'FeaturesDetector')
                 uimenu(actionMenu, ...
-                    'Label', 'Show Reporter Settings', ...
-                    'Callback', @(source, event)handleShowReporterSettings(obj, source, event));
-                uimenu(actionMenu, ...
-                    'Label', 'Detect Features in Selection', ...
+                    'Label', 'Detect Additional Features in Selection', ...
                     'Callback', @(source, event)handleDetectFeaturesInSelection(obj, source, event), ...
                     'Tag', 'detectFeaturesInSelection');
             end
@@ -79,14 +81,20 @@ classdef FeaturesPanel < TimelinePanel
                     'Label', 'Set Features Color...', ...
                     'Callback', @(source, event)handleSetFeaturesColor(obj, source, event), ...
                     'Tag', 'setFeaturesColor');
-            uimenu(actionMenu, ...
-                    'Label', 'Add New Feature with Selection...', ...
-                    'Callback', @(source, event)handleAddNewFeature(obj, source, event), ...
-                    'Tag', 'setFeaturesColor');
+            if ~isa(obj.reporter, 'FeaturesAnnotator')
+                uimenu(actionMenu, ...
+                        'Label', 'Add New Feature with Selection...', ...
+                        'Callback', @(source, event)handleAddNewFeature(obj, source, event), ...
+                        'Tag', 'setFeaturesColor');
+            end
             uimenu(actionMenu, ...
                     'Label', 'Draw/Clear Bounding Boxes', ...
                     'Callback', @(source, event)handleBoundingBoxes(obj, source, event), ...
                     'Separator', 'off');
+            uimenu(actionMenu, ...
+                    'Label', 'Show Feature Properties...', ...
+                    'Callback', @(source, event)handleShowFeatureProperties(obj, source, event), ...
+                    'Tag', 'showFeatureProperties');
         end
         
         
@@ -95,6 +103,7 @@ classdef FeaturesPanel < TimelinePanel
             if isa(obj.reporter, 'FeaturesDetector')
                 set(obj.actionMenuItem('detectFeaturesInSelection'), 'Enable', onOff(~selectionIsEmpty));
             end
+            set(obj.actionMenuItem('showFeatureProperties'), 'Enable', onOff(~isempty(obj.selectedFeature)));
         end
         
         
@@ -375,7 +384,11 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function handleShowReporterSettings(obj, ~, ~)
-            obj.reporter.showSettings();
+            if isa(obj.reporter, 'FeaturesDetector')    
+                obj.reporter.showSettings();
+            else % it's an annotator
+                obj.reporter.editSettings();
+            end
         end
         
         
@@ -471,9 +484,10 @@ classdef FeaturesPanel < TimelinePanel
             if length(featureTypes) == 1
                 featureType = featureTypes{1};
             else
-                choice = listdlg('PromptString', 'Choose which importer to use:', ...
+                choice = listdlg('PromptString', 'Choose which type of feature to add:', ...
                                  'SelectionMode', 'Single', ...
-                                 'ListString', featureTypes);
+                                 'ListString', featureTypes, ...
+                                 'ListSize', [200 100]);
                 if isempty(choice)
                     featureType = [];
                 else
@@ -507,8 +521,8 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function handleShowFeatureProperties(obj, ~, ~) %#ok<INUSD>
-            feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
+        function handleShowFeatureProperties(obj, ~, ~)
+            feature = obj.selectedFeature;
             
             msg = ['Type: ' feature.type char(10) char(10)];
             if feature.startTime == feature.endTime
@@ -520,7 +534,7 @@ classdef FeaturesPanel < TimelinePanel
                 msg = sprintf('%sFrequency: %.0f - %.0f Hz\n', msg, feature.lowFreq, feature.highFreq);
             end
             props = sort(properties(feature));
-            ignoreProps = {'type', 'range', 'startTime', 'endTime', 'duration', 'highFreq', 'lowFreq'};
+            ignoreProps = {'type', 'range', 'startTime', 'endTime', 'duration', 'highFreq', 'lowFreq', 'color', 'reporter'};
             addedSeparator = false;
             for i = 1:length(props)
                 if ~ismember(props{i}, ignoreProps)
