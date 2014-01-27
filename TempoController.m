@@ -530,6 +530,7 @@ classdef TempoController < handle
                 'TooltipString', 'Play forwards',... 
                 'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'forwards'));
             
+            % Playback speed
             obj.playSlowerTool = uipushtool(obj.toolbar, ...
                 'CData', obj.loadIcon('PlaySlower'), ...
                 'Separator', 'on', ...
@@ -1514,12 +1515,24 @@ classdef TempoController < handle
             elseif strcmp(playRate, 'backwards')
                 newRate = -abs(obj.playRate);
                 startPlaying = true;
-            elseif strcmp(playRate, '1x')
-                newRate = 1.0;
+            elseif strcmp(playRate, '16x')
+                newRate = 16.0;
+            elseif strcmp(playRate, '8x')
+                newRate = 8.0;
+            elseif strcmp(playRate, '4x')
+                newRate = 4.0;
             elseif strcmp(playRate, '2x')
                 newRate = 2.0;
+            elseif strcmp(playRate, '1x')
+                newRate = 1.0;
             elseif strcmp(playRate, '1/2x')
-                newRate = 0.5;
+                newRate = 1.0 / 2;
+            elseif strcmp(playRate, '1/4x')
+                newRate = 1.0 / 4;
+            elseif strcmp(playRate, '1/8x')
+                newRate = 1.0 / 8;
+            elseif strcmp(playRate, '1/16x')
+                newRate = 1.0 / 16;
             elseif strcmp(playRate, 'faster')
                 newRate = obj.playRate * 2.0;
             elseif strcmp(playRate, 'slower')
@@ -1581,6 +1594,27 @@ classdef TempoController < handle
             end
             
             obj.updatePlaybackMenuItems();
+        end
+        
+        
+        function handleChoosePlaybackSpeed(obj, ~, ~)
+            % Create a pop-up menu with speeds from 16x through 1/16x.
+            chooseSpeedMenu = uicontextmenu();
+            uimenu(chooseSpeedMenu, 'Label', 'Playback speed', 'Enable', 'off');
+            speeds = {'16x', '8x', '4x', '2x', '1x', '1/2x', '1/4x', '1/8x', '1/16x'};
+            for speed = speeds
+                uimenu(chooseSpeedMenu, 'Label', speed{1}, ...
+                                  'Tag', speed{1}, ...
+                                  'Separator', onOff(strcmp(speed{1}, '16x')), ...
+                                  'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, speed{1}));
+            end
+            
+            % Show the menu at the current mouse point.
+            mousePos = get(0, 'PointerLocation');
+            figurePos = get(obj.figure, 'Position');
+            set(chooseSpeedMenu, ...
+                'Position', [mousePos(1) - figurePos(1), mousePos(2) - figurePos(2)], ...
+                'Visible', 'on');
         end
         
         
