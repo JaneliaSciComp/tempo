@@ -43,7 +43,10 @@ classdef TempoHelp < Singleton
             if nargin == 1
                 helpFilePath = fullfile(obj.helpPath, 'index.html');
             elseif nargin == 2
-                helpFilePath = fullfile(obj.helpPath, pageGroup, 'index.html');
+                helpFilePath = fullfile(obj.helpPath, [pageGroup '.html']);
+                if ~exist(helpFilePath, 'file')
+                    helpFilePath = fullfile(obj.helpPath, pageGroup, 'index.html');
+                end
             else
                 helpFilePath = fullfile(obj.helpPath, pageGroup, [pageName '.html']);
             end
