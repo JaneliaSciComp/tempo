@@ -330,16 +330,21 @@ classdef SpectrogramPanel < TimelinePanel
                 h=line([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0]);
                 bounding_boxes(end+1)=h;
                 set(h, 'Color', reporter.featuresColor);
+                offset=0;  if(isfield(reporter,'detectedTimeRanges'))  offset=reporter.detectedTimeRanges(1);  end
                 if isprop(feature,'HotPixels')
-                    chan=find(cellfun(@(x) strcmp(x,obj.audio.filePath),...
-                        cellfun(@(y) y.filePath, reporter.recording, 'uniformoutput', false)));
+                  % hack for now.  channels param need to move from ax2 to
+                  % ax1.  and would merging tempo detectors and importers
+                  % classes make sense?
+%                     chan=find(cellfun(@(x) strcmp(x,obj.audio.filePath),...
+%                         cellfun(@(y) y.filePath, reporter.recording, 'uniformoutput', false)));
+                    chan=str2num(obj.audio.filePath(end));
                     for i=1:length(feature.HotPixels)
                       idx=find(feature.HotPixels{i}{1}(:,3)==chan);
                       t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
                         repmat(feature.HotPixels{i}{2}*[-0.5; +0.5; +0.5; -0.5; -0.5],1,length(idx));
                       f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...
                         repmat(feature.HotPixels{i}{3}*[-0.5; -0.5; +0.5; +0.5; -0.5],1,length(idx));
-                      h=patch(t+reporter.detectedTimeRanges(1),f,reporter.featuresColor);
+                      h=patch(t+offset,f,reporter.featuresColor);
                       set(h,'edgecolor','none');
                       bounding_boxes=[bounding_boxes h'];
                     end
