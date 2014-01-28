@@ -10,18 +10,14 @@ classdef MouseVocDetector < FeaturesDetector
 
         FreqLow=20e3;
         FreqHigh=120e3;
-        ConvWidth=15;
-        ConvHeight=7;
-        ObjSize=1500;
+        ConvWidth=0.001;
+        ConvHeight=1300;
+        MinObjArea=18.75;
 
-        MergeFreq=0;
-        MergeFreqOverlap=0;
-        MergeFreqRatio=0;
-        MergeFreqFraction=0;
-
-        MergeTime=0.005;
-
-        NSeg=1;
+        MergeHarmonics=0;
+        MergeHarmonicsOverlap=0;
+        MergeHarmonicsRatio=0;
+        MergeHarmonicsFraction=0;
 
         MinLength=0;
     end
@@ -55,9 +51,9 @@ classdef MouseVocDetector < FeaturesDetector
         
         function s = settingNames(~)
             s = {'NW', 'K', 'PVal', 'NFFT', ...
-                 'FreqLow', 'FreqHigh', 'ConvWidth', 'ConvHeight', 'ObjSize', ...
-                 'MergeFreq', 'MergeFreqOverlap', 'MergeFreqRatio', 'MergeFreqFraction', ...
-                 'MergeTime', 'NSeg', 'MinLength'};
+                 'FreqLow', 'FreqHigh', 'ConvWidth', 'ConvHeight', 'MinObjArea', ...
+                 'MergeHarmonics', 'MergeHarmonicsOverlap', 'MergeHarmonicsRatio', 'MergeHarmonicsFraction', ...
+                 'MinLength'};
         end
         
         
@@ -79,15 +75,14 @@ classdef MouseVocDetector < FeaturesDetector
                 isempty(NW2) || (NW2~=obj.NW) || ...
                 isempty(K2) || (K2~=obj.K) || ...
                 isempty(PVal2) || (PVal2~=obj.PVal) || ...
-                isempty(timeRange) || (sum(timeRange2~=timeRange)>0))
+                isempty(timeRange2) || (sum(timeRange2~=timeRange(1:2))>0))
               delete([fullfile(p,n) '*tmp*.ax']);
               nsteps=(2+length(obj.NFFT));
               for i=1:length(obj.NFFT)
                 obj.updateProgress('Running multitaper analysis on signal...', (i-1)/nsteps);
                 ax1(obj.recording{1}.sampleRate, obj.NFFT(i), obj.NW, obj.K, obj.PVal,...
                     fullfile(p,n),['tmp' num2str(i)],...
-                    60*(obj.recording{1}.dataStartSample-1)+timeRange(1),...
-                    60*(obj.recording{1}.dataStartSample-1)+timeRange(2));
+                    timeRange(1), timeRange(2));
               end
 
               delete([tempdir '*tmp*.ax']);
@@ -119,7 +114,7 @@ classdef MouseVocDetector < FeaturesDetector
             NW2=obj.NW;
             K2=obj.K;
             PVal2=obj.PVal;
-            timeRange2=timeRange;
+            timeRange2=timeRange(1:2);
 
             %rmdir([fullfile(tempdir,n) '-out*'],'s');
             tmp=dir([fullfile(tempdir,n) '-out*']);
@@ -128,9 +123,9 @@ classdef MouseVocDetector < FeaturesDetector
             end
 
             obj.updateProgress('Heuristically segmenting syllables...', (nsteps-2)/nsteps);
-            ax2(obj.FreqLow, obj.FreqHigh, [obj.ConvHeight obj.ConvWidth], obj.ObjSize, ...
-                obj.MergeFreq, obj.MergeFreqOverlap, obj.MergeFreqRatio, obj.MergeFreqFraction,...
-                obj.MergeTime, obj.NSeg, obj.MinLength, [], fullfile(tempdir,n));
+            ax2(obj.FreqLow, obj.FreqHigh, [obj.ConvHeight obj.ConvWidth], obj.MinObjArea, ...
+                obj.MergeHarmonics, obj.MergeHarmonicsOverlap, obj.MergeHarmonicsRatio, obj.MergeHarmonicsFraction,...
+                obj.MinLength, [], fullfile(tempdir,n));
 
             obj.updateProgress('Adding features...', (nsteps-1)/nsteps);
             %tmp=dir([fullfile(tempdir,n) '.voc*']);
@@ -139,15 +134,11 @@ classdef MouseVocDetector < FeaturesDetector
             voclist=load(fullfile(tempdir,tmp.name,tmp2.name));
 
             for i = 1:size(voclist, 1)
-                %x_start = timeRange(1) + voclist(i,1)./obj.recording.sampleRate;
-                %x_stop = timeRange(1) + voclist(i,2)./obj.recording.sampleRate;
-                x_start = timeRange(1) + voclist(i,1);
-                x_stop = timeRange(1) + voclist(i,2);
                 if(i==1)
-                  feature = Feature('Vocalization', [x_start x_stop voclist(i,3:4)], ...
+                  feature = Feature('Vocalization', voclist(i,1:4), ...
                                     'HotPixels', hotpixels);
                 else
-                  feature = Feature('Vocalization', [x_start x_stop voclist(i,3:4)]);
+                  feature = Feature('Vocalization', voclist(i,1:4));
                 end
                 features{end + 1} = feature; %#ok<AGROW>
             end

@@ -22,7 +22,7 @@ function varargout = MouseVocSettings(varargin)
 
 % Edit the above text to modify the response to help MouseVocSettings
 
-% Last Modified by GUIDE v2.5 18-Jan-2013 14:27:24
+% Last Modified by GUIDE v2.5 27-Jan-2014 16:06:41
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -337,23 +337,23 @@ end
 
 
 
-function ObjSizeEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to ObjSizeEdit (see GCBO)
+function MinObjAreaEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to MinObjAreaEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of ObjSizeEdit as text
-%        str2double(get(hObject,'String')) returns contents of ObjSizeEdit as a double
+% Hints: get(hObject,'String') returns contents of MinObjAreaEdit as text
+%        str2double(get(hObject,'String')) returns contents of MinObjAreaEdit as a double
 
 tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (tmp<0) || (tmp~=round(tmp)))
-  warndlg('obj_size must be a non-negative integer');
+if (isempty(tmp) || (tmp<0))
+  warndlg('obj_size must be non-negative');
 end
 
 
 % --- Executes during object creation, after setting all properties.
-function ObjSizeEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to ObjSizeEdit (see GCBO)
+function MinObjAreaEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to MinObjAreaEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -365,13 +365,13 @@ end
 
 
 
-function MergeFreqEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to MergeFreqEdit (see GCBO)
+function MergeHarmonicsEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to MergeHarmonicsEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of MergeFreqEdit as text
-%        str2double(get(hObject,'String')) returns contents of MergeFreqEdit as a double
+% Hints: get(hObject,'String') returns contents of MergeHarmonicsEdit as text
+%        str2double(get(hObject,'String')) returns contents of MergeHarmonicsEdit as a double
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || ((tmp~=0) && (tmp~=1)))
@@ -380,8 +380,8 @@ end
 
 
 % --- Executes during object creation, after setting all properties.
-function MergeFreqEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to MergeFreqEdit (see GCBO)
+function MergeHarmonicsEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to MergeHarmonicsEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -393,13 +393,13 @@ end
 
 
 
-function MergeFreqOverlapEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to MergeFreqOverlapEdit (see GCBO)
+function MergeHarmonicsOverlapEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to MergeHarmonicsOverlapEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of MergeFreqOverlapEdit as text
-%        str2double(get(hObject,'String')) returns contents of MergeFreqOverlapEdit as a double
+% Hints: get(hObject,'String') returns contents of MergeHarmonicsOverlapEdit as text
+%        str2double(get(hObject,'String')) returns contents of MergeHarmonicsOverlapEdit as a double
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0) || (tmp>1))
@@ -408,8 +408,8 @@ end
 
 
 % --- Executes during object creation, after setting all properties.
-function MergeFreqOverlapEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to MergeFreqOverlapEdit (see GCBO)
+function MergeHarmonicsOverlapEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to MergeHarmonicsOverlapEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -421,13 +421,13 @@ end
 
 
 
-function MergeFreqRatioEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to MergeFreqRatioEdit (see GCBO)
+function MergeHarmonicsRatioEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to MergeHarmonicsRatioEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of MergeFreqRatioEdit as text
-%        str2double(get(hObject,'String')) returns contents of MergeFreqRatioEdit as a double
+% Hints: get(hObject,'String') returns contents of MergeHarmonicsRatioEdit as text
+%        str2double(get(hObject,'String')) returns contents of MergeHarmonicsRatioEdit as a double
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
@@ -436,8 +436,8 @@ end
 
 
 % --- Executes during object creation, after setting all properties.
-function MergeFreqRatioEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to MergeFreqRatioEdit (see GCBO)
+function MergeHarmonicsRatioEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to MergeHarmonicsRatioEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -449,13 +449,13 @@ end
 
 
 
-function MergeFreqFractionEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to MergeFreqFractionEdit (see GCBO)
+function MergeHarmonicsFractionEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to MergeHarmonicsFractionEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of MergeFreqFractionEdit as text
-%        str2double(get(hObject,'String')) returns contents of MergeFreqFractionEdit as a double
+% Hints: get(hObject,'String') returns contents of MergeHarmonicsFractionEdit as text
+%        str2double(get(hObject,'String')) returns contents of MergeHarmonicsFractionEdit as a double
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0) || (tmp>1))
@@ -464,8 +464,8 @@ end
 
 
 % --- Executes during object creation, after setting all properties.
-function MergeFreqFractionEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to MergeFreqFractionEdit (see GCBO)
+function MergeHarmonicsFractionEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to MergeHarmonicsFractionEdit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -474,62 +474,6 @@ function MergeFreqFractionEdit_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
-
-function MergeTimeEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to MergeTimeEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of MergeTimeEdit as text
-%        str2double(get(hObject,'String')) returns contents of MergeTimeEdit as a double
-
-tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (tmp<0))
-  warndlg('merge_time must be a non-negative float');
-end
-
-
-% --- Executes during object creation, after setting all properties.
-function MergeTimeEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to MergeTimeEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-function NSegEdit_Callback(hObject, eventdata, handles)
-% hObject    handle to NSegEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of NSegEdit as text
-%        str2double(get(hObject,'String')) returns contents of NSegEdit as a double
-
-tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<1))
-  warndlg('nseg must be a positive integer');
-end
-
-
-% --- Executes during object creation, after setting all properties.
-function NSegEdit_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to NSegEdit (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
 
 
 function MinLengthEdit_Callback(hObject, eventdata, handles)
