@@ -113,16 +113,23 @@ classdef FeaturesReporter < handle
                 obj.featureListSize = obj.featureListSize + 1000;
             end
             for i = 1:numFeatures
-                features{i}.reporter = obj;
                 if iscell(features)
+                    features{i}.reporter = obj;
                     obj.featureList{obj.featureCount - numFeatures + i} = features{i};
                 else
+                    features(i).reporter = obj;
                     obj.featureList{obj.featureCount - numFeatures + i} = features(i);
                 end
             end
             
             % Check if any of the new features have a new type.
-            if ~all(ismember(cellfun(@(f) f.type, features, 'UniformOutput', false), obj.featureTypes()))
+            if iscell(features)
+                ~all(ismember(cellfun(@(f) f.type, features, 'UniformOutput', false), obj.featureTypes()));
+            else
+                [tmp{1:length(features)}]=deal(features.type);
+                ~all(ismember(tmp, obj.featureTypes()));
+            end
+            if ans
                 obj.cachedFeatureTypes = [];    % indicate that the types must be recalculated
                 notify(obj, 'FeatureTypesDidChange', FeaturesChangedEventData('add', features));
             end
