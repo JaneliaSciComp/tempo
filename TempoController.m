@@ -84,6 +84,7 @@ classdef TempoController < handle
         
         needsSave = false
         savePath
+        lastOpenedPath
         
         undoManager;
     end
@@ -848,12 +849,17 @@ classdef TempoController < handle
         
         
         function handleOpenFile(obj, ~, ~)
-            [fileNames, pathName] = uigetfile('*.*', 'Select an audio or video file to open', 'MultiSelect', 'on');
+            [fileNames, pathName] = uigetfile('*.*', 'Select an audio or video file to open', obj.lastOpenedPath, 'MultiSelect', 'on');
             
             if ischar(fileNames)
                 fileNames = {fileNames};
             elseif isnumeric(fileNames)
                 fileNames = {};
+            end
+            
+            if ~isempty(fileNames)
+                % Remember this path for the next time the user opens a file.
+                obj.lastOpenedPath = pathName;
             end
             
             somethingOpened = false;
