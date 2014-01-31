@@ -2145,6 +2145,19 @@ classdef TempoController < handle
         end
         
         
+        function resetKeyboardFocus(obj)
+            % Move the keyboard focus back to the figure so all of the key shortcuts will work.
+            % Otherwise they go to whatever little uicontrol (like panel show/hide buttons) was last clicked.
+            keyboardFocusMgr = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager();
+            focusedComp = keyboardFocusMgr.getFocusOwner();
+            if isempty(strfind(class(focusedComp), 'FigureAxis'))
+                mde = com.mathworks.mde.desk.MLDesktop.getInstance;
+                jObject = mde.getClient(get(obj.figure, 'Name'));
+                jObject.requestFocusInWindow();
+            end
+        end
+        
+        
         function handleKeyPress(obj, ~, keyEvent)
             if ~strcmp(keyEvent.Key, 'space') && isempty(obj.panelHandlingKeyPress)
                 % Let one of the panels handle the event.
