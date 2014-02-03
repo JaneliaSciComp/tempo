@@ -18,7 +18,7 @@ classdef DifferenceDetector < FeaturesDetector
         end
         
         function ft = possibleFeatureTypes()
-            ft = {'Pulse Train'};
+            ft = {'Added', 'Removed'};
         end
         
     end
@@ -39,15 +39,15 @@ classdef DifferenceDetector < FeaturesDetector
         function features = detectFeatures(obj, timeRange)
             features = {};
             
-            % TODO: only in the time range
-            
-            % Get the features of the original reporter sorted by start time.
+            % Get the features of the original reporter sorted by start time and restricted to overlapping the time range.
             originalFeatures = obj.originalReporter.features(obj.originalFeatureName);
+            originalFeatures = originalFeatures(cellfun(@(f) f.startTime <= timeRange(2) && f.endTime >= timeRange(1), originalFeatures));
             [~, sortInd] = sort(cellfun(@(f) f.startTime, originalFeatures));
             originalFeatures = originalFeatures(sortInd);
             
-            % Get the features of the new reporter sorted by start time.
+            % Get the features of the new reporter sorted by start time and restricted to overlapping the time range.
             newFeatures = obj.newReporter.features(obj.newFeatureName);
+            newFeatures = newFeatures(cellfun(@(f) f.startTime <= timeRange(2) && f.endTime >= timeRange(1), newFeatures));
             [~, sortInd] = sort(cellfun(@(f) f.startTime, newFeatures));
             newFeatures = newFeatures(sortInd);
             
