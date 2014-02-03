@@ -704,6 +704,8 @@ classdef FeaturesPanel < TimelinePanel
             delete(obj.timeRangeRectangles);
             obj.timeRangeRectangles = [];
             
+            obj.controller.removeReporter(obj.reporter, false);
+            
             close@TimelinePanel(obj);
         end
         
