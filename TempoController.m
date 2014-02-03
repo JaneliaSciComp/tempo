@@ -1808,15 +1808,21 @@ classdef TempoController < handle
         end
         
         
-        function removeReporter(obj, reporter)
-            % Remove the reporter's panel if it has one.
-            for featurePanel = obj.panelsOfClass('FeaturesPanel')
-                if featurePanel{1}.reporter == reporter
-                    obj.timelinePanels(cellfun(@(x) x == featurePanel{1}, obj.timelinePanels)) = [];
-                    featurePanel{1}.close();
-                    delete(featurePanel{1});
-                    obj.arrangeTimelinePanels();
-                    break
+        function removeReporter(obj, reporter, closePanel)
+            if nargin < 3
+                closePanel = true;
+            end
+            
+            if closePanel
+                % Remove the reporter's panel if it has one.
+                for featurePanel = obj.panelsOfClass('FeaturesPanel')
+                    if featurePanel{1}.reporter == reporter
+                        obj.timelinePanels(cellfun(@(x) x == featurePanel{1}, obj.timelinePanels)) = [];
+                        featurePanel{1}.close();
+                        delete(featurePanel{1});
+                        obj.arrangeTimelinePanels();
+                        break
+                    end
                 end
             end
             
