@@ -133,6 +133,7 @@ classdef TempoController < handle
             addpath(fullfile(parentDir, 'Panels'));
             addpath(fullfile(parentDir, 'Recordings'));
             addpath(fullfile(parentDir, 'Utility'));
+            addpath(fullfile(parentDir, 'Legacy'));
             
             [obj.recordingClassNames, obj.recordingTypeNames] = obj.findPlugIns(fullfile(parentDir, 'Recordings'));
             [obj.detectorClassNames, obj.detectorTypeNames] = obj.findPlugIns(fullfile(parentDir, 'Detectors'));
@@ -2416,10 +2417,27 @@ classdef TempoController < handle
             for i = 1:length(obj.recordings)
                 recording = obj.recordings{i};
                 recording.controller = obj;
+                
+                % Check if the file that the recording is based on still exists.
+                if ~exist(recording.filePath, 'file')
+                    % See if the recording is in the same folder as the workspace file.
+                    [parentDir, ~, ~] = fileparts(filePath);
+                    [~, fileName, fileExt] = fileparts(recording.filePath);
+                    if ~ispc && strcmp([fileName fileExt], recording.filePath)
+                        [~, fileName, fileExt] = fileparts(strrep(recording.filePath, '\', '/'));
+                    end
+                    newPath = fullfile(parentDir, [fileName fileExt]);
+                    
+                    % Ask the user to locate the file.
+                    [fileName, filePath] = uigetfile(newPath, ['The file ' [fileName fileExt] ' could not be found.  Please choose the file in its new location:']);
+                    if ischar(fileName)
+                        recording.filePath = fullfile(filePath, fileName);
+                    end
+                end
+                
                 try
                     recording.loadData();
                 catch ME
-                    % TODO: prompt the user to locate a moved file?
                     uiwait(errordlg(['One of the recordings could not be opened.' char(10) char(10) ME.message], 'Tempo', 'modal'));
                     recording = [];
                 end
