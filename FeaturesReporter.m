@@ -19,7 +19,7 @@ classdef FeaturesReporter < handle
     
     
     properties (Access = private)
-        featureList
+        featureList = {}
         featureListSize
         featureCount
     end
@@ -85,9 +85,15 @@ classdef FeaturesReporter < handle
         
         
         function setFeatures(obj, featureList)
-            obj.featureList = num2cell(featureList);
+            if iscell(featureList)
+                obj.featureList = featureList;
+            else
+                obj.featureList = num2cell(featureList);
+            end
             obj.featureListSize = length(featureList);
             obj.featureCount = obj.featureListSize;
+            
+            obj.cachedFeatureTypes = {};
             
             notify(obj, 'FeaturesDidChange');
         end
