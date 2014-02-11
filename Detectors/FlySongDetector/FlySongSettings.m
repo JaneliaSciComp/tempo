@@ -21,7 +21,19 @@ function varargout = FlySongSettings(varargin)
     % See also: GUIDE, GUIDATA, GUIHANDLES
 
     % Edit the above text to modify the response to help FlySongSettings
-
+    
+    if ~isempty(varargin) && isa(varargin{1}, 'FlySongDetector')
+        % Check if the FSS code is available.  If you click the "Download ZIP" button on github you won't get it.
+        [detectorDir, ~, ~] = fileparts(mfilename('fullpath'));
+        mainMFile = dir(fullfile(detectorDir, 'FlySongSegmenter', 'FlySongSegmenter.m'));
+        if isempty(mainMFile)
+            uiwait(warndlg(['The code for fly song detection was not included in this copy of Tempo.' char(10) char(10) ...
+                'You need to clone or fork Tempo from github (not download the ZIP) to include the code.'], 'Tempo', 'modal'));
+            varargout = {false};
+            return;
+        end
+    end
+    
     % Last Modified by GUIDE v2.5 28-Jan-2014 15:43:30
     
     % Begin initialization code - DO NOT EDIT
