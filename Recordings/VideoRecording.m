@@ -6,6 +6,7 @@ classdef VideoRecording < Recording
     
     properties
         videoSize = [0 0]
+        timeStamps = []
     end
     
     
@@ -40,11 +41,24 @@ classdef VideoRecording < Recording
             obj.sampleRate = get(obj.videoReader, 'FrameRate');
             obj.sampleCount = get(obj.videoReader, 'NumberOfFrames');
             obj.videoSize = [get(obj.videoReader, 'Height') get(obj.videoReader, 'Width')];
+            [d,n,~]=fileparts(obj.filePath);
+            tmp=fullfile(d,[n '.ts']);
+            if exist(tmp,'file')
+                fid=fopen(tmp,'r');
+                obj.timeStamps=fread(fid,'double');
+                obj.timeStamps(end)=inf;
+                fclose(fid);
+            end
         end
         
         
         function [frameImage, frameNum] = frameAtTime(obj, time)
-            frameNum = min([floor((time + obj.timeOffset) * obj.sampleRate + 1) obj.sampleCount]);
+            if isempty(obj.timeStamps)
+                frameNum = floor((time + obj.timeOffset) * obj.sampleRate + 1);
+            else
+                frameNum = find((time + obj.timeOffset) < obj.timeStamps,1);
+            end
+            frameNum = min(frameNum,obj.sampleCount);
             frameImage = read(obj.videoReader, frameNum);
         end
         
