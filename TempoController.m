@@ -580,8 +580,11 @@ classdef TempoController < handle
                 jMenu.add('Detect Features:').setEnabled(false);
                 for actionIdx = 1:length(obj.detectorTypeNames)
                     jActionItem = jMenu.add([obj.detectorTypeNames{actionIdx} '...']);
-                    set(jActionItem, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
-                        'UserData', actionIdx);
+                    handle(jActionItem, 'CallbackProperties');
+                    set(ans, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata),...
+                        'ToolTipText', num2str(actionIdx));
+%                     set(jActionItem, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
+%                         'UserData', actionIdx);
                 end
                 
                 % Try to replace the 'choose playback speed' tool with a Java button that can display the play rate.
@@ -614,8 +617,11 @@ classdef TempoController < handle
                 end
                 callback = get(obj.(toolName), 'ClickedCallback');
                 tooltip = get(obj.(toolName), 'TooltipString');
-                set(jButton, 'ActionPerformedCallback', callback, ...
-                             'ToolTipText', tooltip);
+                handle(jButton, 'CallbackProperties');
+                set(ans, 'ActionPerformedCallback', callback, ...
+                    'ToolTipText', tooltip);
+%                set(jButton, 'ActionPerformedCallback', callback, ...
+%                              'ToolTipText', tooltip);
                 delete(obj.(toolName));
                 obj.jToolbar(1).add(jButton, position);
                 obj.(toolName) = jButton;
@@ -1172,7 +1178,11 @@ classdef TempoController < handle
         
         
         function handleDetectFeatures(obj, hObject, ~)
-            index = get(hObject, 'UserData');
+            if isprop(hObject,'UserData')
+                index = get(hObject, 'UserData');
+            else
+                index = str2num(get(hObject, 'ToolTipText'));
+            end
             
             if isempty(index)
                 % The user clicked the icon instead of the little pop-up arrow.
@@ -2599,11 +2609,15 @@ classdef TempoController < handle
             if ~isempty(jMenu)
                 jMenuItems = jMenu.getSubElements();
                 for i = 1:length(jMenuItems)
-                    set(jMenuItems(i), 'ActionPerformedCallback', []);
+                    handle(jMenuItems(i), 'CallbackProperties');
+                    set(ans, 'ActionPerformedCallback', []);
+%                     set(jMenuItems(i), 'ActionPerformedCallback', []);
                 end
             end
             if isjava(obj.playbackSpeedTool)
-                set(obj.playbackSpeedTool, 'ActionPerformedCallback', []);
+                handle(obj.playbackSpeedTool, 'CallbackProperties');
+                set(ans, 'ActionPerformedCallback', []);
+%                set(obj.playbackSpeedTool, 'ActionPerformedCallback', []);
             end
             warning(oldWarn);
             warning(oldWarn2);
