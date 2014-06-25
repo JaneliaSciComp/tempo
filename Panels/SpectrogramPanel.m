@@ -179,20 +179,10 @@ classdef SpectrogramPanel < TimelinePanel
                     end
                 end
                 
-                if ~isempty(obj.bounding_boxes)
-                    for i=1:length(obj.bounding_boxes)
-                      for j=1:length(obj.bounding_boxes{i})
-                          tmp=get(obj.bounding_boxes{i}(j),'XData');
-                          xL=tmp(1);  xR=tmp(2);
-                          tmp=get(obj.bounding_boxes{i}(j),'YData');
-                          yB=tmp(1);  yT=tmp(3);
-                          if(xR<timeRange(1) || xL>timeRange(2) || yT<freqRange(1) || yB>freqRange(2))
-                            set(obj.bounding_boxes{i}(j),'Visible','off');
-                          else
-                            set(obj.bounding_boxes{i}(j),'Visible','on');
-                          end
-                      end
-                    end
+                for i=1:length(obj.reporter)
+                    delete(obj.bounding_boxes{i});
+%                     obj.bounding_boxes(i)=[];
+                    obj.bounding_boxes{i} = obj.populateFeatures(obj.reporter{i});
                 end
             end
             
@@ -334,22 +324,19 @@ classdef SpectrogramPanel < TimelinePanel
             
             spacing = 1 / length(featureTypes);
             axesPos = get(obj.axes, 'Position');
-            
+
+            timeRange = get(obj.axes, 'XLim');
+
             % Draw the features that have been reported.
             features = reporter.features();
             for i = 1:length(features)
                 feature = features{i};
-                x0=feature.range(1);
-                y0=feature.range(3);
-                x1=feature.range(2);
-                y1=feature.range(4);
-                h=line([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0]);
-                bounding_boxes(end+1)=h;
-                set(h, 'Color', reporter.featuresColor);
-                offset=0;  if(isfield(reporter,'detectedTimeRanges'))  offset=reporter.detectedTimeRanges(1);  end
                 if isprop(feature,'HotPixels')
+                    offset=0;  if(isfield(reporter,'detectedTimeRanges'))  offset=reporter.detectedTimeRanges(1);  end
                     for i=1:length(feature.HotPixels)
-                      idx=find(feature.HotPixels{i}{1}(:,3)==obj.audio.channel);
+                      idx=find((feature.HotPixels{i}{1}(:,3)==obj.audio.channel)&...
+                          ((offset+feature.HotPixels{i}{1}(:,1))>timeRange(1))&...
+                          ((offset+feature.HotPixels{i}{1}(:,1))<timeRange(2)));
                       t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
                         repmat(feature.HotPixels{i}{2}*[-0.5; +0.5; +0.5; -0.5; -0.5],1,length(idx));
                       f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...
@@ -359,6 +346,14 @@ classdef SpectrogramPanel < TimelinePanel
                       bounding_boxes=[bounding_boxes h'];
                     end
                 end
+                x0=feature.range(1);
+                y0=feature.range(3);
+                x1=feature.range(2);
+                y1=feature.range(4);
+                if(x1<timeRange(1) || x0>timeRange(2))  continue;  end
+                h=line([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0]);
+                bounding_boxes(end+1)=h;
+                set(h, 'Color', reporter.featuresColor);
             end
         end
 	
