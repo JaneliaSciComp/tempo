@@ -1,10 +1,5 @@
 classdef DAQRecording < AudioRecording
     
-    properties
-        channel
-    end
-    
-    
     methods (Static)
         function canLoad = canLoadFromPath(filePath)
             canLoad = false;
@@ -23,28 +18,23 @@ classdef DAQRecording < AudioRecording
         end
         
         
-        function addParameters(obj, parser)
-            addParameters@AudioRecording(obj, parser);
-            
-            addParamValue(parser, 'Channel', [], @(x) isnumeric(x) && isscalar(x));
-        end
-        
-        
         function loadParameters(obj, parser)
-            loadParameters@AudioRecording(obj, parser);
-            
+            loadParameters@Recording(obj, parser);
             obj.channel = parser.Results.Channel;
             
             if isempty(obj.channel)
                 % Ask the user which channel to open.
                 % TODO: allow opening more than one channel?
                 info = daqread(obj.filePath, 'info');
-                [obj.channel, ok] = listdlg('ListString', cellfun(@(x)num2str(x), {info.ObjInfo.Channel.Index}'), ...
-                                            'PromptString', 'Choose the channel to open:', ...
-                                            'SelectionMode', 'single', ...
-                                            'Name', 'Open DAQ File');
-                if ~ok
-                    error('Tempo:UserCancelled', 'The user cancelled opening the DAQ file.');
+                obj.channel=1;
+                if nchan>1
+                    [obj.channel, ok] = listdlg('ListString', cellfun(@(x)num2str(x), {info.ObjInfo.Channel.Index}'), ...
+                                                'PromptString', 'Choose the channel to open:', ...
+                                                'SelectionMode', 'single', ...
+                                                'Name', 'Open DAQ File');
+                    if ~ok
+                        error('Tempo:UserCancelled', 'The user cancelled opening the DAQ file.');
+                    end
                 end
             end
         end

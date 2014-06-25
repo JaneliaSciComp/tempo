@@ -1,9 +1,5 @@
 classdef SternRecording < AudioRecording
     
-    properties
-      channel
-    end
-    
     methods (Static)
         function canLoad = canLoadFromPath(filePath)
             % See if the file's extension is .bin.
@@ -31,23 +27,16 @@ classdef SternRecording < AudioRecording
         end
         
         
-        function addParameters(obj, parser)
-            addParameters@AudioRecording(obj, parser);
-            
-            addParamValue(parser, 'Channel', [], @(x) isnumeric(x) && isscalar(x));
-        end
-        
-        
         function loadParameters(obj, parser)
-            loadParameters@AudioRecording(obj, parser);
-            
+            loadParameters@Recording(obj, parser);
             obj.channel = parser.Results.Channel;
             
             if isempty(obj.channel)
                 fid = fopen(obj.filePath, 'r');
-                try
-                    fread(fid, 2, 'double');    % skip over the version # and sample rate
-                    nchan = fread(fid, 1, 'double');
+                fread(fid, 2, 'double');    % skip over the version # and sample rate
+                nchan = fread(fid, 1, 'double');
+                obj.channel=1;
+                if nchan>1
                     [obj.channel, ok] = listdlg('ListString', cellstr(num2str((1:nchan)')), ...
                                                 'PromptString', {'Choose the channel to open:'}, ...
                                                 'SelectionMode', 'single', ...
@@ -56,10 +45,6 @@ classdef SternRecording < AudioRecording
                         error('Tempo:UserCancelled', 'The user cancelled opening the BIN file.');
                     end
                     fclose(fid);
-                catch ME
-                    % Make sure the file gets closed.
-                    fclose(fid);
-                    rethrow(ME);
                 end
             end
         end

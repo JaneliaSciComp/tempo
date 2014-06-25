@@ -178,6 +178,22 @@ classdef SpectrogramPanel < TimelinePanel
                         P = horzcat(ones(size(P, 1), prePixels) * gray, P, ones(size(P, 1), postPixels) * gray);
                     end
                 end
+                
+                if ~isempty(obj.bounding_boxes)
+                    for i=1:length(obj.bounding_boxes)
+                      for j=1:length(obj.bounding_boxes{i})
+                          tmp=get(obj.bounding_boxes{i}(j),'XData');
+                          xL=tmp(1);  xR=tmp(2);
+                          tmp=get(obj.bounding_boxes{i}(j),'YData');
+                          yB=tmp(1);  yT=tmp(3);
+                          if(xR<timeRange(1) || xL>timeRange(2) || yT<freqRange(1) || yB>freqRange(2))
+                            set(obj.bounding_boxes{i}(j),'Visible','off');
+                          else
+                            set(obj.bounding_boxes{i}(j),'Visible','on');
+                          end
+                      end
+                    end
+                end
             end
             
 %            set(obj.axes, 'YLim', [1 size(P, 1)]);
@@ -332,14 +348,8 @@ classdef SpectrogramPanel < TimelinePanel
                 set(h, 'Color', reporter.featuresColor);
                 offset=0;  if(isfield(reporter,'detectedTimeRanges'))  offset=reporter.detectedTimeRanges(1);  end
                 if isprop(feature,'HotPixels')
-                  % hack for now.  channels param need to move from ax2 to
-                  % ax1.  and would merging tempo detectors and importers
-                  % classes make sense?
-%                     chan=find(cellfun(@(x) strcmp(x,obj.audio.filePath),...
-%                         cellfun(@(y) y.filePath, reporter.recording, 'uniformoutput', false)));
-                    chan=str2num(obj.audio.filePath(end));
                     for i=1:length(feature.HotPixels)
-                      idx=find(feature.HotPixels{i}{1}(:,3)==chan);
+                      idx=find(feature.HotPixels{i}{1}(:,3)==obj.audio.channel);
                       t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
                         repmat(feature.HotPixels{i}{2}*[-0.5; +0.5; +0.5; -0.5; -0.5],1,length(idx));
                       f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...

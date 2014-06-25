@@ -2,6 +2,7 @@ classdef AudioRecording < Recording
     
     properties
         maxAmp
+        channel
     end
     
     properties(Transient,GetAccess=protected)
@@ -37,6 +38,40 @@ classdef AudioRecording < Recording
         end
         
         
+        function addParameters(obj, parser)
+            addParameters@Recording(obj, parser);
+            
+            addParamValue(parser, 'Channel', [], @(x) isnumeric(x) && isscalar(x));
+        end
+        
+        
+        function loadParameters(obj, parser)
+            loadParameters@Recording(obj, parser);
+            obj.channel = parser.Results.Channel;
+            
+            if isempty(obj.channel)
+                if isempty(which('audioinfo'))
+                    wavread(obj.filePath,'size');
+                    nchan=ans(2);
+                else
+                    audioinfo(obj.filePath);
+                    nchan=ans.NumChannels;
+                end
+                
+                obj.channel=1;
+                if nchan>1
+                    [obj.channel, ok] = listdlg('ListString', cellstr(num2str((1:nchan)')), ...
+                                                'PromptString', {'Choose the channel to open:'}, ...
+                                                'SelectionMode', 'single', ...
+                                                'Name', 'Open WAV File');
+                    if ~ok
+                        error('Tempo:UserCancelled', 'The user cancelled opening the WAV file.');
+                    end
+                end
+            end
+        end
+        
+        
         function loadData(obj)
             if ~isempty(obj.filePath)
                 if isempty(which('audioread'))
@@ -44,7 +79,7 @@ classdef AudioRecording < Recording
                 else
                     [obj.data, obj.sampleRate] = audioread(obj.filePath, 'native');
                 end
-                obj.data = double(obj.data);
+                obj.data = double(obj.data(:,obj.channel));
                 obj.sampleCount = length(obj.data);
             end
         end
