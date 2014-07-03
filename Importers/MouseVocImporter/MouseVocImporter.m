@@ -41,7 +41,7 @@ classdef MouseVocImporter < FeaturesImporter
             features = {};
 
             [p,n,~]=fileparts(obj.featuresFilePath);
-            strfind(p,'/');
+            strfind(p,filesep);
             p=p(1:ans(end));
             tmp=dir(fullfile(p,'*.ax'));
             hotpixels={};
