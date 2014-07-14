@@ -29,7 +29,7 @@ classdef EgnorRecording < AudioRecording
         
         function loadParameters(obj, parser)
             loadParameters@Recording(obj, parser);
-            obj.channel=str2num(obj.audio.filePath(end));
+            obj.channel=str2num(obj.filePath(end));
             
             if isempty(obj.sampleRate)
                 % See if there is another .ch file loaded whose sample rate we can copy.
