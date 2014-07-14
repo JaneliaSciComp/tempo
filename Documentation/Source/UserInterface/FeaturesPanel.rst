@@ -1,5 +1,0 @@
-========
-Features
-========
-
-The features panel...
