@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Analyzing &mdash; Tempo 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Tempo 1.0 documentation" href="index.html" />
+    <link rel="next" title="Annotating" href="Annotating.html" />
+    <link rel="prev" title="Browsing" href="Browsing.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="Annotating.html" title="Annotating"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="Browsing.html" title="Browsing"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Tempo 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body">
+            
+  <div class="section" id="analyzing">
+<h1>Analyzing<a class="headerlink" href="#analyzing" title="Permalink to this headline">¶</a></h1>
+<p>Tempo comes with tools for automatically detecting features in audio files.  Currently there are tools for detecting fly song and mouse vocalization.  To run one of the tools choose <em class="menuselection">Edit -&gt; Detect Features</em> or click the equivalent icon on the toolbar.</p>
+<div class="section" id="differences">
+<h2>Differences<a class="headerlink" href="#differences" title="Permalink to this headline">¶</a></h2>
+<p>This detector looks for differences between existing sets of features.  It will show which features would need to be added and which would need to be removed to make the sets identical.  Thresholds for how different features can be in time and frequency can be set.</p>
+</div>
+<div class="section" id="fly-song">
+<h2>Fly Song<a class="headerlink" href="#fly-song" title="Permalink to this headline">¶</a></h2>
+<p>This detector can find sine and pulse song in audio recordings of Drosophila.  It is based on the FlySongSegmenter software published in:</p>
+<blockquote>
+<div>Arthur et al.: Multi-channel acoustic recording and automated analysis of Drosophila courtship songs. BMC Biology 2013 11:11</div></blockquote>
+<p>and available at &lt;<a class="reference external" href="http://github.com/FlyCourtship/FlySongSegmenter">http://github.com/FlyCourtship/FlySongSegmenter</a>&gt;.</p>
+</div>
+<div class="section" id="mouse-vocalization">
+<h2>Mouse Vocalization<a class="headerlink" href="#mouse-vocalization" title="Permalink to this headline">¶</a></h2>
+<p>This detector can find vocalizations in audio recordings of mice.  It is based on the Ax software published in:</p>
+<blockquote>
+<div>???</div></blockquote>
+<p>and available at ???.</p>
+</div>
+<div class="section" id="pulse-trains">
+<h2>Pulse Trains<a class="headerlink" href="#pulse-trains" title="Permalink to this headline">¶</a></h2>
+<p>This detector can find repeated sequences of features in other sets of features.  Each &#8220;train&#8221; that is found has a minimum number of repeats and a maximum time between each feature within the train.  For example, it can find a minimum of ten fly song pulses in a row, no more than 0.1 seconds apart.  Typically it is used to detect trains of pulses from fly song but can be used in other contexts.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="Annotating.html" title="Annotating"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="Browsing.html" title="Browsing"
+             >previous</a> |</li>
+        <li><a href="index.html">Tempo 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Howard Hughes Medical Institute.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    </div>
+  </body>
+</html>

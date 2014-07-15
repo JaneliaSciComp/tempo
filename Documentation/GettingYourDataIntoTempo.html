@@ -1,0 +1,95 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Getting Your Data into Tempo &mdash; Tempo 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Tempo 1.0 documentation" href="index.html" />
+    <link rel="next" title="Browsing" href="Browsing.html" />
+    <link rel="prev" title="Tempo Documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="Browsing.html" title="Browsing"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Tempo Documentation"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Tempo 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body">
+            
+  <div class="section" id="getting-your-data-into-tempo">
+<h1>Getting Your Data into Tempo<a class="headerlink" href="#getting-your-data-into-tempo" title="Permalink to this headline">¶</a></h1>
+<p>Tempo knows how to open many formats of video, audio and annotation and can be easily <a class="reference internal" href="Customizing/index.html"><em>extended</em></a> to handle new formats.</p>
+<div class="section" id="video">
+<h2>Video<a class="headerlink" href="#video" title="Permalink to this headline">¶</a></h2>
+<p>Tempo can open any video format supported by MATLAB&#8217;s VideoReader function.  See the MATLAB documentation for the exact formats but AVI, MPEG and QuickTime movies are available on most platforms.  All video files are displayed in a <a class="reference internal" href="UserInterface/VideoPanel.html"><em>video panel</em></a> on the left side of the Tempo window.  Custom video formats can be supported by <a class="reference internal" href="Customizing/Recordings.html"><em>adding a new recording type</em></a>.</p>
+<p>If a file ending in .ts exists with the same basename as the video file, Tempo treats the double-precision floats contained therein as timestamps (in seconds) of each video frame, and ignores the frame rate included in the metadata of the video file.</p>
+</div>
+<div class="section" id="audio">
+<h2>Audio<a class="headerlink" href="#audio" title="Permalink to this headline">¶</a></h2>
+<p>Tempo can open any audio format supported by MATLAB&#8217;s audioread function.  See the MATLAB documentation for the exact formats but WAV and MP3 are available on most platforms.  Audio files are displayed with <a class="reference internal" href="UserInterface/WaveformPanel.html"><em>waveform</em></a> and/or <a class="reference internal" href="UserInterface/SpectrogramPanel.html"><em>spectrogram</em></a> panels in the timeline on the right side of the Tempo window.  Custom audio formats can also be supported by <a class="reference internal" href="Customizing/Recordings.html"><em>adding a new recording type</em></a>.</p>
+</div>
+<div class="section" id="annotations">
+<h2>Annotations<a class="headerlink" href="#annotations" title="Permalink to this headline">¶</a></h2>
+<p>Tempo can import annotation files created by <a class="reference external" href="http://www.noldus.com/human-behavior-research/products/the-observer-xt">Noldus Observer</a> and <a class="reference external" href="http://http://social.cs.uiuc.edu/projects/vcode.html">VCode</a>.  New features can be manually annotated or discovered using automated detectors.  Custom annotation formats can be supported by <a class="reference internal" href="Customizing/FeatureImporters.html"><em>adding a new feature importer</em></a> and .
+new <a class="reference internal" href="Customizing/FeatureDetectors.html"><em>feature detectors</em></a> can also be added.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="Browsing.html" title="Browsing"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Tempo Documentation"
+             >previous</a> |</li>
+        <li><a href="index.html">Tempo 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Howard Hughes Medical Institute.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    </div>
+  </body>
+</html>

@@ -1,10 +1,11 @@
-tempo [![Picture](/jfrc_grey_180x40.png)](http://www.janelia.org)
+Tempo [![Picture](/jfrc_grey_180x40.png)](http://www.janelia.org)
 =====
 Tempo is a MATLAB GUI for browsing, analyzing and annotating time-synchronized media files.
 
 
-[Documentation](http://janeliascicomp.github.io/tempo/)  
+[Documentation](/Documentation/index.html)  
 =============
+
 
 Authors
 =======
