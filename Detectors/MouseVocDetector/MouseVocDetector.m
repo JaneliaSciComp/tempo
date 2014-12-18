@@ -68,7 +68,7 @@ classdef MouseVocDetector < FeaturesDetector
             
             features = {};
             
-            [p,n,~]=fileparts(obj.recording{1}.filePath);
+            [p,n,e]=fileparts(obj.recording{1}.filePath);
 
             if(isempty(sampleRate2) || (sampleRate2~=obj.recording{1}.sampleRate) || ...
                 isempty(NFFT2) || any(NFFT2~=obj.NFFT) || ...
@@ -78,10 +78,14 @@ classdef MouseVocDetector < FeaturesDetector
                 isempty(timeRange2) || any(timeRange2~=timeRange(1:2)))
               delete([fullfile(p,n) '*tmp*.ax']);
               nsteps=(2+length(obj.NFFT));
+              filename = fullfile(p,n);
+              if(strcmp(e,'.wav'))
+                filename = [filename '.wav'];
+              end
               for i=1:length(obj.NFFT)
                 obj.updateProgress('Running multitaper analysis on signal...', (i-1)/nsteps);
                 ax1(obj.recording{1}.sampleRate, obj.NFFT(i), obj.NW, obj.K, obj.PVal,...
-                    fullfile(p,n),['tmp' num2str(i)],...
+                    filename,['tmp' num2str(i)],...
                     timeRange(1), timeRange(2));
               end
 
@@ -123,15 +127,15 @@ classdef MouseVocDetector < FeaturesDetector
             end
 
             obj.updateProgress('Heuristically segmenting syllables...', (nsteps-2)/nsteps);
+            tmp=dir(fullfile(tempdir,[n '*tmp*.ax']));
+            ax_files = cellfun(@(x) fullfile(tempdir,x), {tmp.name}, 'uniformoutput', false);
             ax2(obj.FreqLow, obj.FreqHigh, [obj.ConvHeight obj.ConvWidth], obj.MinObjArea, ...
                 obj.MergeHarmonics, obj.MergeHarmonicsOverlap, obj.MergeHarmonicsRatio, obj.MergeHarmonicsFraction,...
-                obj.MinLength, [], fullfile(tempdir,n));
+                obj.MinLength, [], ax_files, fullfile(tempdir,n));
 
             obj.updateProgress('Adding features...', (nsteps-1)/nsteps);
-            %tmp=dir([fullfile(tempdir,n) '.voc*']);
-            tmp=dir([fullfile(tempdir,n) '-out*']);
-            tmp2=dir([fullfile(tempdir,tmp.name,'voc*')]);
-            voclist=load(fullfile(tempdir,tmp.name,tmp2.name));
+            tmp=dir([fullfile(tempdir,n) '.voc*']);
+            voclist=load(fullfile(tempdir,tmp.name));
 
             for i = 1:size(voclist, 1)
                 if(i==1)
