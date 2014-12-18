@@ -69,11 +69,7 @@ end
 % Populate the fields.
 %   Modelled after: set(handles.ipiMinEdit, 'String', num2str(handles.detector.ipiMin));
 for field = handles.detector.settingNames()
-    if strcmp(field,'NFFT')
-      eval(['num2str(handles.detector.' field{1} ',''%g,''); set(handles.' field{1} 'Edit, ''String'', ans(1:end-1))'])
-    else
-      eval(['set(handles.' field{1} 'Edit, ''String'', num2str(handles.detector.' field{1} '))'])
-    end
+    eval(['set(handles.' field{1} 'Edit, ''String'', num2str(handles.detector.' field{1} '))'])
     if ~handles.editable
         eval(['set(handles.' field{1} 'Edit, ''Enable'', ''off'')'])
     end
@@ -206,8 +202,8 @@ function NFFTEdit_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of NFFTEdit as a double
 
 tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (sum(sign(tmp)~=1)>0))
-  warndlg('NFFT must be a comma-separated list of positive floats');
+if (isempty(tmp) || (any(sign(tmp)~=1)))
+  warndlg('NFFT must be a comma-separated list of positive integers');
 end
 
 

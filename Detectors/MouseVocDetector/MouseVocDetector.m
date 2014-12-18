@@ -3,10 +3,10 @@ classdef MouseVocDetector < FeaturesDetector
     properties
         recording
         
-        NW=22;
-        K=43;
+        NW=3;
+        K=5;
         PVal=0.01;
-        NFFT=[0.001 0.0005 0.00025];
+        NFFT=[32 64 128];
 
         FreqLow=20e3;
         FreqHigh=120e3;
@@ -71,11 +71,11 @@ classdef MouseVocDetector < FeaturesDetector
             [p,n,~]=fileparts(obj.recording{1}.filePath);
 
             if(isempty(sampleRate2) || (sampleRate2~=obj.recording{1}.sampleRate) || ...
-                isempty(NFFT2) || (sum(NFFT2~=obj.NFFT)>0) || ...
+                isempty(NFFT2) || any(NFFT2~=obj.NFFT) || ...
                 isempty(NW2) || (NW2~=obj.NW) || ...
                 isempty(K2) || (K2~=obj.K) || ...
                 isempty(PVal2) || (PVal2~=obj.PVal) || ...
-                isempty(timeRange2) || (sum(timeRange2~=timeRange(1:2))>0))
+                isempty(timeRange2) || any(timeRange2~=timeRange(1:2)))
               delete([fullfile(p,n) '*tmp*.ax']);
               nsteps=(2+length(obj.NFFT));
               for i=1:length(obj.NFFT)
