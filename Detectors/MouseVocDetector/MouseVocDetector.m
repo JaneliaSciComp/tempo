@@ -79,8 +79,8 @@ classdef MouseVocDetector < FeaturesDetector
               delete([fullfile(p,n) '*tmp*.ax']);
               nsteps=(2+length(obj.NFFT));
               filename = fullfile(p,n);
-              if(strcmp(e,'.wav'))
-                filename = [filename '.wav'];
+              if(strcmpi(e,'.wav'))
+                filename = [filename e];
               end
               for i=1:length(obj.NFFT)
                 obj.updateProgress('Running multitaper analysis on signal...', (i-1)/nsteps);
