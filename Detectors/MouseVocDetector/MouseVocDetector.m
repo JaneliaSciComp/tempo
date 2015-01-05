@@ -100,17 +100,13 @@ classdef MouseVocDetector < FeaturesDetector
             tmp=tmp(logical(ans));
             hotpixels={};
             for i=1:length(tmp)
-              fid=fopen(fullfile(tempdir,tmp(i).name),'r');
-              fread(fid,3,'uint8');
-              fread(fid,2,'uint32');
-              dT=ans(2)/ans(1)/2;
-              fread(fid,2,'uint16');
-              fread(fid,2,'double');
-              dF=ans(2);
-              foo=fread(fid,[4 inf],'double');
-              foo(1,:)=foo(1,:)*dT;
-              hotpixels{i}={foo([1 2 4],:)', dT, dF};
-              fclose(fid);
+               foo=h5read(fullfile(tempdir,tmp(i).name),'/hotPixels');
+               NFFT=h5readatt(fullfile(tempdir,tmp(i).name),'/hotPixels','NFFT');
+               FS=h5readatt(fullfile(tempdir,tmp(i).name),'/hotPixels','FS');
+               dT=NFFT/FS/2;
+               dF=FS/NFFT/10;  % /10 for brown-puckette
+               foo(:,1)=foo(:,1)*dT;
+               hotpixels{i}={foo(:,[1 2 4]), dT, dF};
             end
 
             sampleRate2=obj.recording{1}.sampleRate;
