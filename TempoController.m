@@ -1069,7 +1069,7 @@ classdef TempoController < handle
                         f{i}=obj.recordings{i}.saveData;
                         c=[c '-i ' f{i} ' ']; %#ok<AGROW>
                     end
-                    c=[c '-acodec copy -vcodec copy ''' exportPath ''''];
+                    c=[c '-acodec copy -vcodec copy ' exportPath];
                     waitbar(length(obj.recordings)/(length(obj.recordings)+1),h,['Processing '  exportPath]);
                     [s,~]=system(c);
                     if s
