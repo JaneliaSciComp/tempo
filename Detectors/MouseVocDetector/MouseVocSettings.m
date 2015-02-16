@@ -286,8 +286,8 @@ function ConvWidthEdit_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of ConvWidthEdit as a double
 
 tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (~mod(tmp,2)) || (tmp<0) || (tmp~=round(tmp)))
-  warndlg('conv_width must be an odd positive integer');
+if (isempty(tmp) || (tmp<0))
+  warndlg('conv_width must be non-negative');
 end
 
 
@@ -314,8 +314,8 @@ function ConvHeightEdit_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of ConvHeightEdit as a double
 
 tmp=str2num(get(hObject,'String'));
-if (isempty(tmp) || (~mod(tmp,2)) || (tmp<0) || (tmp~=round(tmp)))
-  warndlg('conv_height must be a positive odd integer');
+if (isempty(tmp) || (tmp<0))
+  warndlg('conv_height must be non-negative');
 end
 
 
