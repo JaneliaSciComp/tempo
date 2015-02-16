@@ -3,23 +3,23 @@ classdef MouseVocDetector < FeaturesDetector
     properties
         recording
         
-        NW=3;
-        K=5;
-        PVal=0.01;
-        NFFT=[32 64 128];
+        NW
+        K
+        PVal
+        NFFT
 
-        FreqLow=20e3;
-        FreqHigh=120e3;
-        ConvWidth=0.001;
-        ConvHeight=1300;
-        MinObjArea=18.75;
+        FreqLow
+        FreqHigh
+        ConvWidth
+        ConvHeight
+        MinObjArea
 
-        MergeHarmonics=0;
-        MergeHarmonicsOverlap=0;
-        MergeHarmonicsRatio=0;
-        MergeHarmonicsFraction=0;
+        MergeHarmonics
+        MergeHarmonicsOverlap
+        MergeHarmonicsRatio
+        MergeHarmonicsFraction
 
-        MinLength=0;
+        MinLength
     end
     
     
@@ -46,6 +46,20 @@ classdef MouseVocDetector < FeaturesDetector
         
         function obj = MouseVocDetector(recording)
             obj = obj@FeaturesDetector(recording);
+            obj.NW = getpref('Tempo', 'NW', 3);
+            obj.K = getpref('Tempo', 'K', 5);
+            obj.PVal = getpref('Tempo', 'PVal', 0.01);
+            obj.NFFT = getpref('Tempo', 'NFFT', [32 64 128]);
+            obj.FreqLow = getpref('Tempo', 'FreqLow', 20e3);
+            obj.FreqHigh = getpref('Tempo', 'FreqHigh', 120e3);
+            obj.ConvWidth = getpref('Tempo', 'ConvWidth', 0.001);
+            obj.ConvHeight = getpref('Tempo', 'ConvHeight', 1300);
+            obj.MinObjArea = getpref('Tempo', 'MinObjArea', 18.75);
+            obj.MergeHarmonics = getpref('Tempo', 'MergeHarmonics', 0);
+            obj.MergeHarmonicsOverlap = getpref('Tempo', 'MergeHarmonicsOverlap', 0);
+            obj.MergeHarmonicsRatio = getpref('Tempo', 'MergeHarmonicsRatio', 0);
+            obj.MergeHarmonicsFraction = getpref('Tempo', 'MergeHarmonicsFraction', 0);
+            obj.MinLength = getpref('Tempo', 'MinLength', 0);
         end
         
         
@@ -71,7 +85,7 @@ classdef MouseVocDetector < FeaturesDetector
             [p,n,e]=fileparts(obj.recording{1}.filePath);
 
             if(isempty(sampleRate2) || (sampleRate2~=obj.recording{1}.sampleRate) || ...
-                isempty(NFFT2) || any(NFFT2~=obj.NFFT) || ...
+                isempty(NFFT2) || length(NFFT2)~=length(obj.NFFT) || any(NFFT2~=obj.NFFT) || ...
                 isempty(NW2) || (NW2~=obj.NW) || ...
                 isempty(K2) || (K2~=obj.K) || ...
                 isempty(PVal2) || (PVal2~=obj.PVal) || ...

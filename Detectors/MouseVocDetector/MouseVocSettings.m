@@ -121,6 +121,7 @@ tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<=0))
   warndlg('NW must be a positive integer, >=(K+1)/2');
 end
+setpref('Tempo', 'NW', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -149,6 +150,7 @@ tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp~=round(tmp)) || (tmp<=0))
   warndlg('K must be a positive integer, <=2*NW-1');
 end
+setpref('Tempo', 'K', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -177,6 +179,7 @@ tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<=0))
   warndlg('PVal must be a positive float');
 end
+setpref('Tempo', 'PVal', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -205,6 +208,7 @@ tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (any(sign(tmp)~=1)))
   warndlg('NFFT must be a comma-separated list of positive integers');
 end
+setpref('Tempo', 'NFFT', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -231,8 +235,9 @@ function FreqLowEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
-  warndlg('freq_low must be a non-negative real number');
+  warndlg('FreqLow must be a non-negative real number');
 end
+setpref('Tempo', 'FreqLow', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -259,8 +264,9 @@ function FreqHighEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
-  warndlg('freq_high must be a non-negative real number');
+  warndlg('FreqHigh must be a non-negative real number');
 end
+setpref('Tempo', 'FreqHigh', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -287,8 +293,9 @@ function ConvWidthEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
-  warndlg('conv_width must be non-negative');
+  warndlg('ConvWidth must be non-negative');
 end
+setpref('Tempo', 'ConvWidth', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -315,8 +322,9 @@ function ConvHeightEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
-  warndlg('conv_height must be non-negative');
+  warndlg('ConvHeight must be non-negative');
 end
+setpref('Tempo', 'ConvHeight', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -343,8 +351,9 @@ function MinObjAreaEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
-  warndlg('obj_size must be non-negative');
+  warndlg('MinObjArea must be non-negative');
 end
+setpref('Tempo', 'MinObjArea', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -371,8 +380,9 @@ function MergeHarmonicsEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || ((tmp~=0) && (tmp~=1)))
-  warndlg('merge_freq must be 0 or 1');
+  warndlg('MergeHarmonics must be 0 or 1');
 end
+setpref('Tempo', 'MergeHarmonics', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -399,8 +409,9 @@ function MergeHarmonicsOverlapEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0) || (tmp>1))
-  warndlg('merge_freq_overlap must be between 0 and 1');
+  warndlg('MergeHarmonicsOverlap must be between 0 and 1');
 end
+setpref('Tempo', 'MergeHarmonicsOverlap', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -427,8 +438,9 @@ function MergeHarmonicsRatioEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
-  warndlg('merge_freq_ratio must be a non-negative float');
+  warndlg('MergeHarmonicsRatio must be a non-negative float');
 end
+setpref('Tempo', 'MergeHarmonicsRatio', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -455,8 +467,9 @@ function MergeHarmonicsFractionEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0) || (tmp>1))
-  warndlg('merge_freq_fraction must be between 0 and 1');
+  warndlg('MergeHarmonicsFraction must be between 0 and 1');
 end
+setpref('Tempo', 'MergeHarmonicsFraction', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -482,8 +495,9 @@ function MinLengthEdit_Callback(hObject, eventdata, handles)
 
 tmp=str2num(get(hObject,'String'));
 if (isempty(tmp) || (tmp<0))
-  warndlg('min_length must be a non-negative real number');
+  warndlg('MinLength must be a non-negative real number');
 end
+setpref('Tempo', 'MinLength', tmp);
 
 
 % --- Executes during object creation, after setting all properties.
