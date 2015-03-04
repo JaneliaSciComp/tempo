@@ -110,7 +110,7 @@ classdef AudioRecording < Recording
                 else
                     readEnd = obj.dataStartSample;
                 end
-                readLength = readEnd - readStart;
+                readLength = min(obj.sampleCount-1, readEnd - readStart);
                 newData = obj.readData(readStart, readLength);
                 
                 % Piece together the new data buffer from what we already had and what was just read in.
