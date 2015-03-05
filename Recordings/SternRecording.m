@@ -49,8 +49,43 @@ classdef SternRecording < AudioRecording
             end
         end
         
-        
         function loadData(obj)
+            fid = fopen(obj.filePath, 'r');
+            try
+                version=fread(fid, 1, 'double');
+                sampleRate = fread(fid, 1, 'double');
+                nchan = fread(fid, 1, 'double');
+                switch version
+                    case 1
+                        first=ftell(fid);
+                        fseek(fid,0,'eof');
+                        last=ftell(fid);
+                        obj.sampleCount=(last-first+1)/8;
+                    case 2
+                        first=ftell(fid);
+                        fseek(fid,0,'eof');
+                        last=ftell(fid);
+                        obj.sampleCount=(last-first+1)/4;
+                    case 3
+                        tmp=fread(fid,[2 nchan],'double');
+                        step=tmp(1,nchan);
+                        offset=tmp(2,nchan);
+                        fread(fid, obj.channel-1, 'int16');  % skip over first channels
+                        first=ftell(fid);
+                        fseek(fid,0,'eof');
+                        last=ftell(fid);
+                        obj.sampleCount=(last-first+1)/2;
+                end
+                fclose(fid);
+            catch ME
+                fclose(fid);
+                rethrow(ME);
+            end
+
+            obj.loadDataBuffer(1);
+        end
+        
+        function newData = readData(obj, readStart, readLength)
             fid = fopen(obj.filePath, 'r');
             try
                 version=fread(fid, 1, 'double');
@@ -59,24 +94,24 @@ classdef SternRecording < AudioRecording
                 switch version
                     case 1
                         fread(fid, obj.channel-1, 'double');  % skip over first channels
-                        [obj.data, obj.sampleCount] = fread(fid, inf, 'double', 8*(nchan-1));
+                        fseek(fid, 8*readStart, 'cof');
+                        newData = fread(fid, readLength, 'double', 8*(nchan-1));
                     case 2
                         fread(fid, obj.channel-1, 'single');  % skip over first channels
-                        [obj.data, obj.sampleCount] = fread(fid, inf, 'single', 4*(nchan-1));
+                        fseek(fid, 4*readStart, 'cof');
+                        newData = fread(fid, readLength, 'single', 4*(nchan-1));
                     case 3
                         tmp=fread(fid,[2 nchan],'double');
                         step=tmp(1,nchan);
                         offset=tmp(2,nchan);
                         fread(fid, obj.channel-1, 'int16');  % skip over first channels
-                        [obj.data, obj.sampleCount]=fread(fid,inf,'int16', 2*(nchan-1));
-%                         y=bsxfun(@times,y',step);
-%                         y=bsxfun(@plus,y,offset);
-                        obj.data = obj.data*step+offset;
+                        fseek(fid, 2*readStart, 'cof');
+                        newData =fread(fid,readLength,'int16', 2*(nchan-1));
+                        newData = newData*step+offset;
                 end
                 obj.name = sprintf('%s (channel %d)', obj.name, obj.channel);
                 fclose(fid);
             catch ME
-                % Make sure the file gets closed.
                 fclose(fid);
                 rethrow(ME);
             end

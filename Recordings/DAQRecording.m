@@ -27,8 +27,8 @@ classdef DAQRecording < AudioRecording
                 % TODO: allow opening more than one channel?
                 info = daqread(obj.filePath, 'info');
                 obj.channel=1;
-                if nchan>1
-                    [obj.channel, ok] = listdlg('ListString', cellfun(@(x)num2str(x), {info.ObjInfo.Channel.Index}'), ...
+                if length(info.ObjInfo.Channel)>1
+                    [obj.channel, ok] = listdlg('ListString', cellfun(@(x)num2str(x), {info.ObjInfo.Channel.Index}','uniformoutput',false), ...
                                                 'PromptString', 'Choose the channel to open:', ...
                                                 'SelectionMode', 'single', ...
                                                 'Name', 'Open DAQ File');
@@ -42,12 +42,16 @@ classdef DAQRecording < AudioRecording
         
         function loadData(obj)
             info = daqread(obj.filePath, 'info');
+            obj.sampleCount = info.ObjInfo.SamplesAcquired;
             obj.sampleRate = info.ObjInfo.SampleRate;
-            obj.data = daqread(obj.filePath, 'Channels', obj.channel);
-            obj.sampleCount = length(obj.data);
             obj.name = sprintf('%s (channel %d)', obj.name, obj.channel);
+            
+            obj.loadDataBuffer(1);
         end
         
+        function newData = readData(obj, readStart, readLength)
+            newData = daqread(obj.filePath, 'Channels', obj.channel, 'Samples', [readStart readStart+readLength]);
+        end
     end
     
 end
