@@ -41,23 +41,32 @@ classdef MouseVocImporter < FeaturesImporter
             features = {};
 
             [p,n,~]=fileparts(obj.featuresFilePath);
-            tmp=strfind(p,filesep);
-            n=regexprep(p((tmp(end)+1):end),'-out.*','');
-            p=p(1:tmp(end));
-            tmp=dir(fullfile(p,[n '*.ax']));
-            hotpixels={};
-            for i=1:length(tmp)
-              fid=fopen(fullfile(p,tmp(i).name),'r');
-              fread(fid,3,'uint8');
-              fread(fid,2,'uint32');
-              dT=ans(2)/ans(1)/2;
-              fread(fid,2,'uint16');
-              fread(fid,2,'double');
-              dF=ans(2);
-              foo=fread(fid,[4 inf],'double');
-              foo(1,:)=foo(1,:)*dT;
-              hotpixels{i}={foo([1 2 4],:)', dT, dF};
-              fclose(fid);
+%             tmp=strfind(p,filesep);
+%             n=regexprep(p((tmp(end)+1):end),'-out.*','');
+%             p=p(1:tmp(end));
+            axFiles=dir(fullfile(p,[n '*.ax']));
+            hotPixels={};
+            for i=1:length(axFiles)
+              try
+                FS=h5readatt(fullfile(p,axFiles(1).name),'/hotPixels','FS');
+                NFFT=h5readatt(fullfile(p,axFiles(1).name),'/hotPixels','NFFT');
+                dT=NFFT/FS/2;
+                dF=FS/NFFT/10;  % /10 for brown-puckette
+                data=h5read(fullfile(p,axFiles(1).name),'/hotPixels');
+              catch
+                fid=fopen(fullfile(p,axFiles(i).name),'r');
+                fread(fid,3,'uint8');
+                fread(fid,2,'uint32');
+                dT=ans(2)/ans(1)/2;
+                fread(fid,2,'uint16');
+                fread(fid,2,'double');
+                dF=ans(2);
+                data=fread(fid,[4 inf],'double');
+                data=data';
+                fclose(fid);
+              end
+              data(:,1)=data(:,1)*dT;
+              hotPixels{i}={data(:,[1 2 4]), dT, dF};
             end
             
             obj.updateProgress('Loading events from file...', 0/2)
@@ -65,9 +74,9 @@ classdef MouseVocImporter < FeaturesImporter
             
             obj.updateProgress('Adding events...', 1/2)
             for i = 1:size(s, 1)
-                if((i==1) && ~isempty(hotpixels))
+                if((i==1) && ~isempty(hotPixels))
                   features{end + 1} = Feature('Vocalization', s(i,1:4), ...
-                                    'HotPixels', hotpixels); %#ok<AGROW>
+                                    'HotPixels', hotPixels); %#ok<AGROW>
                 else
                   features{end + 1} = Feature('Vocalization', s(i,1:4)); %#ok<AGROW>
                 end
