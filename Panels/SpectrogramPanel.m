@@ -342,7 +342,7 @@ classdef SpectrogramPanel < TimelinePanel
                       f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...
                         repmat(feature.HotPixels{i}{3}*[-0.5; -0.5; +0.5; +0.5; -0.5],1,length(idx));
                       h=patch(t+offset,f,reporter.featuresColor);
-                      set(h,'edgecolor','none');
+                      set(h,'edgecolor', reporter.featuresColor, 'linewidth', 2);
                       bounding_boxes=[bounding_boxes h'];
                     end
                 end
@@ -353,7 +353,7 @@ classdef SpectrogramPanel < TimelinePanel
                 if(x1<timeRange(1) || x0>timeRange(2))  continue;  end
                 h=line([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0]);
                 bounding_boxes(end+1)=h;
-                set(h, 'Color', reporter.featuresColor);
+                set(h, 'Color', reporter.featuresColor, 'linewidth', 2);
             end
         end
 	
