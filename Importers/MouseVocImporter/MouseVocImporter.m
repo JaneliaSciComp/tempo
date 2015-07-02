@@ -19,9 +19,15 @@ classdef MouseVocImporter < FeaturesImporter
             
             if exist(featuresFilePath, 'file')
                 [~, name, ext] = fileparts(featuresFilePath);
-                if strncmp(ext, '.voc', 4) || strcmp([name ext],'voc.txt')
+                if strcmp(ext, '.voc') || strcmp([name ext],'voc.txt')
                     voclist=load(featuresFilePath,'-ascii');
                     if size(voclist,2) == 4
+                        c = true;
+                    end
+                elseif strcmp(ext,'.fc') || strcmp(ext,'.fc2')
+                    voclist=load(featuresFilePath,'-mat');
+                    if (strcmp(ext,'.fc') && iscell(voclist.freq_contours)) || ...
+                        (strcmp(ext,'.fc2') && iscell(voclist.freq_contours2))
                         c = true;
                     end
                 end
@@ -70,7 +76,25 @@ classdef MouseVocImporter < FeaturesImporter
             end
             
             obj.updateProgress('Loading events from file...', 0/2)
-            s = load(obj.featuresFilePath, '-ascii');
+            [~, name, ext] = fileparts(obj.featuresFilePath);
+            if strcmp(ext, '.voc') || strcmp([name ext],'voc.txt')
+              s = load(obj.featuresFilePath, '-ascii');
+            elseif strcmp(ext,'.fc') || strcmp(ext,'.fc2')
+              data = load(obj.featuresFilePath,'-mat');
+              if strcmp(ext,'.fc')
+                data = data.freq_contours;
+              else
+                data = data.freq_contours2;
+              end
+              s=[];
+              for i=1:length(data)
+                bbhigh = cellfun(@(x) max(x,[],1)',data{i},'uniformoutput',false);
+                bblow = cellfun(@(x) min(x,[],1)',data{i},'uniformoutput',false);
+                bbhigh = max([bbhigh{:}],[],2);
+                bblow = min([bblow{:}],[],2);
+                s(end+1,:) = [bblow(1) bbhigh(1) bblow(2) bbhigh(2)];
+              end
+            end
             
             obj.updateProgress('Adding events...', 1/2)
             for i = 1:size(s, 1)
