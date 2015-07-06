@@ -45,40 +45,38 @@ classdef MouseVocImporter < FeaturesImporter
         
         function features = importFeatures(obj)
             features = {};
-
-            [p,n,~]=fileparts(obj.featuresFilePath);
-%             tmp=strfind(p,filesep);
-%             n=regexprep(p((tmp(end)+1):end),'-out.*','');
-%             p=p(1:tmp(end));
-            axFiles=dir(fullfile(p,[n '*.ax']));
             hotPixels={};
-            for i=1:length(axFiles)
-              try
-                FS=h5readatt(fullfile(p,axFiles(1).name),'/hotPixels','FS');
-                NFFT=h5readatt(fullfile(p,axFiles(1).name),'/hotPixels','NFFT');
-                dT=NFFT/FS/2;
-                dF=FS/NFFT/10;  % /10 for brown-puckette
-                data=h5read(fullfile(p,axFiles(1).name),'/hotPixels');
-              catch
-                fid=fopen(fullfile(p,axFiles(i).name),'r');
-                fread(fid,3,'uint8');
-                fread(fid,2,'uint32');
-                dT=ans(2)/ans(1)/2;
-                fread(fid,2,'uint16');
-                fread(fid,2,'double');
-                dF=ans(2);
-                data=fread(fid,[4 inf],'double');
-                data=data';
-                fclose(fid);
-              end
-              data(:,1)=data(:,1)*dT;
-              hotPixels{i}={data(:,[1 2 4]), dT, dF};
-            end
-            
+
             obj.updateProgress('Loading events from file...', 0/2)
             [~, name, ext] = fileparts(obj.featuresFilePath);
             if strcmp(ext, '.voc') || strcmp([name ext],'voc.txt')
               s = load(obj.featuresFilePath, '-ascii');
+
+              [p,n,~]=fileparts(obj.featuresFilePath);
+              axFiles=dir(fullfile(p,[n '*.ax']));
+              for i=1:length(axFiles)
+                try
+                  FS=h5readatt(fullfile(p,axFiles(1).name),'/hotPixels','FS');
+                  NFFT=h5readatt(fullfile(p,axFiles(1).name),'/hotPixels','NFFT');
+                  dT=NFFT/FS/2;
+                  dF=FS/NFFT/10;  % /10 for brown-puckette
+                  data=h5read(fullfile(p,axFiles(1).name),'/hotPixels');
+                catch
+                  fid=fopen(fullfile(p,axFiles(i).name),'r');
+                  fread(fid,3,'uint8');
+                  fread(fid,2,'uint32');
+                  dT=ans(2)/ans(1)/2;
+                  fread(fid,2,'uint16');
+                  fread(fid,2,'double');
+                  dF=ans(2);
+                  data=fread(fid,[4 inf],'double');
+                  data=data';
+                  fclose(fid);
+                end
+                data(:,1)=data(:,1)*dT;
+                hotPixels{i}={data(:,[1 2 4]), dT, dF};
+              end
+            
             elseif strcmp(ext,'.fc') || strcmp(ext,'.fc2')
               data = load(obj.featuresFilePath,'-mat');
               if strcmp(ext,'.fc')
@@ -93,6 +91,14 @@ classdef MouseVocImporter < FeaturesImporter
                 bbhigh = max([bbhigh{:}],[],2);
                 bblow = min([bblow{:}],[],2);
                 s(end+1,:) = [bblow(1) bbhigh(1) bblow(2) bbhigh(2)];
+              end
+
+              foo = cellfun(@(x) [x{:}; nan(1,size(x{:},2))]', data, 'uniformoutput', false);
+              foo = [foo{:}]';
+              if strcmp(ext,'.fc')
+                hotPixels{1} = foo(:,[1 2]);
+              else
+                hotPixels{1} = foo(:,[1 2 4]);
               end
             end
             

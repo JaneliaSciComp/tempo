@@ -334,16 +334,34 @@ classdef SpectrogramPanel < TimelinePanel
                 if isprop(feature,'HotPixels')
                     offset=0;  if(isfield(reporter,'detectedTimeRanges'))  offset=reporter.detectedTimeRanges(1);  end
                     for i=1:length(feature.HotPixels)
-                      idx=find((feature.HotPixels{i}{1}(:,3)==obj.audio.channel)&...
-                          ((offset+feature.HotPixels{i}{1}(:,1))>timeRange(1))&...
-                          ((offset+feature.HotPixels{i}{1}(:,1))<timeRange(2)));
-                      t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
-                        repmat(feature.HotPixels{i}{2}*[-0.5; +0.5; +0.5; -0.5; -0.5],1,length(idx));
-                      f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...
-                        repmat(feature.HotPixels{i}{3}*[-0.5; -0.5; +0.5; +0.5; -0.5],1,length(idx));
-                      h=patch(t+offset,f,reporter.featuresColor);
-                      set(h,'edgecolor', reporter.featuresColor, 'linewidth', 2);
-                      bounding_boxes=[bounding_boxes h'];
+                      if iscell(feature.HotPixels{i})
+                        idx=find((feature.HotPixels{i}{1}(:,3)==obj.audio.channel)&...
+                            ((offset+feature.HotPixels{i}{1}(:,1))>timeRange(1))&...
+                            ((offset+feature.HotPixels{i}{1}(:,1))<timeRange(2)));
+                        t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
+                          repmat(feature.HotPixels{i}{2}*[-0.5; +0.5; +0.5; -0.5; -0.5],1,length(idx));
+                        f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...
+                          repmat(feature.HotPixels{i}{3}*[-0.5; -0.5; +0.5; +0.5; -0.5],1,length(idx));
+                        h=patch(t+offset,f,reporter.featuresColor);
+                        set(h,'edgecolor', reporter.featuresColor, 'linewidth', 2);
+                        bounding_boxes=[bounding_boxes h'];
+                      else
+                        if size(feature.HotPixels{i},2)==3
+                          idx2 = feature.HotPixels{i}(:,3)==obj.audio.channel;
+                        else
+                          idx2 = ones(size(feature.HotPixels{i},1),1);
+                        end
+                        idx=find(idx2 & ...
+                            ((offset+feature.HotPixels{i}(:,1))>timeRange(1)) & ...
+                            ((offset+feature.HotPixels{i}(:,1))<timeRange(2)) | ...
+                            isnan(feature.HotPixels{i}(:,1)));
+                        first=find(~isnan(feature.HotPixels{i}(idx,1)),1,'first');
+                        last=find(~isnan(feature.HotPixels{i}(idx,1)),1,'last');
+                        idx=idx(first:last);
+                        h=line(feature.HotPixels{i}(idx,1)+offset,feature.HotPixels{i}(idx,2));
+                        set(h,'color', reporter.featuresColor);
+                        bounding_boxes=[bounding_boxes h'];
+                      end
                     end
                 end
                 x0=feature.range(1);
