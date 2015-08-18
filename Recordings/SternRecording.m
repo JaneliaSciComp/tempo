@@ -60,12 +60,12 @@ classdef SternRecording < AudioRecording
                         first=ftell(fid);
                         fseek(fid,0,'eof');
                         last=ftell(fid);
-                        obj.sampleCount=(last-first+1)/8;
+                        obj.sampleCount=(last-first+1)/8/nchan;
                     case 2
                         first=ftell(fid);
                         fseek(fid,0,'eof');
                         last=ftell(fid);
-                        obj.sampleCount=(last-first+1)/4;
+                        obj.sampleCount=(last-first+1)/4/nchan;
                     case 3
                         tmp=fread(fid,[2 nchan],'double');
                         step=tmp(1,nchan);
@@ -74,7 +74,7 @@ classdef SternRecording < AudioRecording
                         first=ftell(fid);
                         fseek(fid,0,'eof');
                         last=ftell(fid);
-                        obj.sampleCount=(last-first+1)/2;
+                        obj.sampleCount=(last-first+1)/2/nchan;
                 end
                 fclose(fid);
             catch ME
