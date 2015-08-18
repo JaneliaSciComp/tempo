@@ -93,7 +93,7 @@ classdef MouseVocDetector < FeaturesDetector
               delete([fullfile(p,n) '*tmp*.ax']);
               nsteps=(2+length(obj.NFFT));
               filename = fullfile(p,n);
-              if(strcmpi(e,'.wav'))
+              if(strcmpi(e,'.wav')||strcmpi(e,'.bin'))
                 filename = [filename e];
               end
               for i=1:length(obj.NFFT)
