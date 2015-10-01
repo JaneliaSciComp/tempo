@@ -94,18 +94,18 @@ classdef SternRecording < AudioRecording
                 switch version
                     case 1
                         fread(fid, obj.channel-1, 'double');  % skip over first channels
-                        fseek(fid, 8*readStart, 'cof');
+                        fseek(fid, 8*readStart*nchan, 'cof');
                         newData = fread(fid, readLength, 'double', 8*(nchan-1));
                     case 2
                         fread(fid, obj.channel-1, 'single');  % skip over first channels
-                        fseek(fid, 4*readStart, 'cof');
+                        fseek(fid, 4*readStart*nchan, 'cof');
                         newData = fread(fid, readLength, 'single', 4*(nchan-1));
                     case 3
                         tmp=fread(fid,[2 nchan],'double');
                         step=tmp(1,nchan);
                         offset=tmp(2,nchan);
                         fread(fid, obj.channel-1, 'int16');  % skip over first channels
-                        fseek(fid, 2*readStart, 'cof');
+                        fseek(fid, 2*readStart*nchan, 'cof');
                         newData =fread(fid,readLength,'int16', 2*(nchan-1));
                         newData = newData*step+offset;
                 end
