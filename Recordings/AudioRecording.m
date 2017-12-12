@@ -186,8 +186,8 @@ classdef AudioRecording < Recording
         
         function ret_val = saveData(obj)
             ret_val = [tempname 'a.mp4'];
-            frameBegin = min([floor((obj.controller.selectedRange(1) + obj.timeOffset) * obj.sampleRate + 1) obj.sampleCount]);
-            frameEnd = min([floor((obj.controller.selectedRange(2) + obj.timeOffset) * obj.sampleRate + 1) obj.sampleCount]);
+            frameBegin = min([floor((obj.controller.selectedRange(1) + obj.timeOffset) * obj.sampleRate - obj.dataStartSample + 1) obj.sampleCount]);
+            frameEnd = min([floor((obj.controller.selectedRange(2) + obj.timeOffset) * obj.sampleRate - obj.dataStartSample + 1) obj.sampleCount]);
             obj.data(frameBegin:frameEnd);
             resample(ans,48000,obj.sampleRate);
             ans./(max(abs(ans))+eps);
