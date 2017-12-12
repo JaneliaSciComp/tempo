@@ -1044,7 +1044,8 @@ classdef TempoController < handle
             else
                 [filePath, fileName, ~] = fileparts(obj.recordings{1}.filePath);
             end
-            [fileName, filePath] = uiputfile('*.mp4', 'Export Selection', fullfile(filePath, fileName));
+            suggestedFileName = fullfile(filePath, strcat(fileName, '-', num2str(obj.selectedRange(1))));
+            [fileName, filePath] = uiputfile('*.mp4', 'Export Selection', suggestedFileName);
             if ~eq(fileName, 0)
                 exportPath = fullfile(filePath, fileName);
                 [~, fileName, ~] = fileparts(fileName); % strip off the extension
