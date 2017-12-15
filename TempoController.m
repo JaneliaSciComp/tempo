@@ -1636,12 +1636,12 @@ classdef TempoController < handle
                     for i = 1:length(obj.recordings)
                         recording = obj.recordings{i};
                         if isa(recording, 'AudioRecording') && ~recording.muted
-                            audioRange = round((idealRange + recording.timeOffset) * recording.sampleRate);
-                            if audioRange(1) == 0
+                            audioRange = round((idealRange + recording.timeOffset) * recording.sampleRate) - recording.dataStartSample + 1;
+                            if audioRange(1) < 1
                                 audioRange(1) = 1;
                             end
-                            if audioRange(2) > recording.duration * recording.sampleRate
-                                audioRange(2) = floor(recording.duration * recording.sampleRate);
+                            if audioRange(2) > min(recording.bufferSize, recording.sampleCount - recording.dataStartSample)
+                                audioRange(2) = min(recording.bufferSize, recording.sampleCount - recording.dataStartSample);
                             end
                             player = recording.player();
                             if ~isempty(player)

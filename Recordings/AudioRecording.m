@@ -95,17 +95,17 @@ classdef AudioRecording < Recording
         
 
         function loadDataBuffer(obj, startSample)
-            startSample = max([1, min([startSample, obj.sampleCount - obj.bufferSize])]);
+            startSample = max([1, min([startSample, obj.sampleCount - obj.bufferSize + 1])]);
             
             if startSample ~= obj.dataStartSample
                 % Only read the data that we don't already have.
-                endSample = startSample + obj.bufferSize;
-                if startSample < obj.dataStartSample || startSample > obj.dataStartSample + obj.bufferSize
+                endSample = startSample + obj.bufferSize - 1;
+                if startSample < obj.dataStartSample || startSample > obj.dataStartSample + obj.bufferSize - 1
                     readStart = startSample;
                 else
                     readStart = obj.dataStartSample + obj.bufferSize;
                 end
-                if endSample < obj.dataStartSample || endSample > obj.dataStartSample + obj.bufferSize
+                if endSample < obj.dataStartSample || endSample > obj.dataStartSample + obj.bufferSize - 1
                     readEnd = endSample;
                 else
                     readEnd = obj.dataStartSample;
