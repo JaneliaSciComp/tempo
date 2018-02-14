@@ -303,8 +303,8 @@ classdef FeaturesPanel < TimelinePanel
                         end
                         
                         uiElement = findobj(obj.featureHandles, 'UserData', features{i});
-                        delete(uiElement);
                         obj.featureHandles(obj.featureHandles == uiElement) = [];
+                        delete(uiElement);
                     end
                 else
                     error('Tempo:Panel:Features:UnknownUpdateType', 'Unknown feature update type: %s', updateType);
