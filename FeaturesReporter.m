@@ -217,7 +217,14 @@ classdef FeaturesReporter < handle
         
         
         function exportFeatures(obj)
-            [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', 'features.mat');
+            if isprop(obj,'featuresFilePath')
+                [p,n,e] = fileparts(obj.featuresFilePath);
+            elseif length(obj.controller.recordings)>0
+                [p,n,e] = fileparts(obj.controller.recordings{1}.filePath);
+            else
+                p='';  n='';
+            end
+            [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', [fullfile(p,n) '-features.mat']);
             
             if ischar(fileName)
                 features = obj.features();
