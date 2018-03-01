@@ -376,8 +376,10 @@ classdef FeaturesAnnotator < FeaturesReporter
             end
             
             obj.settingsEdited = true;
-            
             uiresume;
+
+            notify(obj, 'FeatureTypesDidChange');
+            notify(obj, 'FeaturesDidChange', FeaturesChangedEventData('update', obj.features()));
         end
         
         
