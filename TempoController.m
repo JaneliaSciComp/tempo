@@ -745,6 +745,7 @@ classdef TempoController < handle
         
         
         function arrangeVideoPanels(obj, ~, ~)
+            if isempty(obj.videosPanel)  return;  end
             % Get the size of the top-level panel.
             set(obj.videosPanel, 'Units', 'pixels');
             videosPos = get(obj.videosPanel, 'Position');
@@ -779,6 +780,7 @@ classdef TempoController < handle
         
         
         function arrangeTimelinePanels(obj, ~, ~)
+            if isempty(obj.timelinesPanel)  return;  end
             % Get the size of the top-level panel.
             set(obj.timelinesPanel, 'Units', 'pixels');
             timelinesPos = get(obj.timelinesPanel, 'Position');
@@ -1882,7 +1884,7 @@ classdef TempoController < handle
             if obj.selectedRange(1) > obj.displayRange(2) || obj.selectedRange(2) < obj.displayRange(1)
                 obj.centerDisplayAtTime(mean(obj.selectedRange(1:2)));
             end
-        end
+       end
         
         
         function setZoom(obj, zoom)
@@ -1904,6 +1906,7 @@ classdef TempoController < handle
         
         
         function handleResize(obj, ~, ~)
+            if isempty(obj.splitter)  return;  end
             obj.splitter.resize();
             
             % The panels' ResizeFcn's should take care of this but they aren't for some reason.
@@ -2161,7 +2164,7 @@ classdef TempoController < handle
                 set(gcf, 'Pointer', 'arrow');
             end
         end
-        
+            
         
         function resetKeyboardFocus(obj)
             % Move the keyboard focus back to the figure so all of the key shortcuts will work.
