@@ -406,9 +406,14 @@ classdef FeaturesAnnotator < FeaturesReporter
                             beep
                         end
                     else
-                        % Add a point feature at the start of the current time.
-                        feature = Feature(featureDef.name, panel.controller.currentTime, ...
-                                          'Color', featureDef.color);
+                        if panel.controller.selectedRange(1) == panel.controller.selectedRange(2)
+                            % Add a point feature at the start of the current time.
+                            feature = Feature(featureDef.name, panel.controller.currentTime, ...
+                                              'Color', featureDef.color);
+                        else
+                            % The selection is  a range.
+                            beep
+                        end
                     end
                     
                     if ~isempty(feature)
