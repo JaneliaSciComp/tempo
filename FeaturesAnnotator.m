@@ -416,15 +416,19 @@ classdef FeaturesAnnotator < FeaturesReporter
                         end
                     end
                     
-                    if ~isempty(feature)
-                        obj.addFeatures({feature});
-                        
-                        panel.selectFeature(feature);
-                        
-                        panel.controller.addUndoableAction(['Add ' feature.type], ...
-                                                           @() obj.removeFeatures({feature}), ...
-                                                           @() obj.addFeatures({feature}), ...
-                                                           panel);
+                    if ~isempty(feature) 
+                        if ~any(cellfun(@(x) strcmp(x.type,feature.type) && all(x.range==feature.range), obj.features()))
+                            obj.addFeatures({feature});
+
+                            panel.selectFeature(feature);
+
+                            panel.controller.addUndoableAction(['Add ' feature.type], ...
+                                                               @() obj.removeFeatures({feature}), ...
+                                                               @() obj.addFeatures({feature}), ...
+                                                               panel);
+                        else
+                            beep
+                        end
                     end
                     
                     handled = true;
