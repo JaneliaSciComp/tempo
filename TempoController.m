@@ -757,7 +757,7 @@ classdef TempoController < handle
             set(obj.videoIconAxes, 'Visible', onOff(isempty(obj.videoPanels)), ...
                                    'Position', iconAxesPos);
             
-            set(obj.videoSlider, 'Position', [1, 0, videosPos(3), 16]);
+            set(obj.videoSlider, 'Position', [10, 0, videosPos(3)-20, 16]);
         end
         
         
@@ -800,7 +800,7 @@ classdef TempoController < handle
             axis(obj.timelineIconAxes, 'off');
             
             % Position the timeline slider at the bottom.
-            set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 2, 16]);
+            set(obj.timelineSlider, 'Position', [10, 0, timelinesPos(3)-20, 16]);
         end
         
         
