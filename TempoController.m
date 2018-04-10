@@ -2253,10 +2253,10 @@ classdef TempoController < handle
                 obj.displayRange = range;
                 
                 % Adjust the step and page sizes of the time slider.
-                stepSize = 1 / obj.zoom;
+                stepSize = 2/3 / obj.zoom;
                 curMax = get(obj.timelineSlider, 'Max');
                 newValue = mean(obj.displayRange(1:2));
-                set(obj.timelineSlider, 'SliderStep', [stepSize / 50.0 stepSize], ...
+                set(obj.timelineSlider, 'SliderStep', [stepSize/10 stepSize], ...
                                         'Value', newValue, ...
                                         'Max', max(curMax, newValue));
             end
