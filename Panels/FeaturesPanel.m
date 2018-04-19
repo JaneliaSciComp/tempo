@@ -22,7 +22,13 @@ classdef FeaturesPanel < TimelinePanel
         featureTypesListener
         featuresListener
         timeRangesListener
-    end
+
+        noDisplayLabel
+        
+        stagingFigure
+        stagingAxes
+        iFeaturesDisplayed
+end
     
 	
 	methods
@@ -37,16 +43,22 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-	    function createControls(obj, ~, varargin)
+	    function createControls(obj, panelSize, varargin)
             % For new panels the reporter comes in varargin.
             % For panels loaded from a workspace varargin will be empty but the reporter is already set.
             if isempty(obj.reporter)
                 obj.reporter = varargin{1};
             end
             
+            obj.noDisplayLabel = text(panelSize(1) / 2, panelSize(2) / 2, 'Zoom in to see the spectrogram', 'Units', 'pixels', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'Visible', 'off');
+            
             obj.updateFeatureTypes();
             obj.updateTimeRanges();
-            obj.updateFeatures('add', obj.reporter.features());
+            
+            h=get(groot,'CurrentFigure');
+            obj.stagingFigure=figure('visible','off');
+            obj.stagingAxes=axes('Parent',obj.stagingFigure);
+            set(groot,'CurrentFigure',h);
             
             % Listen for whenever the reporter changes its features or types.
             obj.featureTypesListener = addlistener(obj.reporter, 'FeatureTypesDidChange', @(source, event)handleFeatureTypesDidChange(obj, source, event));
@@ -113,7 +125,7 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function handleFeaturesDidChange(obj, ~, eventData)
-            obj.updateFeatures(eventData.type, eventData.features);
+            obj.updateAxes(obj.controller.displayRange);
         end
         
         
@@ -189,126 +201,100 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function updateFeatures(obj, updateType, features)
-            % Add or remove the features from the display.
-            % updateType will be 'add', 'update' or 'remove'.
-            % Features is a cell array as there may be sub-classes.
-            
+        function updateAxes(obj, timeRange)
             if ~isempty(obj.reporter)
+                set(obj.controller.figure, 'pointer', 'watch');  drawnow;
+                
+                features = obj.reporter.features();
+                iFeaturesInRange = cellfun( ...
+                        @(x) x.range(1)<=timeRange(2) && x.range(2)>=timeRange(1) && ...
+                             x.range(3)<=timeRange(4) && x.range(4)>=timeRange(3), features);
+                         
+                if sum(iFeaturesInRange)>10000
+                    set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'Zoom in to see the features.');
+                    set(obj.controller.figure, 'pointer', 'arrow');  drawnow;
+                    return;
+                end
+                set(obj.noDisplayLabel, 'Visible', 'off');
+
+                iFeaturesInRange = find(iFeaturesInRange);
+                iFeaturesToHide = setdiff(obj.iFeaturesDisplayed, iFeaturesInRange);
+                iFeaturesToShow = setdiff(iFeaturesInRange, obj.iFeaturesDisplayed);
+                obj.iFeaturesDisplayed = iFeaturesInRange;
+
+                for i=1:length(iFeaturesToHide)
+                    set(obj.featureHandles(iFeaturesToHide(i)), 'Parent', obj.stagingAxes);
+                end
+                
                 featureTypes = obj.reporter.featureTypes();
                 
-                if strcmp(updateType, 'add') || strcmp(updateType, 'update')
-                    % Get the range of frequencies for the whole reporter so features can be positioned in that space.
-                    featuresRange = obj.reporter.featuresRange();
-                    minFreq = featuresRange(3);
-                    maxFreq = featuresRange(4);
+                % Get the range of frequencies for the whole reporter so features can be positioned in that space.
+                featuresRange = obj.reporter.featuresRange();
+                minFreq = featuresRange(3);
+                maxFreq = featuresRange(4);
+
+                spacing = 1 / length(featureTypes);
+
+                % Add or update a text or patch for each feature.
+                for i = 1:length(iFeaturesToShow)
+                    iFeature = iFeaturesToShow(i);
                     
-                    spacing = 1 / length(featureTypes);
-                    
-                    % Add or update a text or patch for each feature.
-                    for i = 1:length(features)
-                        feature = features{i};
-                        featureIsPoint = (feature.startTime == feature.endTime);
-                        
-                        if strcmp(updateType, 'add')
-                            uiElement = [];
-                        else
-                            uiElement = findobj(obj.featureHandles, 'UserData', feature);
-                            
-                            if ~isempty(uiElement)
-                                % If the feature changed from a range to a point or vice-versa then the UI element needs to be recreated.
-                                uiElementType = get(uiElement, 'Type');
-                                if (featureIsPoint && ~strcmp(uiElementType, 'text')) || ...
-                                   (~featureIsPoint && ~strcmp(uiElementType, 'patch'))
-                                    obj.featureHandles(obj.featureHandles == uiElement) = [];
-                                    if obj.selectedFeature == feature
-                                        obj.selectedFeatureHandle = [];
-                                    end
-                                    delete(uiElement);
-                                    uiElement = [];
-                                end
-                            end
-                        end
-                        
-                        y = find(strcmp(featureTypes, feature.type));
-                        yCen = (length(featureTypes) - y + 0.5) * spacing;
-                        if featureIsPoint
-                            % Add or update a point feature.
-                            
-                            if isempty(uiElement)
-                                % Create a new text for the feature.
-                                set(obj.controller.figure, 'CurrentAxes', obj.axes);
-                                obj.featureHandles(end + 1) = text(feature.startTime, yCen, 'x', ...
-                                    'Parent', obj.axes, ...
-                                    'HorizontalAlignment', 'center', ...
-                                    'VerticalAlignment', 'middle', ...
-                                    'Color', feature.color(), ...
-                                    'Clipping', 'on', ...
-                                    'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
-                                    'UserData', feature);
-                                if obj.selectedFeature == feature
-                                    obj.selectedFeatureHandle = obj.featureHandles(end);
-                                end
-                            else
-                                % Update the existing text.
-                                set(uiElement, 'Position', [feature.startTime, yCen], ...
-                                               'Color', feature.color());
-                            end
-                        else
-                            % Add or update a range feature.
-                            
-                            x0 = feature.startTime;
-                            x1 = feature.endTime;
-                            
-                            minY = yCen - spacing * 0.45;
-                            maxY = minY + spacing * 0.9;
-                            if feature.lowFreq > -Inf && feature.highFreq < Inf
-                                % Scale the upper and lower edges of the patch to the feature's frequency range.
-                                y0 = (feature.lowFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
-                                y1 = (feature.highFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
-                            else
-                                % Have the patch cover the full vertical space for this feature type.
-                                y0 = minY;
-                                y1 = maxY;
-                            end
-                            
-                            fillColor = feature.color();
-                            edgeColor = fillColor * 0.5;
-                            
-                            if isempty(uiElement)
-                                % Create a new patch for the feature.
-                                set(obj.controller.figure, 'CurrentAxes', obj.axes);
-                                obj.featureHandles(end + 1) = patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
-                                    'Parent', obj.axes, ...
-                                    'EdgeColor', edgeColor, ...
-                                    'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
-                                    'UserData', feature);
-                                if obj.selectedFeature == feature
-                                    obj.selectedFeatureHandle = obj.featureHandles(end);
-                                end
-                            else
-                                % Update the existing patch.
-                                set(uiElement, 'XData', [x0 x1 x1 x0 x0], ...
-                                               'YData', [y0 y0 y1 y1 y0], ...
-                                               'CData', fillColor, ...
-                                               'EdgeColor', edgeColor);
-                            end
-                        end
+                    if length(obj.featureHandles)>=iFeature && obj.featureHandles(iFeature)~=0
+                        set(obj.featureHandles(iFeature), 'Parent', obj.axes);
+                        continue;
                     end
-                elseif strcmp(updateType, 'remove')
-                    % Remove the texts/patches for the features.
-                    for i = 1:length(features)
-                        if features{i} == obj.selectedFeature
-                            obj.selectFeature([]);
+
+                    feature = features{iFeature};
+                    featureIsPoint = (feature.startTime == feature.endTime);
+
+                    uiElement = [];
+
+                    y = find(strcmp(featureTypes, feature.type));
+                    yCen = (length(featureTypes) - y + 0.5) * spacing;
+                    if featureIsPoint
+                        % Add or update a point feature.
+
+                        % Create a new text for the feature.
+                        %set(obj.controller.figure, 'CurrentAxes', obj.axes);
+                        obj.featureHandles(iFeature) = text(feature.startTime, yCen, 'x', ...
+                            'Parent', obj.axes, ...
+                            'HorizontalAlignment', 'center', ...
+                            'VerticalAlignment', 'middle', ...
+                            'Color', feature.color(), ...
+                            'Clipping', 'on', ...
+                            'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
+                            'UserData', feature);
+                    else
+                        % Add or update a range feature.
+
+                        x0 = feature.startTime;
+                        x1 = feature.endTime;
+
+                        minY = yCen - spacing * 0.45;
+                        maxY = minY + spacing * 0.9;
+                        if feature.lowFreq > -Inf && feature.highFreq < Inf
+                            % Scale the upper and lower edges of the patch to the feature's frequency range.
+                            y0 = (feature.lowFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
+                            y1 = (feature.highFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
+                        else
+                            % Have the patch cover the full vertical space for this feature type.
+                            y0 = minY;
+                            y1 = maxY;
                         end
-                        
-                        uiElement = findobj(obj.featureHandles, 'UserData', features{i});
-                        obj.featureHandles(obj.featureHandles == uiElement) = [];
-                        delete(uiElement);
+
+                        fillColor = feature.color();
+                        edgeColor = fillColor * 0.5;
+
+                        % Create a new patch for the feature.
+                        set(obj.controller.figure, 'CurrentAxes', obj.axes);
+                        obj.featureHandles(iFeature) = patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
+                            'Parent', obj.axes, ...
+                            'EdgeColor', edgeColor, ...
+                            'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
+                            'UserData', feature);
                     end
-                else
-                    error('Tempo:Panel:Features:UnknownUpdateType', 'Unknown feature update type: %s', updateType);
                 end
+            set(obj.controller.figure, 'pointer', 'arrow');  drawnow;
             end
         end
         
@@ -320,6 +306,7 @@ classdef FeaturesPanel < TimelinePanel
                 set(obj.featureTypeShadows(i), 'Position', [6, (length(obj.featureTypeLabels) - i + 0.65) * spacing * panelSize(2) - 1]);
                 set(obj.featureTypeLabels(i), 'Position', [5, (length(obj.featureTypeLabels) - i + 0.65) * spacing * panelSize(2)]);
             end
+            set(obj.noDisplayLabel, 'Position', [panelSize(1) / 2, panelSize(2) / 2]);
         end
         
         
@@ -608,7 +595,7 @@ classdef FeaturesPanel < TimelinePanel
                     obj.selectedFeatureListener = addlistener(obj.selectedFeature, 'RangeChanged', @(source, event)handleFeatureDidChange(obj, source, event));
                     
                     % Temporarily clear the button down function so the user can edit the bounds of the feature.
-                    obj.selectedFeatureHandle = findobj(obj.featureHandles, 'UserData', obj.selectedFeature);
+                    obj.selectedFeatureHandle = findobj(obj.featureHandles(obj.featureHandles~=0), 'UserData', obj.selectedFeature);
                     set(obj.selectedFeatureHandle, 'ButtonDownFcn', []);
                     
                     % Also set the timeline's selection.
@@ -670,7 +657,7 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function handleFeatureDidChange(obj, feature, ~)
-            obj.updateFeatures('update', {feature});
+            obj.updateAxes(obj.controller.displayRange);
             
             if obj.selectedFeature == feature
                 % Update the timeline's selection.
