@@ -313,7 +313,8 @@ end
         function handled = keyWasPressed(obj, keyEvent)
             handled = false;
             altDown = any(ismember(keyEvent.Modifier, 'alt'));
-            if altDown && strcmp(keyEvent.Key, 'leftarrow')
+            shiftDown = any(ismember(keyEvent.Modifier, 'shift'));
+            if ~shiftDown && altDown && strcmp(keyEvent.Key, 'leftarrow')
                 % Move the selection to the previous feature.
                 features = obj.reporter.features();
                 earlierFeatures = features(cellfun(@(f) f.endTime < obj.controller.selectedRange(1), features));
@@ -324,10 +325,32 @@ end
                     obj.selectFeature(earlierFeatures{ind});
                 end
                 handled = true;
-            elseif altDown && strcmp(keyEvent.Key, 'rightarrow')
+            elseif ~shiftDown && altDown && strcmp(keyEvent.Key, 'rightarrow')
                 % Move the selection to the next feature.
                 features = obj.reporter.features();
                 laterFeatures = features(cellfun(@(f) f.startTime > obj.controller.selectedRange(2), features));
+                if isempty(laterFeatures)
+                    beep
+                else
+                    [~, ind] = min(cellfun(@(f) f.startTime, laterFeatures));
+                    obj.selectFeature(laterFeatures{ind});
+                end
+                handled = true;
+            elseif shiftDown && altDown && strcmp(keyEvent.Key, 'leftarrow')
+                % Move the selection to the previous feature of the same type.
+                features = obj.reporter.features();
+                earlierFeatures = features(cellfun(@(f) f.endTime < obj.controller.selectedRange(1) && strcmp(f.type,obj.selectedFeature.type), features));
+                if isempty(earlierFeatures)
+                    beep
+                else
+                    [~, ind] = max(cellfun(@(f) f.endTime, earlierFeatures));
+                    obj.selectFeature(earlierFeatures{ind});
+                end
+                handled = true;
+            elseif shiftDown && altDown && strcmp(keyEvent.Key, 'rightarrow')
+                % Move the selection to the next feature of the same type.
+                features = obj.reporter.features();
+                laterFeatures = features(cellfun(@(f) f.startTime > obj.controller.selectedRange(1) && strcmp(f.type,obj.selectedFeature.type), features));
                 if isempty(laterFeatures)
                     beep
                 else
