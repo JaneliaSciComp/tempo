@@ -582,6 +582,26 @@ end
                     obj.selectFeature([]);
                 end
                 
+                for i=1:length(obj.featureHandles)
+                    if strcmp(get(obj.featureHandles(i),'Type'),'text')
+                        pos = get(obj.featureHandles(i),'Position');
+                        startTime = pos(1);
+                        endTime = pos(1);
+                    else % patch
+                        vert = get(obj.featureHandles(i),'Vertices');
+                        startTime = vert(1,1);
+                        endTime = vert(2,1);
+                    end
+                    if startTime==feature.startTime && endTime==feature.endTime
+                        delete(obj.featureHandles(i));
+                        obj.featureHandles(i)=[];
+                        obj.iFeaturesDisplayed = setdiff(obj.iFeaturesDisplayed, i);
+                        idx = find(obj.iFeaturesDisplayed>i);
+                        obj.iFeaturesDisplayed(idx) = obj.iFeaturesDisplayed(idx) - 1;
+                        break;
+                    end
+                end
+                
                 obj.reporter.removeFeatures({feature});
                 
                 % Create a new reference to the reporter object so it doesn't get destroyed when this panel does.
