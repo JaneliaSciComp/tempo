@@ -131,11 +131,11 @@ classdef AudioRecording < Recording
 
         function newData = readData(obj, readStart, readLength)
             if isempty(which('audioread'))
-                [data, obj.sampleRate] = wavread(obj.filePath, [readStart readStart+readLength], 'native');
+                [data, obj.sampleRate] = wavread(obj.filePath, [readStart readStart+readLength]);
             else
-                [data, obj.sampleRate] = audioread(obj.filePath, [readStart readStart+readLength], 'native');
+                [data, obj.sampleRate] = audioread(obj.filePath, [readStart readStart+readLength]);
             end
-            newData = double(data(:,obj.channel));
+            newData = data(:,obj.channel);
         end
         
         
