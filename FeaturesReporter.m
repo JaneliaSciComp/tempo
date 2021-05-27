@@ -1,4 +1,4 @@
-classdef FeatureReporter < handle
+classdef FeaturesReporter < handle
     
     properties
         name;
@@ -8,15 +8,20 @@ classdef FeatureReporter < handle
     
     properties (Transient)
         controller
-        waitBarHandle;
-        contextualMenu;
+        featuresRange
+    end
+    
+    
+    properties (Transient, Access = private)
+        waitBarHandle
+        cachedFeatureTypes
     end
     
     
     properties (Access = private)
-        featureList;
-        featureListSize;
-        featureCount;
+        featureList = {}
+        featureListSize
+        featureCount
     end
     
     
@@ -26,6 +31,7 @@ classdef FeatureReporter < handle
     
     
     events
+        FeatureTypesDidChange
         FeaturesDidChange
     end
     
@@ -57,7 +63,7 @@ classdef FeatureReporter < handle
     
     methods
         
-        function obj = FeatureReporter(controller, varargin)
+        function obj = FeaturesReporter(controller, varargin)
             obj = obj@handle();
             
             obj.controller = controller;
@@ -79,23 +85,27 @@ classdef FeatureReporter < handle
         
         
         function setFeatures(obj, featureList)
-            obj.featureList = num2cell(featureList);
+            if iscell(featureList)
+                obj.featureList = featureList;
+            else
+                obj.featureList = num2cell(featureList);
+            end
             obj.featureListSize = length(featureList);
             obj.featureCount = obj.featureListSize;
+            
+            obj.cachedFeatureTypes = {};
             
             notify(obj, 'FeaturesDidChange');
         end
         
         
-        function ft = featureTypes(obj)
-            % Return the list of feature types that are being reported.  (a subset of the list returned by possibleFeatureTypes)
-            % The list of types could be cached but this code is pretty fast.
-            f = [obj.featureList{1:obj.featureCount}];
-            if isempty(f)
-                ft = {};
-            else
-                ft = unique({f.type});
+        function types = featureTypes(obj)
+            % Return the list of feature types that are being reported.
+            if isempty(obj.cachedFeatureTypes)
+                obj.cachedFeatureTypes = unique(cellfun(@(f) f.type, obj.featureList(1:obj.featureCount), 'UniformOutput', false));
             end
+            
+            types = obj.cachedFeatureTypes;
         end
         
         
@@ -110,13 +120,29 @@ classdef FeatureReporter < handle
             end
             for i = 1:numFeatures
                 if iscell(features)
+                    features{i}.reporter = obj;
                     obj.featureList{obj.featureCount - numFeatures + i} = features{i};
                 else
+                    features(i).reporter = obj;
                     obj.featureList{obj.featureCount - numFeatures + i} = features(i);
                 end
             end
             
-            notify(obj, 'FeaturesDidChange');
+            % Check if any of the new features have a new type.
+            if iscell(features)
+                ~all(ismember(cellfun(@(f) f.type, features, 'UniformOutput', false), obj.featureTypes()));
+            else
+                [tmp{1:length(features)}]=deal(features.type);
+                ~all(ismember(tmp, obj.featureTypes()));
+            end
+            if ans
+                obj.cachedFeatureTypes = [];    % indicate that the types must be recalculated
+                notify(obj, 'FeatureTypesDidChange', FeaturesChangedEventData('add', features));
+            end
+            
+            obj.featuresRange = [];         % indicate that the range must be recalculated
+            
+            notify(obj, 'FeaturesDidChange', FeaturesChangedEventData('add', features));
         end
         
         
@@ -130,7 +156,7 @@ classdef FeatureReporter < handle
                     feature = features(j);
                 end
                 
-                pos = cellfun(@(f) eq(f, feature), {obj.featureList{1:obj.featureCount}});
+                pos = cellfun(@(f) eq(f, feature), obj.featureList(1:obj.featureCount));
                 obj.featureList(pos) = [];
                 obj.featureListSize = obj.featureListSize - 1;
                 obj.featureCount = obj.featureCount - 1;
@@ -139,20 +165,49 @@ classdef FeatureReporter < handle
             end
             
             if featureWasRemoved
-                notify(obj, 'FeaturesDidChange');
+                obj.featuresRange = []; % indicate that the range must be recalculated
+                
+                notify(obj, 'FeaturesDidChange', FeaturesChangedEventData('remove', features));
             end
             
         end
         
         
         function d = get.duration(obj)
-            % TODO: this value could be pre-computed
-            fs = obj.features();
-            if isempty(fs)
-                d = 0;
-            else
-                d = max(cellfun(@(f) f.endTime, fs));
+            range = obj.featuresRange();
+            d = range(2);
+        end
+        
+        
+        function range = get.featuresRange(obj)
+            % Return the maximum range of all features in time and frequency.
+            if isempty(obj.featuresRange)
+                % Calculate the maximum range of all features.
+                obj.featuresRange = [0 0 -inf inf];
+                features = obj.featureList(1:obj.featureCount);
+                if ~isempty(features)
+                    % Get the min and max in time and frequency of all features.
+                    
+                    minTime = min(cellfun(@(f) f.startTime, features));
+                    maxTime = max(cellfun(@(f) f.endTime, features));
+                    
+                    lowFreqs = cellfun(@(f) f.lowFreq, features);
+                    minFreq = min(lowFreqs(lowFreqs > -Inf));
+                    if isempty(minFreq)
+                        minFreq = -Inf;
+                    end
+                    
+                    maxFreqs = cellfun(@(f) f.highFreq, features);
+                    maxFreq = max(maxFreqs(maxFreqs < Inf));
+                    if isempty(maxFreq)
+                        maxFreq = Inf;
+                    end
+                    
+                    obj.featuresRange = [minTime maxTime minFreq maxFreq];
+                end
             end
+            
+            range = obj.featuresRange;
         end
         
         
@@ -162,7 +217,14 @@ classdef FeatureReporter < handle
         
         
         function exportFeatures(obj)
-            [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', 'features.mat');
+            if isprop(obj,'featuresFilePath')
+                [p,n,e] = fileparts(obj.featuresFilePath);
+            elseif length(obj.controller.recordings)>0
+                [p,n,e] = fileparts(obj.controller.recordings{1}.filePath);
+            else
+                p='';  n='';
+            end
+            [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', [fullfile(p,n) '-features.mat']);
             
             if ischar(fileName)
                 features = obj.features();
@@ -191,7 +253,7 @@ classdef FeatureReporter < handle
                     fid = fopen(fullfile(pathName, fileName), 'w');
                     
                     propNames = {};
-                    ignoreProps = {'type', 'range', 'contextualMenu', 'startTime', 'endTime', 'lowFreq', 'highFreq', 'duration'};
+                    ignoreProps = {'type', 'range', 'color', 'startTime', 'endTime', 'lowFreq', 'highFreq', 'duration'};
                     
                     % Find all of the feature properties so we know how many columns there will be.
                     for f = 1:length(features)

@@ -1,4 +1,4 @@
-classdef SavedFeaturesImporter < FeatureImporter
+classdef SavedFeaturesImporter < FeaturesImporter
     
     properties
     end
@@ -23,13 +23,21 @@ classdef SavedFeaturesImporter < FeatureImporter
                 end
             end
         end
+        
+        function obj = loadobj(data)
+            obj = SavedFeaturesImporter([], data.featuresFilePath);
+            obj.name = data.name;
+            obj.setFeatures(data.featureList(1:data.featureCount));
+            obj.featuresColor = data.featuresColor;
+        end
+        
     end
     
     
     methods
         
         function obj = SavedFeaturesImporter(controller, featuresFilePath)
-            obj = obj@FeatureImporter(controller, featuresFilePath);
+            obj = obj@FeaturesImporter(controller, featuresFilePath);
         end
         
         

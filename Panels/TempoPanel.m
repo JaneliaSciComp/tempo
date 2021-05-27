@@ -11,6 +11,11 @@ classdef TempoPanel < handle
         controller
         panel
         
+        axes
+        
+    end
+    
+    properties (Transient, Access = private)
         titlePanel
         closeButton
         showHideButton
@@ -21,9 +26,7 @@ classdef TempoPanel < handle
         titleText
         helpButton
         
-        axes
-        
-        listeners = {}
+        currentTimeListener
     end
     
     
@@ -143,8 +146,8 @@ classdef TempoPanel < handle
                 obj.addActionMenuItems(obj.actionMenu);
             end
             
-            % Add listeners so we know when the current time and selection change.
-            obj.listeners{end + 1} = addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
+            % Add listeners so we know when the current time changes.
+            obj.currentTimeListener = addlistener(obj.controller, 'currentTime', 'PostSet', @(source, event)handleCurrentTimeChanged(obj, source, event));
         end
         
         
@@ -224,11 +227,15 @@ classdef TempoPanel < handle
         
         function handleHidePanel(obj, ~, ~)
             obj.controller.hidePanel(obj);
+            
+            obj.controller.resetKeyboardFocus();
         end
         
         
         function handleShowPanel(obj, ~, ~)
             obj.controller.showPanel(obj);
+            
+            obj.controller.resetKeyboardFocus();
         end
         
         
@@ -246,6 +253,8 @@ classdef TempoPanel < handle
         
         function handleShowHelp(obj, ~, ~)
             TempoHelp().openPage('UserInterface', class(obj));
+            
+            obj.controller.resetKeyboardFocus();
         end
         
         
@@ -316,14 +325,19 @@ classdef TempoPanel < handle
         function close(obj)
             % Subclasses can override this if they need to do anything more.
             
-            % Delete any listeners.
-            cellfun(@(x) delete(x), obj.listeners);
-            obj.listeners = {};
+            delete(obj.currentTimeListener);
+            obj.currentTimeListener = [];
             
             % Remove the uipanel from the figure.
             if ishandle(obj.panel)
                 delete(obj.panel);
             end
+        end
+        
+        
+        function delete(obj)
+            delete(obj.currentTimeListener);
+            obj.currentTimeListener = [];
         end
         
     end

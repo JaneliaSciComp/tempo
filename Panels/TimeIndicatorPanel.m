@@ -34,7 +34,16 @@ classdef TimeIndicatorPanel < TimelinePanel
         
         function updateAxes(obj, timeRange)
             set(obj.controller.figure, 'CurrentAxes', obj.axes);
-            cla;
+            
+            try
+                cla;
+            catch ME
+                % Occasionally this error gets thrown while annotating.
+                % It shouldn't be happening but for now we just ignore it.
+                if ~strcmp(ME.identifier, 'MATLAB:hg:udd_interface:CannotDelete')
+                    rethrow(ME);
+                end
+            end
             
             set(obj.axes, 'TickLength', [0 0]);
             

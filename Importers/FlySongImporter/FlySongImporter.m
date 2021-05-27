@@ -1,4 +1,4 @@
-classdef FlySongImporter < FeatureImporter
+classdef FlySongImporter < FeaturesImporter
     
     properties
     end
@@ -39,7 +39,7 @@ classdef FlySongImporter < FeatureImporter
     methods
         
         function obj = FlySongImporter(controller, featuresFilePath)
-            obj = obj@FeatureImporter(controller, featuresFilePath);
+            obj = obj@FeaturesImporter(controller, featuresFilePath);
         end
         
         

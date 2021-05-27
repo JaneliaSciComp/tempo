@@ -38,10 +38,6 @@ classdef UndoManager < handle
             obj.undoStack{obj.undoIndex} = action;
             
             notify(obj, 'UndoStackChanged');
-            
-%             % Mark the workspace as dirty.
-%             % TODO: can this be determined by the state of the undo stack?
-%             obj.needsSave = true;
         end
         
         

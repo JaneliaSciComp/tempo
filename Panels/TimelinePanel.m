@@ -9,6 +9,9 @@ classdef TimelinePanel < TempoPanel
         selectionPatch
         
         axesXLim = [0 0]
+        
+        displayRangeListener
+        selectedRangeListener
 	end
 	
 	methods
@@ -17,7 +20,7 @@ classdef TimelinePanel < TempoPanel
 			obj = obj@TempoPanel(controller, varargin{:});
              
             obj.handleSelectedRangeChanged();
-%             obj.handleTimeWindowChanged();
+%             obj.handleDisplayRangeChanged();
         end
         
         
@@ -31,8 +34,8 @@ classdef TimelinePanel < TempoPanel
             obj.selectionPatch = patch([0 1 1 0], [-100000 -100000 200000 200000], 'r', 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'Visible', 'off', 'HitTest', 'off', 'HandleVisibility', 'off');
             
             % Add listeners so we know when the current time and selection change.
-            obj.listeners{end + 1} = addlistener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
-            obj.listeners{end + 1} = addlistener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
+            obj.displayRangeListener = addlistener(obj.controller, 'displayRange', 'PostSet', @(source, event)handleDisplayRangeChanged(obj, source, event));
+            obj.selectedRangeListener = addlistener(obj.controller, 'selectedRange', 'PostSet', @(source, event)handleSelectedRangeChanged(obj, source, event));
             
             obj.axesXLim = [0 0];
 		end
@@ -80,7 +83,7 @@ classdef TimelinePanel < TempoPanel
         end
         
         
-        function handleTimeWindowChanged(obj, ~, ~)
+        function handleDisplayRangeChanged(obj, ~, ~)
             if ~obj.isHidden && ~isempty(obj.controller) && ~isempty(obj.controller.displayRange)
                 % For performance only update the axes if the time range has changed.
                 % The spectogram needs to update even when playback stops and the range doesn't change so it's special cased.
@@ -98,7 +101,24 @@ classdef TimelinePanel < TempoPanel
         function handleResize(obj, source, event)
             handleResize@TempoPanel(obj, source, event);
             if ~obj.isHidden
-                obj.handleTimeWindowChanged(source, event);
+                obj.handleDisplayRangeChanged(source, event);
+            end
+        end
+        
+        
+        function setEditedRange(obj, editedObject, range, ~)
+            if editedObject == obj.axes
+                % The user modified the selection with the mouse.
+                
+                % If the current time was at the beginning or end of the selection then keep it there.
+                % TODO: does this still work with modifying a feature?
+                if obj.controller.currentTime == obj.controller.selectedRange(1)
+                    obj.controller.currentTime = range(1);
+                elseif obj.controller.currentTime == obj.controller.selectedRange(2)
+                    obj.controller.currentTime = range(2);
+                end
+                
+                obj.controller.selectedRange = range;
             end
         end
         
@@ -140,7 +160,7 @@ classdef TimelinePanel < TempoPanel
             if ~obj.isHidden
                 % Make sure everything is in sync.
                 obj.handleSelectedRangeChanged([], []);
-                obj.handleTimeWindowChanged([], []);
+                obj.handleDisplayRangeChanged([], []);
             end
         end
         
@@ -179,9 +199,9 @@ classdef TimelinePanel < TempoPanel
                     timeChange = stepSize;
                 end
             elseif strcmp(keyEvent.Key, 'pageup')
-                timeChange = -pageSize;
+                timeChange = -2/3*pageSize;
             elseif strcmp(keyEvent.Key, 'pagedown')
-                timeChange = pageSize;
+                timeChange = 2/3*pageSize;
             elseif strcmp(keyEvent.Key, 'uparrow')
                 if cmdDown
                     obj.controller.setZoom(1);
@@ -219,6 +239,24 @@ classdef TimelinePanel < TempoPanel
             elseif ~handled
                 handled = keyWasPressed@TempoPanel(obj, keyEvent);
             end
+        end
+        
+        
+        function close(obj)
+            delete(obj.displayRangeListener);
+            obj.displayRangeListener = [];
+            delete(obj.selectedRangeListener);
+            obj.selectedRangeListener = [];
+            
+            close@TempoPanel(obj);
+        end
+        
+        
+        function delete(obj)
+            delete(obj.displayRangeListener);
+            obj.displayRangeListener = [];
+            delete(obj.selectedRangeListener);
+            obj.selectedRangeListener = [];
         end
         
 	end

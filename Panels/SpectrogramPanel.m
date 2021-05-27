@@ -19,6 +19,9 @@ classdef SpectrogramPanel < TimelinePanel
 
         reporter
         bounding_boxes
+        
+        windowSizeListener
+        listeners = {}
     end
 	
     
@@ -36,7 +39,16 @@ classdef SpectrogramPanel < TimelinePanel
         end
         
         
-        function handleSpectrogramParametersChanged(obj, ~, ~)
+        function handleDisplayRangeChanged(obj, source, event)
+            handleDisplayRangeChanged@TimelinePanel(obj, source, event);
+            
+            if ~isempty(obj.controller.displayRange) && ~obj.isHidden
+                obj.updateAxes(obj.controller.displayRange);
+            end
+        end
+        
+        
+        function handleTimeWindowChanged(obj, ~, ~)
             if ~isempty(obj.controller.displayRange) && ~obj.isHidden
                 obj.updateAxes(obj.controller.displayRange);
             end
@@ -56,10 +68,7 @@ classdef SpectrogramPanel < TimelinePanel
             obj.otherLabel = text(5, panelSize(2), '', 'Units', 'pixels', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', 'BackgroundColor', 'white');
             obj.noDisplayLabel = text(panelSize(1) / 2, panelSize(2) / 2, 'Zoom in to see the spectrogram', 'Units', 'pixels', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'Visible', 'off');
             
-            obj.listeners{end + 1} = addlistener(obj.controller, 'windowSize', 'PostSet', ...
-                @(source, event)handleSpectrogramParametersChanged(obj, source, event));
-            obj.listeners{end + 1} = addlistener(obj.controller, 'displayRange', 'PostSet', ...
-                @(source, event)handleSpectrogramParametersChanged(obj, source, event));
+            obj.windowSizeListener = addlistener(obj.controller, 'windowSize', 'PostSet', @(source, event)handleTimeWindowChanged(obj, source, event));
         end
         
         
@@ -168,6 +177,12 @@ classdef SpectrogramPanel < TimelinePanel
                         postPixels = floor(postFraction * size(P, 2) / dataFraction);
                         P = horzcat(ones(size(P, 1), prePixels) * gray, P, ones(size(P, 1), postPixels) * gray);
                     end
+                end
+                
+                for i=1:length(obj.reporter)
+                    delete(obj.bounding_boxes{i});
+%                     obj.bounding_boxes(i)=[];
+                    obj.bounding_boxes{i} = obj.populateFeatures(obj.reporter{i});
                 end
             end
             
@@ -309,32 +324,54 @@ classdef SpectrogramPanel < TimelinePanel
             
             spacing = 1 / length(featureTypes);
             axesPos = get(obj.axes, 'Position');
-            
+
+            timeRange = get(obj.axes, 'XLim');
+
             % Draw the features that have been reported.
             features = reporter.features();
             for i = 1:length(features)
                 feature = features{i};
+                if isprop(feature,'HotPixels')
+                    offset=0;  if(isfield(reporter,'detectedTimeRanges'))  offset=reporter.detectedTimeRanges(1);  end
+                    for i=1:length(feature.HotPixels)
+                      if iscell(feature.HotPixels{i})
+                        idx=find((feature.HotPixels{i}{1}(:,3)==obj.audio.channel)&...
+                            ((offset+feature.HotPixels{i}{1}(:,1))>timeRange(1))&...
+                            ((offset+feature.HotPixels{i}{1}(:,1))<timeRange(2)));
+                        t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
+                          repmat(feature.HotPixels{i}{2}*[-0.5; +0.5; +0.5; -0.5; -0.5],1,length(idx));
+                        f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...
+                          repmat(feature.HotPixels{i}{3}*[-0.5; -0.5; +0.5; +0.5; -0.5],1,length(idx));
+                        h=patch(t+offset,f,reporter.featuresColor);
+                        set(h,'edgecolor', reporter.featuresColor, 'linewidth', 2);
+                        bounding_boxes=[bounding_boxes h'];
+                      else
+                        if size(feature.HotPixels{i},2)==3
+                          idx2 = feature.HotPixels{i}(:,3)==obj.audio.channel;
+                        else
+                          idx2 = ones(size(feature.HotPixels{i},1),1);
+                        end
+                        idx=find(idx2 & ...
+                            ((offset+feature.HotPixels{i}(:,1))>timeRange(1)) & ...
+                            ((offset+feature.HotPixels{i}(:,1))<timeRange(2)) | ...
+                            isnan(feature.HotPixels{i}(:,1)));
+                        first=find(~isnan(feature.HotPixels{i}(idx,1)),1,'first');
+                        last=find(~isnan(feature.HotPixels{i}(idx,1)),1,'last');
+                        idx=idx(first:last);
+                        h=line(feature.HotPixels{i}(idx,1)+offset,feature.HotPixels{i}(idx,2));
+                        set(h,'color', reporter.featuresColor);
+                        bounding_boxes=[bounding_boxes h'];
+                      end
+                    end
+                end
                 x0=feature.range(1);
                 y0=feature.range(3);
                 x1=feature.range(2);
                 y1=feature.range(4);
+                if(x1<timeRange(1) || x0>timeRange(2))  continue;  end
                 h=line([x0 x1 x1 x0 x0],[y0 y0 y1 y1 y0]);
                 bounding_boxes(end+1)=h;
-                set(h, 'Color', reporter.featuresColor);
-                if isprop(feature,'HotPixels')
-                    chan=find(cellfun(@(x) strcmp(x,obj.audio.filePath),...
-                        cellfun(@(y) y.filePath, reporter.recording, 'uniformoutput', false)));
-                    for i=1:length(feature.HotPixels)
-                      idx=find(feature.HotPixels{i}{1}(:,3)==chan);
-                      t=repmat(feature.HotPixels{i}{1}(idx,1)',5,1)+...
-                        repmat(feature.HotPixels{i}{2}*[-0.5; +0.5; +0.5; -0.5; -0.5],1,length(idx));
-                      f=repmat(feature.HotPixels{i}{1}(idx,2)',5,1)+...
-                        repmat(feature.HotPixels{i}{3}*[-0.5; -0.5; +0.5; +0.5; -0.5],1,length(idx));
-                      h=patch(t+reporter.detectedTimeRanges(1),f,reporter.featuresColor);
-                      set(h,'edgecolor','none');
-                      bounding_boxes=[bounding_boxes h'];
-                    end
-                end
+                set(h, 'Color', reporter.featuresColor, 'linewidth', 2);
             end
         end
 	
@@ -346,7 +383,21 @@ classdef SpectrogramPanel < TimelinePanel
                 obj.updateAxes(obj.controller.displayRange);
             end
         end
-      
+        
+        
+        function close(obj)
+            delete(obj.windowSizeListener);
+            obj.windowSizeListener = [];
+            
+            close@TimelinePanel(obj);
+        end
+        
+        
+        function delete(obj)
+            delete(obj.windowSizeListener);
+            obj.windowSizeListener = [];
+        end
+        
 	end
 	
 end

@@ -1,29 +1,25 @@
-classdef MouseVocDetector < FeatureDetector
+classdef MouseVocDetector < FeaturesDetector
     
     properties
         recording
         
-        NW=22;
-        K=43;
-        PVal=0.01;
-        NFFT=[0.001 0.0005 0.00025];
+        NW
+        K
+        PVal
+        NFFT
 
-        FreqLow=20e3;
-        FreqHigh=120e3;
-        ConvWidth=15;
-        ConvHeight=7;
-        ObjSize=1500;
+        FreqLow
+        FreqHigh
+        ConvWidth
+        ConvHeight
+        MinObjArea
 
-        MergeFreq=0;
-        MergeFreqOverlap=0;
-        MergeFreqRatio=0;
-        MergeFreqFraction=0;
+        MergeHarmonics
+        MergeHarmonicsOverlap
+        MergeHarmonicsRatio
+        MergeHarmonicsFraction
 
-        MergeTime=0.005;
-
-        NSeg=1;
-
-        MinLength=0;
+        MinLength
     end
     
     
@@ -49,20 +45,34 @@ classdef MouseVocDetector < FeatureDetector
     methods
         
         function obj = MouseVocDetector(recording)
-            obj = obj@FeatureDetector(recording);
+            obj = obj@FeaturesDetector(recording);
+            obj.NW = getpref('Tempo', 'NW', 3);
+            obj.K = getpref('Tempo', 'K', 5);
+            obj.PVal = getpref('Tempo', 'PVal', 0.01);
+            obj.NFFT = getpref('Tempo', 'NFFT', [32 64 128]);
+            obj.FreqLow = getpref('Tempo', 'FreqLow', 20e3);
+            obj.FreqHigh = getpref('Tempo', 'FreqHigh', 120e3);
+            obj.ConvWidth = getpref('Tempo', 'ConvWidth', 0.001);
+            obj.ConvHeight = getpref('Tempo', 'ConvHeight', 1300);
+            obj.MinObjArea = getpref('Tempo', 'MinObjArea', 18.75);
+            obj.MergeHarmonics = getpref('Tempo', 'MergeHarmonics', 0);
+            obj.MergeHarmonicsOverlap = getpref('Tempo', 'MergeHarmonicsOverlap', 0);
+            obj.MergeHarmonicsRatio = getpref('Tempo', 'MergeHarmonicsRatio', 0);
+            obj.MergeHarmonicsFraction = getpref('Tempo', 'MergeHarmonicsFraction', 0);
+            obj.MinLength = getpref('Tempo', 'MinLength', 0);
         end
         
         
         function s = settingNames(~)
             s = {'NW', 'K', 'PVal', 'NFFT', ...
-                 'FreqLow', 'FreqHigh', 'ConvWidth', 'ConvHeight', 'ObjSize', ...
-                 'MergeFreq', 'MergeFreqOverlap', 'MergeFreqRatio', 'MergeFreqFraction', ...
-                 'MergeTime', 'NSeg', 'MinLength'};
+                 'FreqLow', 'FreqHigh', 'ConvWidth', 'ConvHeight', 'MinObjArea', ...
+                 'MergeHarmonics', 'MergeHarmonicsOverlap', 'MergeHarmonicsRatio', 'MergeHarmonicsFraction', ...
+                 'MinLength'};
         end
         
         
         function setRecording(obj, recording)
-            setRecording@FeatureDetector(obj, recording);
+            setRecording@FeaturesDetector(obj, recording);
         end
         
         
@@ -72,22 +82,25 @@ classdef MouseVocDetector < FeatureDetector
             
             features = {};
             
-            [p,n,~]=fileparts(obj.recording{1}.filePath);
+            [p,n,e]=fileparts(obj.recording{1}.filePath);
 
             if(isempty(sampleRate2) || (sampleRate2~=obj.recording{1}.sampleRate) || ...
-                isempty(NFFT2) || (sum(NFFT2~=obj.NFFT)>0) || ...
+                isempty(NFFT2) || length(NFFT2)~=length(obj.NFFT) || any(NFFT2~=obj.NFFT) || ...
                 isempty(NW2) || (NW2~=obj.NW) || ...
                 isempty(K2) || (K2~=obj.K) || ...
                 isempty(PVal2) || (PVal2~=obj.PVal) || ...
-                isempty(timeRange) || (sum(timeRange2~=timeRange)>0))
+                isempty(timeRange2) || any(timeRange2~=timeRange(1:2)))
               delete([fullfile(p,n) '*tmp*.ax']);
               nsteps=(2+length(obj.NFFT));
+              filename = fullfile(p,n);
+              if(strcmpi(e,'.wav')||strcmpi(e,'.bin'))
+                filename = [filename e];
+              end
               for i=1:length(obj.NFFT)
                 obj.updateProgress('Running multitaper analysis on signal...', (i-1)/nsteps);
                 ax1(obj.recording{1}.sampleRate, obj.NFFT(i), obj.NW, obj.K, obj.PVal,...
-                    fullfile(p,n),['tmp' num2str(i)],...
-                    60*(obj.recording{1}.dataStartSample-1)+timeRange(1),...
-                    60*(obj.recording{1}.dataStartSample-1)+timeRange(2));
+                    filename,['tmp' num2str(i)],...
+                    timeRange(1), timeRange(2));
               end
 
               delete([tempdir '*tmp*.ax']);
@@ -101,17 +114,13 @@ classdef MouseVocDetector < FeatureDetector
             tmp=tmp(logical(ans));
             hotpixels={};
             for i=1:length(tmp)
-              fid=fopen(fullfile(tempdir,tmp(i).name),'r');
-              fread(fid,3,'uint8');
-              fread(fid,2,'uint32');
-              dT=ans(2)/ans(1)/2;
-              fread(fid,2,'uint16');
-              fread(fid,2,'double');
-              dF=ans(2);
-              foo=fread(fid,[4 inf],'double');
-              foo(1,:)=foo(1,:)*dT;
-              hotpixels{i}={foo([1 2 4],:)', dT, dF};
-              fclose(fid);
+               foo=h5read(fullfile(tempdir,tmp(i).name),'/hotPixels');
+               NFFT=h5readatt(fullfile(tempdir,tmp(i).name),'/hotPixels','NFFT');
+               FS=h5readatt(fullfile(tempdir,tmp(i).name),'/hotPixels','FS');
+               dT=NFFT/FS/2;
+               dF=FS/NFFT/10;  % /10 for brown-puckette
+               foo(:,1)=foo(:,1)*dT;
+               hotpixels{i}={foo(:,[1 2 4]), dT, dF};
             end
 
             sampleRate2=obj.recording{1}.sampleRate;
@@ -119,7 +128,7 @@ classdef MouseVocDetector < FeatureDetector
             NW2=obj.NW;
             K2=obj.K;
             PVal2=obj.PVal;
-            timeRange2=timeRange;
+            timeRange2=timeRange(1:2);
 
             %rmdir([fullfile(tempdir,n) '-out*'],'s');
             tmp=dir([fullfile(tempdir,n) '-out*']);
@@ -128,26 +137,22 @@ classdef MouseVocDetector < FeatureDetector
             end
 
             obj.updateProgress('Heuristically segmenting syllables...', (nsteps-2)/nsteps);
-            ax2(obj.FreqLow, obj.FreqHigh, [obj.ConvHeight obj.ConvWidth], obj.ObjSize, ...
-                obj.MergeFreq, obj.MergeFreqOverlap, obj.MergeFreqRatio, obj.MergeFreqFraction,...
-                obj.MergeTime, obj.NSeg, obj.MinLength, [], fullfile(tempdir,n));
+            tmp=dir(fullfile(tempdir,[n '*tmp*.ax']));
+            ax_files = cellfun(@(x) fullfile(tempdir,x), {tmp.name}, 'uniformoutput', false);
+            ax2(obj.FreqLow, obj.FreqHigh, [obj.ConvHeight obj.ConvWidth], obj.MinObjArea, ...
+                obj.MergeHarmonics, obj.MergeHarmonicsOverlap, obj.MergeHarmonicsRatio, obj.MergeHarmonicsFraction,...
+                obj.MinLength, [], ax_files, fullfile(tempdir,n));
 
             obj.updateProgress('Adding features...', (nsteps-1)/nsteps);
-            %tmp=dir([fullfile(tempdir,n) '.voc*']);
-            tmp=dir([fullfile(tempdir,n) '-out*']);
-            tmp2=dir([fullfile(tempdir,tmp.name,'voc*')]);
-            voclist=load(fullfile(tempdir,tmp.name,tmp2.name));
+            tmp=dir([fullfile(tempdir,n) '.voc*']);
+            voclist=load(fullfile(tempdir,tmp.name));
 
             for i = 1:size(voclist, 1)
-                %x_start = timeRange(1) + voclist(i,1)./obj.recording.sampleRate;
-                %x_stop = timeRange(1) + voclist(i,2)./obj.recording.sampleRate;
-                x_start = timeRange(1) + voclist(i,1);
-                x_stop = timeRange(1) + voclist(i,2);
                 if(i==1)
-                  feature = Feature('Vocalization', [x_start x_stop voclist(i,3:4)], ...
+                  feature = Feature('Vocalization', voclist(i,1:4), ...
                                     'HotPixels', hotpixels);
                 else
-                  feature = Feature('Vocalization', [x_start x_stop voclist(i,3:4)]);
+                  feature = Feature('Vocalization', voclist(i,1:4));
                 end
                 features{end + 1} = feature; %#ok<AGROW>
             end

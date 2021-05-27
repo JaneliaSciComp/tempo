@@ -63,6 +63,18 @@ classdef VideoPanel < TempoPanel
         end
         
         
+        function addActionMenuItems(obj, actionMenu)
+            uimenu(actionMenu, ...
+                'Label', 'Video settings...', ...
+                'Enable', 'off', ...
+                'Callback', @(hObject,eventdata)handleVideoSettings(obj, hObject, eventdata));
+            uimenu(actionMenu, ...
+                'Label', 'Go To Frame...', ...
+                'Separator', 'on', ...
+                'Callback', @(hObject,eventdata)handleGoToFrame(obj, hObject, eventdata));
+        end
+        
+        
         function showFrameNumber(obj, show)
             if obj.showFrameNum ~= show
                 obj.showFrameNum = show;
@@ -130,6 +142,7 @@ classdef VideoPanel < TempoPanel
             % Command+arrow keys moves to the beginning/end of the video.
             timeChange = 0;
             stepSize = 1 / obj.video.sampleRate;
+            shiftDown = any(ismember(keyEvent.Modifier, 'shift'));
             cmdDown = any(ismember(keyEvent.Modifier, 'command'));
             
             if strcmp(keyEvent.Key, 'leftarrow')
@@ -148,6 +161,15 @@ classdef VideoPanel < TempoPanel
             
             if timeChange ~= 0
                 newTime = max([stepSize / 2.0, min([obj.controller.duration - stepSize / 2.0, obj.controller.currentTime + timeChange])]);
+                if shiftDown
+                    if obj.controller.currentTime == obj.controller.selectedRange(1)
+                        obj.controller.selectedRange = [sort([obj.controller.selectedRange(2) newTime]) obj.controller.selectedRange(3:4)];
+                    else
+                        obj.controller.selectedRange = [sort([newTime obj.controller.selectedRange(1)]) obj.controller.selectedRange(3:4)];
+                    end
+                else
+                    obj.controller.selectedRange = [newTime newTime obj.controller.selectedRange(3:4)];
+                end
                 obj.controller.currentTime = newTime;
                 obj.controller.centerDisplayAtTime(newTime);
                 
@@ -157,6 +179,19 @@ classdef VideoPanel < TempoPanel
             end
         end
         
+        
+        function handleGoToFrame(obj, ~, ~)
+            answer = inputdlg('Enter frame number:', 'Tempo', 1, {num2str(obj.currentFrameNum)});
+            if ~isempty(answer)
+                frameNum = str2double(answer{1});
+                if ~isnan(frameNum) && frameNum > 0 && frameNum <= obj.video.sampleCount
+                    newTime = (frameNum - 0.5) / obj.video.sampleRate;
+                    obj.controller.selectRange([newTime newTime -Inf Inf]);
+                else
+                    beep
+                end
+            end
+        end
         
 	end
 	

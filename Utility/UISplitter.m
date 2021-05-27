@@ -1,7 +1,7 @@
 classdef UISplitter < handle
     
     properties
-        position = 0.5
+        position = 0.4
         orientation = 'horizontal'
         paneOneMinSize = 200
         paneTwoMinSize = 200
@@ -235,7 +235,7 @@ classdef UISplitter < handle
                 % Resize the top pane.
                 prevUnits = get(obj.paneOne, 'Units');
                 set(obj.paneOne, 'Units', 'pixels', ...
-                                 'Position', [0, pixelPosition + 4, parentPos(3), parentPos(3) - pixelPosition - 4]);
+                                 'Position', [0, pixelPosition + 4, parentPos(3), parentPos(4) - pixelPosition - 4]);
                 set(obj.paneOne, 'Units', prevUnits);
                 
                 % Resize the divider.

@@ -1,7 +1,12 @@
-classdef FeatureDetector < FeatureReporter
+classdef FeaturesDetector < FeaturesReporter
     
     properties
         detectedTimeRanges;    % An nx2 matrix of non-overlapping time ranges (start, end) in ascending order.
+    end
+    
+    
+    events
+        DetectedTimeRangesDidChange
     end
     
     
@@ -26,8 +31,8 @@ classdef FeatureDetector < FeatureReporter
     
     methods
         
-        function obj = FeatureDetector(controller, varargin)
-            obj = obj@FeatureReporter(controller, varargin{:});
+        function obj = FeaturesDetector(controller, varargin)
+            obj = obj@FeaturesReporter(controller, varargin{:});
             
             % Default the name of the reporter to the reporter type.
             obj.name = obj.typeName();
@@ -134,6 +139,8 @@ classdef FeatureDetector < FeatureReporter
             
             % Add the features after updating the time ranges so they get drawn correctly.
             obj.addFeatures(features);
+            
+            notify(obj, 'DetectedTimeRangesDidChange');
         end
         
         
@@ -142,6 +149,8 @@ classdef FeatureDetector < FeatureReporter
             
             % TODO: remove the time range from obj.detectedTimeRanges.
             %       may require truncating or splitting a range.
+            
+            notify(obj, 'DetectedTimeRangesDidChange');
         end
         
     end

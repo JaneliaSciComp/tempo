@@ -3,10 +3,11 @@ classdef Feature < dynamicprops
     properties
         type
         range
+        color
     end
     
-    properties (Hidden, Transient)
-        contextualMenu
+    properties (Transient)
+        reporter
     end
     
     properties (Dependent = true)
@@ -15,6 +16,11 @@ classdef Feature < dynamicprops
         duration
         lowFreq
         highFreq
+    end
+    
+    
+    events
+        RangeChanged
     end
     
     
@@ -43,9 +49,9 @@ classdef Feature < dynamicprops
             obj.type = featureType;
             
             if isscalar(featureRange)
-                obj.range = [featureRange featureRange 0 inf];
+                obj.range = [featureRange featureRange -inf inf];
             elseif size(featureRange, 2) == 2
-                obj.range = [featureRange 0 inf];
+                obj.range = [featureRange -inf inf];
             elseif size(featureRange, 2) == 4
                 obj.range = featureRange;
             else
@@ -55,8 +61,23 @@ classdef Feature < dynamicprops
             %% Add any optional attributes.
             % TODO: any value in having known attribute types like 'confidence'?
             for argIndex = 1:numel(varargin) / 2;
-                addprop(obj, varargin{argIndex * 2 - 1});
-                obj.(varargin{argIndex * 2 - 1}) = varargin{argIndex * 2};
+                propName = varargin{argIndex * 2 - 1};
+                propValue = varargin{argIndex * 2};
+                if strcmpi(propName, 'color')
+                    obj.color = propValue;
+                else
+                    addprop(obj, propName);
+                    obj.(varargin{argIndex * 2 - 1}) = varargin{argIndex * 2};
+                end
+            end
+        end
+        
+        
+        function set.range(obj, range)
+            if isempty(obj.range) || isempty(range) || any(obj.range ~= range)
+                obj.range = range;
+                
+                notify(obj, 'RangeChanged');
             end
         end
         
@@ -66,8 +87,26 @@ classdef Feature < dynamicprops
         end
         
         
+        function set.startTime(obj, time)
+            if obj.range(1) ~= time
+                obj.range(1) = time;
+                
+                notify(obj, 'RangeChanged');
+            end
+        end
+        
+        
         function t = get.endTime(obj)
             t = obj.range(2);
+        end
+        
+        
+        function set.endTime(obj, time)
+            if obj.range(2) ~= time
+                obj.range(2) = time;
+                
+                notify(obj, 'RangeChanged');
+            end
         end
         
         
@@ -81,14 +120,51 @@ classdef Feature < dynamicprops
         end
         
         
+        function set.lowFreq(obj, freq)
+            if obj.range(3) ~= freq
+                obj.range(3) = freq;
+                
+                notify(obj, 'RangeChanged');
+            end
+        end
+        
+        
         function t = get.highFreq(obj)
             t = obj.range(4);
         end
+        
+        
+        function set.highFreq(obj, freq)
+            if obj.range(4) ~= freq
+                obj.range(4) = freq;
+                
+                notify(obj, 'RangeChanged');
+            end
+        end
+        
+        
+        function c = get.color(obj)
+            if isempty(obj.color)
+                c = obj.reporter.featuresColor;
+            else
+                c = obj.color;
+            end
+        end
+        
         
         function [obj, idx] = sort(obj, varargin)
             [~, idx] = sort([obj.startTime], varargin{:});
             obj = obj(idx);
         end
+        
+        
+        function m = matches(obj, otherFeature, timeThreshold, freqThreshold)
+            m = (obj.startTime == otherFeature.startTime || abs(obj.startTime - otherFeature.startTime) < timeThreshold) && ...
+                (obj.endTime == otherFeature.endTime || abs(obj.endTime - otherFeature.endTime) < timeThreshold) && ...
+                (obj.lowFreq == otherFeature.lowFreq || abs(obj.lowFreq - otherFeature.lowFreq) < freqThreshold) && ...
+                (obj.highFreq == otherFeature.highFreq || abs(obj.highFreq - otherFeature.highFreq) < freqThreshold);
+        end
+        
         
     end
     

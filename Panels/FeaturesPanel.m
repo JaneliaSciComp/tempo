@@ -9,14 +9,26 @@ classdef FeaturesPanel < TimelinePanel
         featureTypeShadows
         featureHandles
         
-        contextualMenu
+        timeRangeRectangles
+        
         detectFeaturesInSelectionMenuItem
         showReporterSettingsMenuItem
         
-        featureChangeListener
-        
         selectedFeature
-    end
+        selectedFeatureHandle
+        selectedFeatureListener
+        selectedFeatureOriginalRange
+        
+        featureTypesListener
+        featuresListener
+        timeRangesListener
+
+        noDisplayLabel
+        
+        stagingFigure
+        stagingAxes
+        iFeaturesDisplayed
+end
     
 	
 	methods
@@ -28,33 +40,44 @@ classdef FeaturesPanel < TimelinePanel
             
             obj.reporter = reporter;
             obj.setTitle(reporter.name);
-            
-            obj.featureHandles = obj.populateFeatures();
         end
         
         
-	    function createControls(obj, ~, varargin)
+	    function createControls(obj, panelSize, varargin)
             % For new panels the reporter comes in varargin.
             % For panels loaded from a workspace varargin will be empty but the reporter is already set.
             if isempty(obj.reporter)
                 obj.reporter = varargin{1};
             end
             
-            obj.featureHandles = obj.populateFeatures(obj.reporter);
+            obj.noDisplayLabel = text(panelSize(1) / 2, panelSize(2) / 2, 'Zoom in to see the spectrogram', 'Units', 'pixels', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'Visible', 'off');
             
-            % Listen for whenever the reporter changes its features.
-            obj.featureChangeListener = addlistener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
-            obj.listeners{end + 1} = obj.featureChangeListener;
+            obj.updateFeatureTypes();
+            obj.updateTimeRanges();
+            
+            h=get(groot,'CurrentFigure');
+            obj.stagingFigure=figure('visible','off');
+            obj.stagingAxes=axes('Parent',obj.stagingFigure);
+            set(groot,'CurrentFigure',h);
+            
+            % Listen for whenever the reporter changes its features or types.
+            obj.featureTypesListener = addlistener(obj.reporter, 'FeatureTypesDidChange', @(source, event)handleFeatureTypesDidChange(obj, source, event));
+            obj.featuresListener = addlistener(obj.reporter, 'FeaturesDidChange', @(source, event)handleFeaturesDidChange(obj, source, event));
+            if isa(obj.reporter, 'FeaturesDetector')
+                obj.timeRangesListener = addlistener(obj.reporter, 'DetectedTimeRangesDidChange', @(source, event)handleTimeRangesDidChange(obj, source, event));
+            end
         end
         
         
         function addActionMenuItems(obj, actionMenu)
-            if isa(obj.reporter, 'FeatureDetector')
+            if isa(obj.reporter, 'FeaturesDetector') || isa(obj.reporter, 'FeaturesAnnotator')
                 uimenu(actionMenu, ...
-                    'Label', 'Show Reporter Settings', ...
+                    'Label', ['Show ' obj.reporter.typeName() ' Settings...'], ...
                     'Callback', @(source, event)handleShowReporterSettings(obj, source, event));
+            end
+            if isa(obj.reporter, 'FeaturesDetector')
                 uimenu(actionMenu, ...
-                    'Label', 'Detect Features in Selection', ...
+                    'Label', 'Detect Additional Features in Selection', ...
                     'Callback', @(source, event)handleDetectFeaturesInSelection(obj, source, event), ...
                     'Tag', 'detectFeaturesInSelection');
             end
@@ -70,145 +93,208 @@ classdef FeaturesPanel < TimelinePanel
                     'Label', 'Set Features Color...', ...
                     'Callback', @(source, event)handleSetFeaturesColor(obj, source, event), ...
                     'Tag', 'setFeaturesColor');
-            uimenu(actionMenu, ...
-                    'Label', 'Add New Feature with Selection...', ...
-                    'Callback', @(source, event)handleAddNewFeature(obj, source, event), ...
-                    'Tag', 'setFeaturesColor');
+            if ~isa(obj.reporter, 'FeaturesAnnotator')
+                uimenu(actionMenu, ...
+                        'Label', 'Add New Feature with Selection...', ...
+                        'Callback', @(source, event)handleAddNewFeature(obj, source, event), ...
+                        'Tag', 'setFeaturesColor');
+            end
             uimenu(actionMenu, ...
                     'Label', 'Draw/Clear Bounding Boxes', ...
                     'Callback', @(source, event)handleBoundingBoxes(obj, source, event), ...
                     'Separator', 'off');
+            uimenu(actionMenu, ...
+                    'Label', 'Show Feature Properties...', ...
+                    'Callback', @(source, event)handleShowFeatureProperties(obj, source, event), ...
+                    'Tag', 'showFeatureProperties');
         end
         
         
         function updateActionMenu(obj, ~)
             selectionIsEmpty = obj.controller.selectedRange(2) == obj.controller.selectedRange(1);
-            if isa(obj.reporter, 'FeatureDetector')
+            if isa(obj.reporter, 'FeaturesDetector')
                 set(obj.actionMenuItem('detectFeaturesInSelection'), 'Enable', onOff(~selectionIsEmpty));
             end
+            set(obj.actionMenuItem('showFeatureProperties'), 'Enable', onOff(~isempty(obj.selectedFeature)));
         end
         
         
-        function handleFeaturesDidChange(obj, ~, ~)
-            obj.featureHandles=obj.populateFeatures();
+        function handleFeatureTypesDidChange(obj, ~, ~)
+            obj.updateFeatureTypes();
         end
         
         
-        function hh=populateFeatures(obj, reporter)
-            if nargin < 2
-                reporter = obj.reporter;
+        function handleFeaturesDidChange(obj, ~, eventData)
+            obj.updateAxes(obj.controller.displayRange);
+        end
+        
+        
+        function updateFeatureTypes(obj)
+            if ~isempty(obj.reporter)
+                axes(obj.axes);
+                
+                % Get rid of the previous elements.
+                delete(obj.featureTypeLabels);
+                delete(obj.featureTypeShadows);
+                
+                featureTypes = obj.reporter.featureTypes();
+                typeCount = length(featureTypes);
+                spacing = 1 / length(featureTypes);
+                obj.featureTypeLabels = [];
+                obj.featureTypeShadows = [];
+                
+                % Draw the feature type names with a shadow.
+                axesPos = get(obj.axes, 'Position');
+                for i = 1:typeCount
+                    featureType = featureTypes{i};
+                    obj.featureTypeShadows(i) = text(6, (typeCount - i + 0.75) * spacing * axesPos(4) - 1, ...
+                                                     featureType, ...
+                                                     'VerticalAlignment', 'middle', ...
+                                                     'Units', 'pixels', ...
+                                                     'HitTest', 'off', ...
+                                                     'Color', [0.75 0.75 0.75]);
+                    obj.featureTypeLabels(i) = text(5, (typeCount - i + 0.75) * spacing * axesPos(4), ...
+                                                    featureType, ...
+                                                    'VerticalAlignment', 'middle', ...
+                                                    'Units', 'pixels', ...
+                                                    'HitTest', 'off', ...
+                                                    'Color', [0.25 0.25 0.25]);
+                end
             end
+        end
+        
+        
+        function handleTimeRangesDidChange(obj, ~, ~)
+            obj.updateTimeRanges();
+        end
+        
+        
+        function updateTimeRanges(obj)
+            % Indicate the time spans in which feature detection has occurred.
             
-            hh=[];
-            
-            if isempty(reporter)
-                return;
-            end
-            
-            axes(obj.axes);
-            cla;
-            
-            obj.featureTypeLabels= {};
-            obj.featureTypeShadows = {};
-            
-            featureTypes = reporter.featureTypes();
-            
-            spacing = 1 / length(featureTypes);
-            axesPos = get(obj.axes, 'Position');
-            
-            % Indicate the time spans in which feature detection has occurred for each reporter.
-            lastTime = 0.0;
-            if isa(reporter, 'FeatureDetector')
-                for j = 1:size(reporter.detectedTimeRanges, 1)
-                    detectedTimeRange = reporter.detectedTimeRanges(j, :);
+            % Features importers and annotators don't have time ranges.
+            % TODO: Would it help to do this for annotation to keep track of what's been looked at?
+            %       How would you know what's been looked at?
+            if ~isempty(obj.reporter) && isa(obj.reporter, 'FeaturesDetector')
+                set(obj.controller.figure, 'CurrentAxes', obj.axes);
+                
+                % Clear any existing rectangles.
+                delete(obj.timeRangeRectangles);
+                obj.timeRangeRectangles = [];
+                
+                lastTime = 0.0;
+                
+                for j = 1:size(obj.reporter.detectedTimeRanges, 1)
+                    detectedTimeRange = obj.reporter.detectedTimeRanges(j, :);
                     
                     if detectedTimeRange(1) > lastTime
                         % Add a gray background before the current range.
-                        rectangle('Position', [lastTime 0 detectedTimeRange(1) - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
+                        obj.timeRangeRectangles(end + 1) = rectangle('Position', [lastTime 0 detectedTimeRange(1) - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
                     end
                     
                     lastTime = detectedTimeRange(2);
                 end
                 if lastTime < obj.controller.duration
-                    rectangle('Position', [lastTime 0 obj.controller.duration - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
+                    obj.timeRangeRectangles(end + 1) = rectangle('Position', [lastTime 0 obj.controller.duration - lastTime 1], 'FaceColor', [0.9 0.9 0.9], 'EdgeColor', 'none', 'HitTest', 'off');
                 end
             end
-            
-            % Draw the features that have been reported.
-            features = reporter.features();
-            if isempty(features)
-                lowFreqs = [];
-                highFreqs = [];
-            else
-                lowFreqs = cellfun(@(f) f.lowFreq, features);
-                highFreqs = cellfun(@(f) f.highFreq, features);
-            end
-            minFreq = min(lowFreqs(lowFreqs > -Inf));
-            if isempty(minFreq)
-                minFreq = -Inf;
-            end
-            maxFreq = max(highFreqs(highFreqs < Inf));
-            if isempty(maxFreq)
-                maxFreq = Inf;
-            end
-            for i = 1:length(features)
-                feature = features{i};
-                y = find(strcmp(featureTypes, feature.type));
-                if isempty(feature.contextualMenu)
-                    if feature.startTime == feature.endTime
-                        label = [feature.type ' @ ' secondstr(feature.startTime, obj.controller.timeLabelFormat)];
-                    else
-                        label = [feature.type ' @ ' secondstr(feature.startTime, obj.controller.timeLabelFormat) ' - ' secondstr(feature.endTime, obj.controller.timeLabelFormat)];
-                    end
-                    feature.contextualMenu = uicontextmenu();
-                    uimenu(feature.contextualMenu, 'Tag', 'reporterNameMenuItem', 'Label', label, 'Enable', 'off');
-                    uimenu(feature.contextualMenu, 'Tag', 'showFeaturePropertiesMenuItem', 'Label', 'Show Feature Properties', 'Callback', @(source, event)handleShowFeatureProperties(obj, source, event), 'Separator', 'on');
-                    uimenu(feature.contextualMenu, 'Tag', 'removeFeatureMenuItem', 'Label', 'Remove Feature...', 'Callback', @(source, event)handleRemoveFeature(obj, source, event), 'Separator', 'off');
+        end
+        
+        
+        function updateAxes(obj, timeRange)
+            if ~isempty(obj.reporter)
+                set(obj.controller.figure, 'pointer', 'watch');  drawnow;
+                
+                features = obj.reporter.features();
+                iFeaturesInRange = cellfun( ...
+                        @(x) x.range(1)<=timeRange(2) && x.range(2)>=timeRange(1) && ...
+                             x.range(3)<=timeRange(4) && x.range(4)>=timeRange(3), features);
+                         
+                if sum(iFeaturesInRange)>10000
+                    set(obj.noDisplayLabel, 'Visible', 'on', 'String', 'Zoom in to see the features.');
+                    set(obj.controller.figure, 'pointer', 'arrow');  drawnow;
+                    return;
                 end
-                yCen = (length(featureTypes) - y + 0.5) * spacing;
-                if feature.startTime == feature.endTime
-                    h=text(feature.startTime, yCen, 'x', ...
-                           'HorizontalAlignment', 'center', ...
-                           'VerticalAlignment', 'middle', ...
-                           'UIContextMenu', feature.contextualMenu, ...
-                           'Color', reporter.featuresColor, ...
-                           'Clipping', 'on', ...
-                           'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
-                           'UserData', feature);
-                    hh=[hh h];
-                else
-                    x0 = feature.startTime;
-                    x1 = feature.endTime;
+                set(obj.noDisplayLabel, 'Visible', 'off');
+
+                iFeaturesInRange = find(iFeaturesInRange);
+                iFeaturesToHide = setdiff(obj.iFeaturesDisplayed, iFeaturesInRange);
+                iFeaturesToShow = setdiff(iFeaturesInRange, obj.iFeaturesDisplayed);
+                obj.iFeaturesDisplayed = iFeaturesInRange;
+
+                for i=1:length(iFeaturesToHide)
+                    set(obj.featureHandles(iFeaturesToHide(i)), 'Parent', obj.stagingAxes);
+                end
+                
+                featureTypes = obj.reporter.featureTypes();
+                
+                % Get the range of frequencies for the whole reporter so features can be positioned in that space.
+                featuresRange = obj.reporter.featuresRange();
+                minFreq = featuresRange(3);
+                maxFreq = featuresRange(4);
+
+                spacing = 1 / length(featureTypes);
+
+                % Add or update a text or patch for each feature.
+                for i = 1:length(iFeaturesToShow)
+                    iFeature = iFeaturesToShow(i);
                     
-                    minY = yCen - spacing * 0.45;
-                    maxY = minY + spacing * 0.9;
-                    if feature.lowFreq > -Inf && feature.highFreq < Inf
-                        % Scale the upper and lower edges of the patch to the feature's frequency range.
-                        y0 = (feature.lowFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
-                        y1 = (feature.highFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
-                    else
-                        % Have the patch cover the full vertical space for this feature type.
-                        y0 = minY;
-                        y1 = maxY;
+                    if length(obj.featureHandles)>=iFeature && obj.featureHandles(iFeature)~=0
+                        set(obj.featureHandles(iFeature), 'Parent', obj.axes);
+                        continue;
                     end
-                    
-                    fillColor = reporter.featuresColor;
-                    fillColor = fillColor + ([1 1 1] - fillColor) * 0.5;
-                    
-                    h=patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
-                            'EdgeColor', reporter.featuresColor, ...
-                            'UIContextMenu', feature.contextualMenu, ...
+
+                    feature = features{iFeature};
+                    featureIsPoint = (feature.startTime == feature.endTime);
+
+                    uiElement = [];
+
+                    y = find(strcmp(featureTypes, feature.type));
+                    yCen = (length(featureTypes) - y + 0.5) * spacing;
+                    if featureIsPoint
+                        % Add or update a point feature.
+
+                        % Create a new text for the feature.
+                        %set(obj.controller.figure, 'CurrentAxes', obj.axes);
+                        obj.featureHandles(iFeature) = text(feature.startTime, yCen, 'x', ...
+                            'Parent', obj.axes, ...
+                            'HorizontalAlignment', 'center', ...
+                            'VerticalAlignment', 'middle', ...
+                            'Color', feature.color(), ...
+                            'Clipping', 'on', ...
                             'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
                             'UserData', feature);
-                    hh=[hh h];
+                    else
+                        % Add or update a range feature.
+
+                        x0 = feature.startTime;
+                        x1 = feature.endTime;
+
+                        minY = yCen - spacing * 0.45;
+                        maxY = minY + spacing * 0.9;
+                        if feature.lowFreq > -Inf && feature.highFreq < Inf
+                            % Scale the upper and lower edges of the patch to the feature's frequency range.
+                            y0 = (feature.lowFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
+                            y1 = (feature.highFreq - minFreq) / (maxFreq - minFreq) * (maxY - minY) + minY;
+                        else
+                            % Have the patch cover the full vertical space for this feature type.
+                            y0 = minY;
+                            y1 = maxY;
+                        end
+
+                        fillColor = feature.color();
+                        edgeColor = fillColor * 0.5;
+
+                        % Create a new patch for the feature.
+                        set(obj.controller.figure, 'CurrentAxes', obj.axes);
+                        obj.featureHandles(iFeature) = patch([x0 x1 x1 x0 x0], [y0 y0 y1 y1 y0], fillColor, ...
+                            'Parent', obj.axes, ...
+                            'EdgeColor', edgeColor, ...
+                            'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event), ...
+                            'UserData', feature);
+                    end
                 end
-            end
-            
-            % Draw the feature type names.
-            for y = 1:length(featureTypes)
-                featureType = featureTypes{y};
-                obj.featureTypeShadows{end + 1} = text(6, (length(featureTypes) - y + 0.75) * spacing * axesPos(4) - 1, featureType, 'VerticalAlignment', 'middle', 'Units', 'pixels', 'HitTest', 'off', 'Color', [0.75 0.75 0.75]);
-                obj.featureTypeLabels{end + 1} = text(5, (length(featureTypes) - y + 0.75) * spacing * axesPos(4), featureType, 'VerticalAlignment', 'middle', 'Units', 'pixels', 'HitTest', 'off', 'Color', [0.25 0.25 0.25]);
+            set(obj.controller.figure, 'pointer', 'arrow');  drawnow;
             end
         end
         
@@ -217,16 +303,18 @@ classdef FeaturesPanel < TimelinePanel
             % Update the position of the feature type names.
             spacing = 1 / length(obj.featureTypeLabels);
             for i = 1:length(obj.featureTypeLabels)
-                set(obj.featureTypeShadows{i}, 'Position', [6, (length(obj.featureTypeLabels) - i + 0.65) * spacing * panelSize(2) - 1]);
-                set(obj.featureTypeLabels{i}, 'Position', [5, (length(obj.featureTypeLabels) - i + 0.65) * spacing * panelSize(2)]);
+                set(obj.featureTypeShadows(i), 'Position', [6, (length(obj.featureTypeLabels) - i + 0.65) * spacing * panelSize(2) - 1]);
+                set(obj.featureTypeLabels(i), 'Position', [5, (length(obj.featureTypeLabels) - i + 0.65) * spacing * panelSize(2)]);
             end
+            set(obj.noDisplayLabel, 'Position', [panelSize(1) / 2, panelSize(2) / 2]);
         end
         
         
         function handled = keyWasPressed(obj, keyEvent)
             handled = false;
             altDown = any(ismember(keyEvent.Modifier, 'alt'));
-            if altDown && strcmp(keyEvent.Key, 'leftarrow')
+            shiftDown = any(ismember(keyEvent.Modifier, 'shift'));
+            if ~shiftDown && altDown && strcmp(keyEvent.Key, 'leftarrow')
                 % Move the selection to the previous feature.
                 features = obj.reporter.features();
                 earlierFeatures = features(cellfun(@(f) f.endTime < obj.controller.selectedRange(1), features));
@@ -237,10 +325,32 @@ classdef FeaturesPanel < TimelinePanel
                     obj.selectFeature(earlierFeatures{ind});
                 end
                 handled = true;
-            elseif altDown && strcmp(keyEvent.Key, 'rightarrow')
+            elseif ~shiftDown && altDown && strcmp(keyEvent.Key, 'rightarrow')
                 % Move the selection to the next feature.
                 features = obj.reporter.features();
                 laterFeatures = features(cellfun(@(f) f.startTime > obj.controller.selectedRange(2), features));
+                if isempty(laterFeatures)
+                    beep
+                else
+                    [~, ind] = min(cellfun(@(f) f.startTime, laterFeatures));
+                    obj.selectFeature(laterFeatures{ind});
+                end
+                handled = true;
+            elseif shiftDown && altDown && strcmp(keyEvent.Key, 'leftarrow')
+                % Move the selection to the previous feature of the same type.
+                features = obj.reporter.features();
+                earlierFeatures = features(cellfun(@(f) f.endTime < obj.controller.selectedRange(1) && strcmp(f.type,obj.selectedFeature.type), features));
+                if isempty(earlierFeatures)
+                    beep
+                else
+                    [~, ind] = max(cellfun(@(f) f.endTime, earlierFeatures));
+                    obj.selectFeature(earlierFeatures{ind});
+                end
+                handled = true;
+            elseif shiftDown && altDown && strcmp(keyEvent.Key, 'rightarrow')
+                % Move the selection to the next feature of the same type.
+                features = obj.reporter.features();
+                laterFeatures = features(cellfun(@(f) f.startTime > obj.controller.selectedRange(1) && strcmp(f.type,obj.selectedFeature.type), features));
                 if isempty(laterFeatures)
                     beep
                 else
@@ -268,8 +378,27 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
+        function handled = keyWasReleased(obj, keyEvent)
+            if isa(obj.reporter, 'FeaturesAnnotator')
+                % Let the reporter respond to the key.
+                handled = obj.reporter.keyWasReleasedInPanel(keyEvent, obj);
+            else
+                handled = false;
+            end
+            
+            % Otherwise pass it up the chain.
+            if ~handled
+                handled = keyWasReleased@TimelinePanel(obj, keyEvent);
+            end
+        end
+        
+        
         function handleShowReporterSettings(obj, ~, ~)
-            obj.reporter.showSettings();
+            if isa(obj.reporter, 'FeaturesDetector')    
+                obj.reporter.showSettings();
+            else % it's an annotator
+                obj.reporter.editSettings();
+            end
         end
         
         
@@ -365,9 +494,10 @@ classdef FeaturesPanel < TimelinePanel
             if length(featureTypes) == 1
                 featureType = featureTypes{1};
             else
-                choice = listdlg('PromptString', 'Choose which importer to use:', ...
+                choice = listdlg('PromptString', 'Choose which type of feature to add:', ...
                                  'SelectionMode', 'Single', ...
-                                 'ListString', featureTypes);
+                                 'ListString', featureTypes, ...
+                                 'ListSize', [200 100]);
                 if isempty(choice)
                     featureType = [];
                 else
@@ -401,8 +531,8 @@ classdef FeaturesPanel < TimelinePanel
         end
         
         
-        function handleShowFeatureProperties(obj, ~, ~) %#ok<INUSD>
-            feature = get(gco, 'UserData'); % Get the feature instance from the clicked rectangle's UserData
+        function handleShowFeatureProperties(obj, ~, ~)
+            feature = obj.selectedFeature;
             
             msg = ['Type: ' feature.type char(10) char(10)];
             if feature.startTime == feature.endTime
@@ -414,7 +544,7 @@ classdef FeaturesPanel < TimelinePanel
                 msg = sprintf('%sFrequency: %.0f - %.0f Hz\n', msg, feature.lowFreq, feature.highFreq);
             end
             props = sort(properties(feature));
-            ignoreProps = {'type', 'range', 'startTime', 'endTime', 'duration', 'highFreq', 'lowFreq', 'contextualMenu'};
+            ignoreProps = {'type', 'range', 'startTime', 'endTime', 'duration', 'highFreq', 'lowFreq', 'color', 'reporter'};
             addedSeparator = false;
             for i = 1:length(props)
                 if ~ismember(props{i}, ignoreProps)
@@ -449,7 +579,27 @@ classdef FeaturesPanel < TimelinePanel
             answer = questdlg('Are you sure you wish to remove this feature?', 'Removing Feature', 'Cancel', 'Remove', 'Cancel');
             if strcmp(answer, 'Remove')
                 if obj.selectedFeature == feature
-                    obj.selectedFeature = [];
+                    obj.selectFeature([]);
+                end
+                
+                for i=1:length(obj.featureHandles)
+                    if strcmp(get(obj.featureHandles(i),'Type'),'text')
+                        pos = get(obj.featureHandles(i),'Position');
+                        startTime = pos(1);
+                        endTime = pos(1);
+                    else % patch
+                        vert = get(obj.featureHandles(i),'Vertices');
+                        startTime = vert(1,1);
+                        endTime = vert(2,1);
+                    end
+                    if startTime==feature.startTime && endTime==feature.endTime
+                        delete(obj.featureHandles(i));
+                        obj.featureHandles(i)=[];
+                        obj.iFeaturesDisplayed = setdiff(obj.iFeaturesDisplayed, i);
+                        idx = find(obj.iFeaturesDisplayed>i);
+                        obj.iFeaturesDisplayed(idx) = obj.iFeaturesDisplayed(idx) - 1;
+                        break;
+                    end
                 end
                 
                 obj.reporter.removeFeatures({feature});
@@ -471,26 +621,132 @@ classdef FeaturesPanel < TimelinePanel
         
         
         function selectFeature(obj, feature)
-            % Loosely remember that the user chose this feature.  If the selection gets changed then it won't be considered selected any more.
-            obj.selectedFeature = feature;
-            
-            % Also set the timeline's selection.
-            obj.controller.selectRange(obj.selectedFeature.range);
+            if isempty(obj.selectedFeature) || isempty(feature) || obj.selectedFeature ~= feature
+                delete(obj.selectedFeatureListener);
+                obj.selectedFeatureListener = [];
+                
+                if ~isempty(obj.selectedFeature)
+                    % Restore the button down callback for feature selection.
+                    set(obj.selectedFeatureHandle, 'ButtonDownFcn', @(source, event)handleSelectFeature(obj, source, event));
+                    obj.selectedFeatureHandle = [];
+                end
+                
+                % Remember that the user chose this feature.  If the selection gets changed then it won't be considered selected any more.
+                obj.selectedFeature = feature;
+                
+                if ~isempty(obj.selectedFeature)
+                    obj.selectedFeatureListener = addlistener(obj.selectedFeature, 'RangeChanged', @(source, event)handleFeatureDidChange(obj, source, event));
+                    
+                    % Temporarily clear the button down function so the user can edit the bounds of the feature.
+                    obj.selectedFeatureHandle = findobj(obj.featureHandles(obj.featureHandles~=0), 'UserData', obj.selectedFeature);
+                    set(obj.selectedFeatureHandle, 'ButtonDownFcn', []);
+                    
+                    % Also set the timeline's selection.
+                    obj.controller.selectRange(obj.selectedFeature.range);
+                    
+                    % TODO: add cursor rects to show the resize cursors
+                end
+            end
         end
         
         
         function handleSelectedRangeChanged(obj, ~, ~)
             % De-select our current feature if the selection changes.
             if ~isempty(obj.selectedFeature) && ~all(obj.controller.selectedRange == obj.selectedFeature.range)
-                obj.selectedFeature = [];
+                obj.selectFeature([]);
             end
             
             handleSelectedRangeChanged@TimelinePanel(obj);
         end
         
         
+        function setFeatureRange(obj, feature, range)
+            obj.selectFeature(feature);
+            feature.range = range;
+        end
+        
+        
+        function setEditedRange(obj, editedObject, range, endOfUpdate)
+            if editedObject == obj.selectedFeatureHandle
+                if isempty(obj.selectedFeatureOriginalRange)
+                    obj.selectedFeatureOriginalRange = obj.selectedFeature.range;
+                end
+                
+                obj.selectedFeature.range = range;
+                
+                if endOfUpdate
+                    feature = obj.selectedFeature;
+                    prevRange = obj.selectedFeatureOriginalRange;
+                    obj.controller.addUndoableAction(['Edit ' obj.selectedFeature.type], ...
+                                                      @() obj.setFeatureRange(feature, prevRange), ...
+                                                      @() obj.setFeatureRange(feature, range), ...
+                                                      obj);
+                    obj.selectedFeatureOriginalRange = [];
+                end
+            else
+                setEditedRange@TimelinePanel(obj, editedObject, range);
+            end
+        end
+        
+        
+        function currentTimeChanged(obj)
+            if ~isempty(obj.selectedFeature) && isa(obj.reporter, 'FeaturesAnnotator')
+                % Let the annotator respond to the current time change.
+                obj.reporter.currentTimeChangedInPanel(obj);
+            end
+            
+            currentTimeChanged@TimelinePanel(obj);
+        end
+        
+        
+        function handleFeatureDidChange(obj, feature, ~)
+            obj.updateAxes(obj.controller.displayRange);
+            
+            if obj.selectedFeature == feature
+                % Update the timeline's selection.
+                obj.controller.selectRange(obj.selectedFeature.range);
+            end
+        end
+        
+        
         function close = shouldClose(obj)
             close = strcmp(questdlg('Are you sure you wish to close these features?', 'Tempo', 'Close', 'Cancel', 'Close'), 'Close');
+            
+            if close
+                delete(obj.selectedFeatureListener);
+                obj.selectedFeatureListener = [];
+            end
+        end
+        
+        
+        function close(obj)
+            delete(obj.featureTypesListener);
+            obj.featureTypesListener = [];
+            delete(obj.featuresListener);
+            obj.featuresListener = [];
+            delete(obj.timeRangesListener);
+            obj.timeRangesListener = [];
+            
+            delete(obj.featureTypeLabels);
+            obj.featureTypeLabels = [];
+            delete(obj.featureTypeShadows);
+            obj.featureTypeShadows = [];
+            delete(obj.timeRangeRectangles);
+            obj.timeRangeRectangles = [];
+            
+            obj.controller.removeReporter(obj.reporter, false);
+            
+            close@TimelinePanel(obj);
+        end
+        
+        
+        function delete(obj)
+            delete(obj.featureTypesListener);
+            obj.featureTypesListener = [];
+            delete(obj.featuresListener);
+            obj.featuresListener = [];
+            delete(obj.timeRangesListener);
+            obj.timeRangesListener = [];
         end
         
     end
