@@ -54,6 +54,7 @@
 <div class="section" id="video">
 <h2>Video<a class="headerlink" href="#video" title="Permalink to this headline">¶</a></h2>
 <p>Tempo can open any video format supported by MATLAB&#8217;s VideoReader function.  See the MATLAB documentation for the exact formats but AVI, MPEG and QuickTime movies are available on most platforms.  All video files are displayed in a <a class="reference internal" href="UserInterface/VideoPanel.html"><em>video panel</em></a> on the left side of the Tempo window.  Custom video formats can be supported by <a class="reference internal" href="Customizing/Recordings.html"><em>adding a new recording type</em></a>.</p>
+<p>If a file ending in .ts exists with the same basename as the video file, Tempo treats the double-precision floats contained therein as timestamps (in seconds) of each video frame, and ignores the frame rate included in the metadata of the video file.</p>
 </div>
 <div class="section" id="audio">
 <h2>Audio<a class="headerlink" href="#audio" title="Permalink to this headline">¶</a></h2>

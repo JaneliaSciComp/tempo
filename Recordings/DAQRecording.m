@@ -1,10 +1,5 @@
 classdef DAQRecording < AudioRecording
     
-    properties
-        channel
-    end
-    
-    
     methods (Static)
         function canLoad = canLoadFromPath(filePath)
             canLoad = false;
@@ -23,28 +18,23 @@ classdef DAQRecording < AudioRecording
         end
         
         
-        function addParameters(obj, parser)
-            addParameters@AudioRecording(obj, parser);
-            
-            addParamValue(parser, 'Channel', [], @(x) isnumeric(x) && isscalar(x));
-        end
-        
-        
         function loadParameters(obj, parser)
-            loadParameters@AudioRecording(obj, parser);
-            
+            loadParameters@Recording(obj, parser);
             obj.channel = parser.Results.Channel;
             
             if isempty(obj.channel)
                 % Ask the user which channel to open.
                 % TODO: allow opening more than one channel?
                 info = daqread(obj.filePath, 'info');
-                [obj.channel, ok] = listdlg('ListString', cellfun(@(x)num2str(x), {info.ObjInfo.Channel.Index}'), ...
-                                            'PromptString', 'Choose the channel to open:', ...
-                                            'SelectionMode', 'single', ...
-                                            'Name', 'Open DAQ File');
-                if ~ok
-                    error('Tempo:UserCancelled', 'The user cancelled opening the DAQ file.');
+                obj.channel=1;
+                if length(info.ObjInfo.Channel)>1
+                    [obj.channel, ok] = listdlg('ListString', cellfun(@(x)num2str(x), {info.ObjInfo.Channel.Index}','uniformoutput',false), ...
+                                                'PromptString', 'Choose the channel to open:', ...
+                                                'SelectionMode', 'single', ...
+                                                'Name', 'Open DAQ File');
+                    if ~ok
+                        error('Tempo:UserCancelled', 'The user cancelled opening the DAQ file.');
+                    end
                 end
             end
         end
@@ -52,12 +42,16 @@ classdef DAQRecording < AudioRecording
         
         function loadData(obj)
             info = daqread(obj.filePath, 'info');
+            obj.sampleCount = info.ObjInfo.SamplesAcquired;
             obj.sampleRate = info.ObjInfo.SampleRate;
-            obj.data = daqread(obj.filePath, 'Channels', obj.channel);
-            obj.sampleCount = length(obj.data);
             obj.name = sprintf('%s (channel %d)', obj.name, obj.channel);
+            
+            obj.loadDataBuffer(1);
         end
         
+        function newData = readData(obj, readStart, readLength)
+            newData = daqread(obj.filePath, 'Channels', obj.channel, 'Samples', [readStart readStart+readLength]);
+        end
     end
     
 end

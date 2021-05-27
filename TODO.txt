@@ -1,0 +1,56 @@
+Tempo To Do
+
+• Support video annotations
+• Panels shouldn't update controls when hidden
+
+Manual annotation:
+	• Frequency range of features can't be edited
+	• Live update of annotation feature during playback not working
+	• Return keyboard focus to panels after toolbar button playback button click
+	• Don't allow adding an exact duplicate of a feature. (typing 'f' twice)
+	• Does the selected feature get restored on undo/redo?
+	+ Marker type
+
+Testing:
+	• Make sure all file types import.
+
+Help/documentation:
+	• Close the help window when the last Tempo window closes
+	• Can the search be made to work?
+	• External links should open outside Tempo somehow
+	• Allow plug-ins to have help pages?
+
+Playback:
+	+ Allow changing speed during playback
+
++Video settings:
+	+ Make the new window
+	+ Allow recordings to have settings, too (e.g. UFMF foreground highlighting)
+
++Feature settings
+	• Reporter name
+	• Show all types vs. only types with features
+	• Color per feature type
+
+Features:
+	• Add an "editable" setting to features panels
+	+ Double-clicking a feature should show its properties
+	• If max duration extends then detected time ranges should react
+
+Video:
+	• Frame number label doesn't hide
+	• Show current time somewhere when timeline is hidden
+
+Undo:
+	• Allow undo of open recording
+	• Fix time range gray box when removing features
+	• Determine dirty state from undo stack?
+
+Panel rework:
+	• Video overlaps title
+	+ Drag panel titles
+	+ Double-click title bar to show/hide
+	+ Indicate key focus by title bar?
+
+Waveform:
+	+ Mute icon

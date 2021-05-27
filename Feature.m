@@ -157,6 +157,15 @@ classdef Feature < dynamicprops
             obj = obj(idx);
         end
         
+        
+        function m = matches(obj, otherFeature, timeThreshold, freqThreshold)
+            m = (obj.startTime == otherFeature.startTime || abs(obj.startTime - otherFeature.startTime) < timeThreshold) && ...
+                (obj.endTime == otherFeature.endTime || abs(obj.endTime - otherFeature.endTime) < timeThreshold) && ...
+                (obj.lowFreq == otherFeature.lowFreq || abs(obj.lowFreq - otherFeature.lowFreq) < freqThreshold) && ...
+                (obj.highFreq == otherFeature.highFreq || abs(obj.highFreq - otherFeature.highFreq) < freqThreshold);
+        end
+        
+        
     end
     
 end

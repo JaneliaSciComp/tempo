@@ -19,7 +19,7 @@ classdef FeaturesReporter < handle
     
     
     properties (Access = private)
-        featureList
+        featureList = {}
         featureListSize
         featureCount
     end
@@ -85,9 +85,15 @@ classdef FeaturesReporter < handle
         
         
         function setFeatures(obj, featureList)
-            obj.featureList = num2cell(featureList);
+            if iscell(featureList)
+                obj.featureList = featureList;
+            else
+                obj.featureList = num2cell(featureList);
+            end
             obj.featureListSize = length(featureList);
             obj.featureCount = obj.featureListSize;
+            
+            obj.cachedFeatureTypes = {};
             
             notify(obj, 'FeaturesDidChange');
         end
@@ -113,16 +119,23 @@ classdef FeaturesReporter < handle
                 obj.featureListSize = obj.featureListSize + 1000;
             end
             for i = 1:numFeatures
-                features{i}.reporter = obj;
                 if iscell(features)
+                    features{i}.reporter = obj;
                     obj.featureList{obj.featureCount - numFeatures + i} = features{i};
                 else
+                    features(i).reporter = obj;
                     obj.featureList{obj.featureCount - numFeatures + i} = features(i);
                 end
             end
             
             % Check if any of the new features have a new type.
-            if ~all(ismember(cellfun(@(f) f.type, features, 'UniformOutput', false), obj.featureTypes()))
+            if iscell(features)
+                ~all(ismember(cellfun(@(f) f.type, features, 'UniformOutput', false), obj.featureTypes()));
+            else
+                [tmp{1:length(features)}]=deal(features.type);
+                ~all(ismember(tmp, obj.featureTypes()));
+            end
+            if ans
                 obj.cachedFeatureTypes = [];    % indicate that the types must be recalculated
                 notify(obj, 'FeatureTypesDidChange', FeaturesChangedEventData('add', features));
             end
@@ -204,7 +217,14 @@ classdef FeaturesReporter < handle
         
         
         function exportFeatures(obj)
-            [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', 'features.mat');
+            if isprop(obj,'featuresFilePath')
+                [p,n,e] = fileparts(obj.featuresFilePath);
+            elseif length(obj.controller.recordings)>0
+                [p,n,e] = fileparts(obj.controller.recordings{1}.filePath);
+            else
+                p='';  n='';
+            end
+            [fileName, pathName, filterIndex] = uiputfile({'*.mat', 'MATLAB file';'*.txt', 'Text file'}, 'Save features as', [fullfile(p,n) '-features.mat']);
             
             if ischar(fileName)
                 features = obj.features();
