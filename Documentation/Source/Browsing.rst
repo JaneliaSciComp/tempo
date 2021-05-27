@@ -37,19 +37,22 @@ Keyboard Shortcuts
 
 There are a number of keyboard shortcuts to make it easier to navigate the timeline:
 
-===========================  ==========================================
-Key                          Action
-===========================  ==========================================
-:kbd:`Cmd/Ctrl-Left arrow`   Go to beginning of the timeline
-:kbd:`Page down`             Move back one window's width
-:kbd:`Left arrow`            Move back one tenth of the window's width
-:kbd:`Right arrow`           Move ahead one tenth of the window's width
-:kbd:`Page up`               Move ahead one window's width
-:kbd:`Cmd/Ctrl-Right arrow`  Go to the end of the timeline
-:kbd:`Down arrow`            Zoom in
-:kbd:`Up arrow`              Zoom out
-:kbd:`Cmd/Ctrl-Up arrow`     Zoom all the way out
-===========================  ==========================================
+=============================  ==========================================
+Key                            Action
+=============================  ==========================================
+:kbd:`Cmd/Ctrl-Left arrow`     Go to beginning of the timeline
+:kbd:`Page down`               Move back one window's width
+:kbd:`Left arrow`              Move back one tenth of the window's width
+:kbd:`Right arrow`             Move ahead one tenth of the window's width
+:kbd:`Page up`                 Move ahead one window's width
+:kbd:`Cmd/Ctrl-Right arrow`    Go to the end of the timeline
+:kbd:`Down arrow`              Zoom in
+:kbd:`Up arrow`                Zoom out
+:kbd:`Cmd/Ctrl-Up arrow`       Zoom all the way out
+:kbd:`Alt/Option-Left arrow`   Move to the previous feature
+:kbd:`Alt/Option-Right arrow`  Move to the next feature
+:kbd:`Delete`                  Delete the selected feature
+=============================  ==========================================
 
 --------
 Playback

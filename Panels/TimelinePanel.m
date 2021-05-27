@@ -199,9 +199,9 @@ classdef TimelinePanel < TempoPanel
                     timeChange = stepSize;
                 end
             elseif strcmp(keyEvent.Key, 'pageup')
-                timeChange = -pageSize;
+                timeChange = -2/3*pageSize;
             elseif strcmp(keyEvent.Key, 'pagedown')
-                timeChange = pageSize;
+                timeChange = 2/3*pageSize;
             elseif strcmp(keyEvent.Key, 'uparrow')
                 if cmdDown
                     obj.controller.setZoom(1);

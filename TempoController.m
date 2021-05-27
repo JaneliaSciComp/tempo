@@ -41,10 +41,12 @@ classdef TempoController < handle
         exportVideoTool
         zoomOutTool
         
-        playSlowerTool
         playBackwardsTool
         pauseTool
         playForwardsTool
+        
+        playSlowerTool
+        playbackSpeedTool
         playFasterTool
         
         detectPopUpTool
@@ -82,6 +84,7 @@ classdef TempoController < handle
         
         needsSave = false
         savePath
+        lastOpenedPath
         
         undoManager;
     end
@@ -130,6 +133,7 @@ classdef TempoController < handle
             addpath(fullfile(parentDir, 'Panels'));
             addpath(fullfile(parentDir, 'Recordings'));
             addpath(fullfile(parentDir, 'Utility'));
+            addpath(fullfile(parentDir, 'Legacy'));
             
             [obj.recordingClassNames, obj.recordingTypeNames] = obj.findPlugIns(fullfile(parentDir, 'Recordings'));
             [obj.detectorClassNames, obj.detectorTypeNames] = obj.findPlugIns(fullfile(parentDir, 'Detectors'));
@@ -384,8 +388,13 @@ classdef TempoController < handle
                                      'Callback', @(hObject, eventdata)handleZoomToSelection(obj, hObject, eventdata), ...
                                      'Accelerator', '', ...
                                      'Tag', 'zoomToSelection');
+            uimenu(obj.timelineMenu, 'Label', 'Go To Time...', ...
+                                     'Callback', @(hObject, eventdata)handleGoToTime(obj, hObject, eventdata), ...
+                                     'Separator', 'on', ...
+                                     'Accelerator', 't', ...
+                                     'Tag', 'goToTime');
             uimenu(obj.timelineMenu, 'Label', 'Annotate Features...', ...
-                                     'Callback', @(hObject, eventdata)handleAnnotateFeatures(obj, hObject, eventdata, true, false), ...
+                                     'Callback', @(hObject, eventdata)handleAnnotateFeatures(obj, hObject, eventdata), ...
                                      'Separator', 'on', ...
                                      'Tag', 'addManualAnnotations');
             uimenu(obj.timelineMenu, 'Label', 'Open Waveform for New Recordings', ...
@@ -513,29 +522,33 @@ classdef TempoController < handle
                 'ClickedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata));
             
             % Playback
-            forwardIcon = obj.loadIcon('play');
-            pauseIcon = obj.loadIcon('pause');
-            backwardsIcon = flipdim(forwardIcon, 2);
-            obj.playSlowerTool = uipushtool(obj.toolbar, ...
-                'CData', backwardsIcon, ...
-                'Separator', 'on', ...
-                'TooltipString', 'Decrease the speed of playback',... 
-                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'slower'));
             obj.playBackwardsTool = uipushtool(obj.toolbar, ...
-                'CData', backwardsIcon, ...
+                'CData', obj.loadIcon('PlayBackwards'), ...
                 'TooltipString', 'Play backwards',... 
+                'Separator', 'on', ...
                 'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'backwards'));
             obj.pauseTool = uipushtool(obj.toolbar, ...
-                'CData', pauseIcon, ...
+                'CData', obj.loadIcon('pause'), ...
                 'TooltipString', 'Pause playback',... 
                 'ClickedCallback', @(hObject, eventdata)handlePause(obj, hObject, eventdata), ...
                 'Enable', 'off');
             obj.playForwardsTool = uipushtool(obj.toolbar, ...
-                'CData', forwardIcon, ...
+                'CData', obj.loadIcon('PlayForwards'), ...
                 'TooltipString', 'Play forwards',... 
                 'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'forwards'));
+            
+            % Playback speed
+            obj.playSlowerTool = uipushtool(obj.toolbar, ...
+                'CData', obj.loadIcon('PlaySlower'), ...
+                'Separator', 'on', ...
+                'TooltipString', 'Decrease the speed of playback',... 
+                'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'slower'));
+            obj.playbackSpeedTool = uipushtool(obj.toolbar, ...
+                'CData', zeros(16, 16, 3), ...
+                'TooltipString', 'Choose the speed of playback',... 
+                'ClickedCallback', @(hObject, eventdata)handleChoosePlaybackSpeed(obj, hObject, eventdata));
             obj.playFasterTool = uipushtool(obj.toolbar, ...
-                'CData', forwardIcon, ...
+                'CData', obj.loadIcon('PlayFaster'), ...
                 'TooltipString', 'Increase the speed of playback',... 
                 'ClickedCallback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, 'faster'));
             
@@ -567,19 +580,19 @@ classdef TempoController < handle
                 jMenu.add('Detect Features:').setEnabled(false);
                 for actionIdx = 1:length(obj.detectorTypeNames)
                     jActionItem = jMenu.add([obj.detectorTypeNames{actionIdx} '...']);
-                    set(jActionItem, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
-                        'UserData', actionIdx);
+                    handle(jActionItem, 'CallbackProperties');
+                    set(ans, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata),...
+                        'ToolTipText', num2str(actionIdx));
+%                     set(jActionItem, 'ActionPerformedCallback', @(hObject, eventdata)handleDetectFeatures(obj, hObject, eventdata), ...
+%                         'UserData', actionIdx);
                 end
                 
-                % Try to replace the playback tools with Java buttons that can display the play rate, etc.
-                obj.replaceToolbarTool(11, 'playSlowerTool', 'PlaySlower');
-                obj.replaceToolbarTool(12, 'playBackwardsTool', 'PlayBackwards');
-                obj.replaceToolbarTool(13, 'pauseTool');
-                if isjava(obj.pauseTool)
-                    obj.pauseTool.setText('1x');
+                % Try to replace the 'choose playback speed' tool with a Java button that can display the play rate.
+                obj.replaceToolbarTool(18, 'playbackSpeedTool');
+                if isjava(obj.playbackSpeedTool)
+                    obj.playbackSpeedTool.setBorderPainted(false);
+                    obj.playbackSpeedTool.setText('1x');
                 end
-                obj.replaceToolbarTool(14, 'playForwardsTool', 'PlayForwards');
-                obj.replaceToolbarTool(15, 'playFasterTool', 'PlayFaster');
 
                 try
                     obj.jToolbar(1).repaint;
@@ -604,8 +617,11 @@ classdef TempoController < handle
                 end
                 callback = get(obj.(toolName), 'ClickedCallback');
                 tooltip = get(obj.(toolName), 'TooltipString');
-                set(jButton, 'ActionPerformedCallback', callback, ...
-                             'ToolTipText', tooltip);
+                handle(jButton, 'CallbackProperties');
+                set(ans, 'ActionPerformedCallback', callback, ...
+                    'ToolTipText', tooltip);
+%                set(jButton, 'ActionPerformedCallback', callback, ...
+%                              'ToolTipText', tooltip);
                 delete(obj.(toolName));
                 obj.jToolbar(1).add(jButton, position);
                 obj.(toolName) = jButton;
@@ -729,6 +745,7 @@ classdef TempoController < handle
         
         
         function arrangeVideoPanels(obj, ~, ~)
+            if isempty(obj.videosPanel)  return;  end
             % Get the size of the top-level panel.
             set(obj.videosPanel, 'Units', 'pixels');
             videosPos = get(obj.videosPanel, 'Position');
@@ -740,7 +757,7 @@ classdef TempoController < handle
             set(obj.videoIconAxes, 'Visible', onOff(isempty(obj.videoPanels)), ...
                                    'Position', iconAxesPos);
             
-            set(obj.videoSlider, 'Position', [1, 0, videosPos(3), 16]);
+            set(obj.videoSlider, 'Position', [10, 0, videosPos(3)-20, 16]);
         end
         
         
@@ -763,6 +780,7 @@ classdef TempoController < handle
         
         
         function arrangeTimelinePanels(obj, ~, ~)
+            if isempty(obj.timelinesPanel)  return;  end
             % Get the size of the top-level panel.
             set(obj.timelinesPanel, 'Units', 'pixels');
             timelinesPos = get(obj.timelinesPanel, 'Position');
@@ -782,7 +800,7 @@ classdef TempoController < handle
             axis(obj.timelineIconAxes, 'off');
             
             % Position the timeline slider at the bottom.
-            set(obj.timelineSlider, 'Position', [1, 0, timelinesPos(3) + 2, 16]);
+            set(obj.timelineSlider, 'Position', [10, 0, timelinesPos(3)-20, 16]);
         end
         
         
@@ -840,12 +858,17 @@ classdef TempoController < handle
         
         
         function handleOpenFile(obj, ~, ~)
-            [fileNames, pathName] = uigetfile('*.*', 'Select an audio or video file to open', 'MultiSelect', 'on');
+            [fileNames, pathName] = uigetfile('*.*', 'Select an audio or video file to open', obj.lastOpenedPath, 'MultiSelect', 'on');
             
             if ischar(fileNames)
                 fileNames = {fileNames};
             elseif isnumeric(fileNames)
                 fileNames = {};
+            end
+            
+            if ~isempty(fileNames)
+                % Remember this path for the next time the user opens a file.
+                obj.lastOpenedPath = pathName;
             end
             
             somethingOpened = false;
@@ -1023,7 +1046,8 @@ classdef TempoController < handle
             else
                 [filePath, fileName, ~] = fileparts(obj.recordings{1}.filePath);
             end
-            [fileName, filePath] = uiputfile('*.mp4', 'Export Selection', fullfile(filePath, fileName));
+            suggestedFileName = fullfile(filePath, strcat(fileName, '-', num2str(obj.selectedRange(1))));
+            [fileName, filePath] = uiputfile('*.mp4', 'Export Selection', suggestedFileName);
             if ~eq(fileName, 0)
                 exportPath = fullfile(filePath, fileName);
                 [~, fileName, ~] = fileparts(fileName); % strip off the extension
@@ -1048,7 +1072,7 @@ classdef TempoController < handle
                         f{i}=obj.recordings{i}.saveData;
                         c=[c '-i ' f{i} ' ']; %#ok<AGROW>
                     end
-                    c=[c '-acodec copy -vcodec copy ''' exportPath ''''];
+                    c=[c '-acodec copy -vcodec copy ' exportPath];
                     waitbar(length(obj.recordings)/(length(obj.recordings)+1),h,['Processing '  exportPath]);
                     [s,~]=system(c);
                     if s
@@ -1157,7 +1181,11 @@ classdef TempoController < handle
         
         
         function handleDetectFeatures(obj, hObject, ~)
-            index = get(hObject, 'UserData');
+            if isprop(hObject,'UserData')
+                index = get(hObject, 'UserData');
+            else
+                index = str2num(get(hObject, 'ToolTipText'));
+            end
             
             if isempty(index)
                 % The user clicked the icon instead of the little pop-up arrow.
@@ -1385,6 +1413,47 @@ classdef TempoController < handle
         end
         
         
+        function handleGoToTime(obj, ~, ~)
+            % Use the current time/selection as the default.
+            startTime = obj.currentTime;
+            if obj.selectedRange(1) == startTime && obj.selectedRange(2) > obj.selectedRange(1)
+                endTime = obj.selectedRange(2);
+            else
+                endTime = startTime;
+            end
+            if endTime > startTime
+                default = [convertTime(startTime) '-' convertTime(endTime)];
+            else
+                default = convertTime(startTime);
+            end
+            
+            answer = inputdlg('Go to time:', 'Tempo', 1, {default});
+            
+            if ~isempty(answer)
+                try
+                    parts = regexp(answer{1}, '-', 'split');
+                    if length(parts) == 1
+                        startTime = convertTime(parts{1});
+                        endTime = startTime;
+                    elseif length(parts) == 2
+                        startTime = convertTime(parts{1});
+                        endTime = convertTime(parts{2});
+                    else
+                        error('bad time');
+                    end
+                    
+                    % Constrain to the max duration of all the recordings.
+                    startTime = max([0 min([startTime obj.duration])]);
+                    endTime = max([0 min([endTime obj.duration])]);
+                    
+                    obj.selectRange([startTime endTime -Inf Inf]);
+                catch
+                    beep
+                end
+            end
+        end
+        
+        
         function handleAnnotateFeatures(obj, ~, ~)
             % Create a new feature annotator.
             annotator = FeaturesAnnotator(obj);
@@ -1512,12 +1581,24 @@ classdef TempoController < handle
             elseif strcmp(playRate, 'backwards')
                 newRate = -abs(obj.playRate);
                 startPlaying = true;
-            elseif strcmp(playRate, '1x')
-                newRate = 1.0;
+            elseif strcmp(playRate, '16x')
+                newRate = 16.0;
+            elseif strcmp(playRate, '8x')
+                newRate = 8.0;
+            elseif strcmp(playRate, '4x')
+                newRate = 4.0;
             elseif strcmp(playRate, '2x')
                 newRate = 2.0;
+            elseif strcmp(playRate, '1x')
+                newRate = 1.0;
             elseif strcmp(playRate, '1/2x')
-                newRate = 0.5;
+                newRate = 1.0 / 2;
+            elseif strcmp(playRate, '1/4x')
+                newRate = 1.0 / 4;
+            elseif strcmp(playRate, '1/8x')
+                newRate = 1.0 / 8;
+            elseif strcmp(playRate, '1/16x')
+                newRate = 1.0 / 16;
             elseif strcmp(playRate, 'faster')
                 newRate = obj.playRate * 2.0;
             elseif strcmp(playRate, 'slower')
@@ -1557,12 +1638,12 @@ classdef TempoController < handle
                     for i = 1:length(obj.recordings)
                         recording = obj.recordings{i};
                         if isa(recording, 'AudioRecording') && ~recording.muted
-                            audioRange = round((idealRange + recording.timeOffset) * recording.sampleRate);
-                            if audioRange(1) == 0
+                            audioRange = round((idealRange + recording.timeOffset) * recording.sampleRate) - recording.dataStartSample + 1;
+                            if audioRange(1) < 1
                                 audioRange(1) = 1;
                             end
-                            if audioRange(2) > recording.duration * recording.sampleRate
-                                audioRange(2) = floor(recording.duration * recording.sampleRate);
+                            if audioRange(2) > min(recording.bufferSize, recording.sampleCount - recording.dataStartSample)
+                                audioRange(2) = min(recording.bufferSize, recording.sampleCount - recording.dataStartSample);
                             end
                             player = recording.player();
                             if ~isempty(player)
@@ -1579,6 +1660,27 @@ classdef TempoController < handle
             end
             
             obj.updatePlaybackMenuItems();
+        end
+        
+        
+        function handleChoosePlaybackSpeed(obj, ~, ~)
+            % Create a pop-up menu with speeds from 16x through 1/16x.
+            chooseSpeedMenu = uicontextmenu();
+            uimenu(chooseSpeedMenu, 'Label', 'Playback speed', 'Enable', 'off');
+            speeds = {'16x', '8x', '4x', '2x', '1x', '1/2x', '1/4x', '1/8x', '1/16x'};
+            for speed = speeds
+                uimenu(chooseSpeedMenu, 'Label', speed{1}, ...
+                                  'Tag', speed{1}, ...
+                                  'Separator', onOff(strcmp(speed{1}, '16x')), ...
+                                  'Callback', @(hObject, eventdata)handlePlay(obj, hObject, eventdata, speed{1}));
+            end
+            
+            % Show the menu at the current mouse point.
+            mousePos = get(0, 'PointerLocation');
+            figurePos = get(obj.figure, 'Position');
+            set(chooseSpeedMenu, ...
+                'Position', [mousePos(1) - figurePos(1), mousePos(2) - figurePos(2)], ...
+                'Visible', 'on');
         end
         
         
@@ -1663,20 +1765,23 @@ classdef TempoController < handle
             set(findobj(obj.playbackMenu, 'Tag', 'decreaseSpeed'), ...
                 'Enable', onOff(~obj.isPlaying));
             
-            oldWarn = warning('off', 'MATLAB:hg:JavaSetHGPropertyParamValue');
-            set(obj.playSlowerTool, 'Enable', onOff(~obj.isPlaying));
             set(obj.playForwardsTool, 'Enable', onOff(~obj.isPlaying));
             set(obj.pauseTool, 'Enable', onOff(obj.isPlaying));
             set(obj.playBackwardsTool, 'Enable', onOff(~obj.isPlaying));
+            set(obj.playSlowerTool, 'Enable', onOff(~obj.isPlaying));
+            if isjava(obj.playbackSpeedTool)
+                obj.playbackSpeedTool.setEnabled(~obj.isPlaying);
+            else
+                set(obj.playbackSpeedTool, 'Enable', onOff(~obj.isPlaying));
+            end
             set(obj.playFasterTool, 'Enable', onOff(~obj.isPlaying));
-            warning(oldWarn);
             
             % Show the play rate in the toolbar icon
-            if isjava(obj.pauseTool)
+            if isjava(obj.playbackSpeedTool)
                 if obj.playRate < 1
-                    obj.pauseTool.setText(sprintf('1/%dx', 1.0 / obj.playRate));
+                    obj.playbackSpeedTool.setText(sprintf('1/%dx', 1.0 / obj.playRate));
                 else
-                    obj.pauseTool.setText(sprintf('%dx', obj.playRate));
+                    obj.playbackSpeedTool.setText(sprintf('%dx', obj.playRate));
                 end
             end
         end
@@ -1717,15 +1822,21 @@ classdef TempoController < handle
         end
         
         
-        function removeReporter(obj, reporter)
-            % Remove the reporter's panel if it has one.
-            for featurePanel = obj.panelsOfClass('FeaturesPanel')
-                if featurePanel{1}.reporter == reporter
-                    obj.timelinePanels(cellfun(@(x) x == featurePanel{1}, obj.timelinePanels)) = [];
-                    featurePanel{1}.close();
-                    delete(featurePanel{1});
-                    obj.arrangeTimelinePanels();
-                    break
+        function removeReporter(obj, reporter, closePanel)
+            if nargin < 3
+                closePanel = true;
+            end
+            
+            if closePanel
+                % Remove the reporter's panel if it has one.
+                for featurePanel = obj.panelsOfClass('FeaturesPanel')
+                    if featurePanel{1}.reporter == reporter
+                        obj.timelinePanels(cellfun(@(x) x == featurePanel{1}, obj.timelinePanels)) = [];
+                        featurePanel{1}.close();
+                        delete(featurePanel{1});
+                        obj.arrangeTimelinePanels();
+                        break
+                    end
                 end
             end
             
@@ -1773,7 +1884,7 @@ classdef TempoController < handle
             if obj.selectedRange(1) > obj.displayRange(2) || obj.selectedRange(2) < obj.displayRange(1)
                 obj.centerDisplayAtTime(mean(obj.selectedRange(1:2)));
             end
-        end
+       end
         
         
         function setZoom(obj, zoom)
@@ -1795,6 +1906,7 @@ classdef TempoController < handle
         
         
         function handleResize(obj, ~, ~)
+            if isempty(obj.splitter)  return;  end
             obj.splitter.resize();
             
             % The panels' ResizeFcn's should take care of this but they aren't for some reason.
@@ -2052,6 +2164,19 @@ classdef TempoController < handle
                 set(gcf, 'Pointer', 'arrow');
             end
         end
+            
+        
+        function resetKeyboardFocus(obj)
+            % Move the keyboard focus back to the figure so all of the key shortcuts will work.
+            % Otherwise they go to whatever little uicontrol (like panel show/hide buttons) was last clicked.
+            keyboardFocusMgr = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager();
+            focusedComp = keyboardFocusMgr.getFocusOwner();
+            if isempty(strfind(class(focusedComp), 'FigureAxis'))
+                mde = com.mathworks.mde.desk.MLDesktop.getInstance;
+                jObject = mde.getClient(get(obj.figure, 'Name'));
+                jObject.requestFocusInWindow();
+            end
+        end
         
         
         function handleKeyPress(obj, ~, keyEvent)
@@ -2128,10 +2253,10 @@ classdef TempoController < handle
                 obj.displayRange = range;
                 
                 % Adjust the step and page sizes of the time slider.
-                stepSize = 1 / obj.zoom;
+                stepSize = 2/3 / obj.zoom;
                 curMax = get(obj.timelineSlider, 'Max');
                 newValue = mean(obj.displayRange(1:2));
-                set(obj.timelineSlider, 'SliderStep', [stepSize / 50.0 stepSize], ...
+                set(obj.timelineSlider, 'SliderStep', [stepSize/10 stepSize], ...
                                         'Value', newValue, ...
                                         'Max', max(curMax, newValue));
             end
@@ -2306,10 +2431,27 @@ classdef TempoController < handle
             for i = 1:length(obj.recordings)
                 recording = obj.recordings{i};
                 recording.controller = obj;
+                
+                % Check if the file that the recording is based on still exists.
+                if ~exist(recording.filePath, 'file')
+                    % See if the recording is in the same folder as the workspace file.
+                    [parentDir, ~, ~] = fileparts(filePath);
+                    [~, fileName, fileExt] = fileparts(recording.filePath);
+                    if ~ispc && strcmp([fileName fileExt], recording.filePath)
+                        [~, fileName, fileExt] = fileparts(strrep(recording.filePath, '\', '/'));
+                    end
+                    newPath = fullfile(parentDir, [fileName fileExt]);
+                    
+                    % Ask the user to locate the file.
+                    [fileName, filePath] = uigetfile(newPath, ['The file ' [fileName fileExt] ' could not be found.  Please choose the file in its new location:']);
+                    if ischar(fileName)
+                        recording.filePath = fullfile(filePath, fileName);
+                    end
+                end
+                
                 try
                     recording.loadData();
                 catch ME
-                    % TODO: prompt the user to locate a moved file?
                     uiwait(errordlg(['One of the recordings could not be opened.' char(10) char(10) ME.message], 'Tempo', 'modal'));
                     recording = [];
                 end
@@ -2328,12 +2470,17 @@ classdef TempoController < handle
             end
             
             % Load the detectors and importers.
-            % TODO: do Feature's reporters need to be set?
             if isfield(s, 'reporters')
                 obj.reporters = s.reporters;
                 for i = 1:length(obj.reporters)
                     reporter = obj.reporters{i};
                     reporter.controller = obj;
+                    
+                    % TODO: this should be possible with cellfun()... 
+                    features = reporter.features();
+                    for j = 1:length(features)
+                        features{j}.reporter = reporter;
+                    end
                     
                     if ~havePanels
                         obj.timelinePanels{end + 1} = FeaturesPanel(reporter);
@@ -2466,23 +2613,15 @@ classdef TempoController < handle
             if ~isempty(jMenu)
                 jMenuItems = jMenu.getSubElements();
                 for i = 1:length(jMenuItems)
-                    set(jMenuItems(i), 'ActionPerformedCallback', []);
+                    handle(jMenuItems(i), 'CallbackProperties');
+                    set(ans, 'ActionPerformedCallback', []);
+%                     set(jMenuItems(i), 'ActionPerformedCallback', []);
                 end
             end
-            if isjava(obj.playSlowerTool)
-                set(obj.playSlowerTool, 'ActionPerformedCallback', []);
-            end
-            if isjava(obj.playBackwardsTool)
-                set(obj.playBackwardsTool, 'ActionPerformedCallback', []);
-            end
-            if isjava(obj.pauseTool)
-                set(obj.pauseTool, 'ActionPerformedCallback', []);
-            end
-            if isjava(obj.playForwardsTool)
-                set(obj.playForwardsTool, 'ActionPerformedCallback', []);
-            end
-            if isjava(obj.playFasterTool)
-                set(obj.playFasterTool, 'ActionPerformedCallback', []);
+            if isjava(obj.playbackSpeedTool)
+                handle(obj.playbackSpeedTool, 'CallbackProperties');
+                set(ans, 'ActionPerformedCallback', []);
+%                set(obj.playbackSpeedTool, 'ActionPerformedCallback', []);
             end
             warning(oldWarn);
             warning(oldWarn2);

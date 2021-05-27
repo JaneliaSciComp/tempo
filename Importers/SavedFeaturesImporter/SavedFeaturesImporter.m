@@ -23,6 +23,14 @@ classdef SavedFeaturesImporter < FeaturesImporter
                 end
             end
         end
+        
+        function obj = loadobj(data)
+            obj = SavedFeaturesImporter([], data.featuresFilePath);
+            obj.name = data.name;
+            obj.setFeatures(data.featureList(1:data.featureCount));
+            obj.featuresColor = data.featuresColor;
+        end
+        
     end
     
     

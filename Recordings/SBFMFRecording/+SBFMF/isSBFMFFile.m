@@ -11,8 +11,8 @@ function isSBFMF = isSBFMFFile(filePath)
             try
                 % version: 4 byte length + string
                 verBytes = fread(fid, 1, 'uint32');
-                version = fread(fid, verBytes, '*char')';
-                isSBFMF = strcmp(version, '0.3b');
+                version = fread(fid, 4, '*char')';   %hack
+                isSBFMF = strncmp(version, '0.3b', 4);
                 fclose(fid);
             catch ME
                 fclose(fid);

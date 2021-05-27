@@ -8,25 +8,24 @@ classdef FlySongDetector < FeaturesDetector
         taperNum = 20;
         windowLength = 0.1;
         windowStepSize = 0.01;
-        pValue = 0.02;
+        pValue = 0.05;
         
         % Sine song properties
         sineFreqMin = 100;          %hz
         sineFreqMax = 300;          %hz
         sineGapMaxPercent = 0.2;    % "search within ± this percent to determine whether consecutive events are continuous sine"
-        sineEventsMin = 3;
-        lowFreqCutoff = 80;
-        highFreqCutoff = 1000;
+        sineEventsMin = .03;        % min length in secs. of sine song (bad name)
         
         % Pulse song properties
-        putativePulseFudge = 1.3;   % expand putative pulse by this number of steps on either side
-        pulseMaxGapSize = 5;        % combine putative pulse if within this step size. i.e. this # * step_size in ms
         ipiMin = 100;               % lowIPI: estimate of a very low IPI (even, rounded)  (Fs/100)
         ipiMax = 2000;              % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse) (Fs/5)
         pulseMaxScale = 700;        % if best matched scale is greater than this frequency, then don't include pulse as true pulse
         pulseMinDist = 200;         % Fs/50, if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
-        pulseMinHeight = 10;
+        pulseMinHeight = 6;
         
+        % Noise properties
+        lowFreqCutoff = 80;
+        highFreqCutoff = 1000;
         noiseCutoffSD = 3;
     end
     
@@ -49,7 +48,10 @@ classdef FlySongDetector < FeaturesDetector
         function initialize()
             classFile = mfilename('fullpath');
             parentDir = fileparts(classFile);
-            addpath(genpath(fullfile(parentDir, 'chronux')));
+            addpath(fullfile(parentDir, 'FlySongSegmenter'));
+            addpath(fullfile(parentDir, 'FlySongSegmenter', 'chronux'));
+            addpath(fullfile(parentDir, 'FlySongSegmenter', 'order'));
+            addpath(fullfile(parentDir, 'FlySongSegmenter', 'padcat2'));
         end
         
     end
@@ -64,9 +66,8 @@ classdef FlySongDetector < FeaturesDetector
         
         function s = settingNames(~)
             s = {'taperTBP', 'taperNum', 'windowLength', 'windowStepSize', 'pValue', ...
-                 'sineFreqMin', 'sineFreqMax', 'sineGapMaxPercent', 'sineEventsMin', 'lowFreqCutoff', 'highFreqCutoff', ...
-                 'putativePulseFudge', 'pulseMaxGapSize', 'ipiMin', 'ipiMax', 'pulseMaxScale', 'pulseMinDist', 'pulseMinHeight', ...
-                 'noiseCutoffSD'};
+                 'sineFreqMin', 'sineFreqMax', 'sineGapMaxPercent', 'sineEventsMin', 'lowFreqCutoff', 'highFreqCutoff', 'noiseCutoffSD', ...
+                 'ipiMin', 'ipiMax', 'pulseMaxScale', 'pulseMinDist', 'pulseMinHeight'};
         end
         
         
@@ -83,138 +84,104 @@ classdef FlySongDetector < FeaturesDetector
             if dataRange(2) - dataRange(1) < 4096
                 error('FlySongDetector:SampleTooSmall', 'The selected range is too small for detection.');
             end
-            audioData = obj.recording.data(dataRange(1):dataRange(2));
+            Data.d = obj.recording.data(dataRange(1):dataRange(2));
             
-            obj.updateProgress('Running multitaper analysis on signal...', 0/9)
-            [songSSF] = sinesongfinder(audioData, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue, obj.lowFreqCutoff, obj.highFreqCutoff);
+            % Map our GUI settings to the FlySongSegmenter Params structure.
+            FetchParams
+            Params.Fs = obj.recording.sampleRate;
+            Params.NW = obj.taperTBP;
+            Params.K = obj.taperNum;
+            Params.dT = obj.windowLength;
+            Params.dS = obj.windowStepSize;
+            Params.pval = obj.pValue;
+            Params.sine_low_freq = obj.sineFreqMin;
+            Params.sine_high_freq = obj.sineFreqMax;
+            Params.sine_range_percent = obj.sineGapMaxPercent;
             
-            if isempty(obj.backgroundNoise)
-                obj.updateProgress('Calculating noise from the signal...', 1/9);
-                obj.backgroundNoise = AudioRecording(obj.controller, 'SampleRate', obj.recording.sampleRate);
-                warning('off', 'stats:gmdistribution:FailedToConverge');
-                obj.backgroundNoise.data = segnspp(audioData, songSSF, obj.noiseCutoffSD);
-                warning('on', 'stats:gmdistribution:FailedToConverge');
-                
-                obj.updateProgress('Running multitaper analysis on background noise...', 2/9)
-                [obj.backgroundSSF] = sinesongfinder(obj.backgroundNoise.data, obj.backgroundNoise.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue, obj.lowFreqCutoff, obj.highFreqCutoff);
-            end
+            Params.low_freq_cutoff = obj.lowFreqCutoff;
+            Params.high_freq_cutoff = obj.highFreqCutoff;
+            Params.cutoff_sd = obj.noiseCutoffSD;
             
-            obj.updateProgress('Finding putative sine and power...', 3/9)
-            [putativeSine] = lengthfinder4(songSSF, obj.sineFreqMin, obj.sineFreqMax, obj.sineGapMaxPercent, obj.sineEventsMin);
+            Params.pWid = round(Params.Fs / 250) + 1;
+            Params.minIPI = obj.ipiMin;
+            Params.maxIPI = obj.ipiMax;
+            Params.minAmplitude = obj.pulseMinHeight;
+            Params.frequency = obj.pulseMaxScale;
+            Params.close = obj.pulseMinDist;
+            Params.discard_less_sec = obj.sineEventsMin;
             
-            obj.updateProgress('Finding segments of putative pulse...', 4/9)
-            % TBD: expose this as a user-definable setting?
-            cutoff_quantile = 0.8;
-            [putativePulse] = putativepulse2(songSSF, putativeSine, obj.backgroundSSF, cutoff_quantile, obj.putativePulseFudge, obj.pulseMaxGapSize);
+            obj.updateProgress('Running multitaper analysis...');
+            Sines.MultiTaper = MultiTaperFTest(Data.d, Params.Fs, Params.NW, Params.K, Params.dT, Params.dS, Params.pval, Params.fwindow);
+            Sines.TimeHarmonicMerge = SineSegmenter(Data.d, Sines.MultiTaper, Params.Fs, Params.dT, Params.dS, ...
+                                                    Params.sine_low_freq, Params.sine_high_freq, Params.sine_range_percent);
+            xsong = MaskSines(Data.d, Sines.TimeHarmonicMerge);
             
-            clear putativeSine
+            obj.updateProgress('Finding noise floor...', 0/9);
+            noise = EstimateNoise(xsong, Sines.MultiTaper, Params, Params.low_freq_cutoff, Params.high_freq_cutoff);
             
-            if numel(putativePulse.start) > 0
-                obj.updateProgress('Detecting pulses...', 5/9)
-                % TBD: expose these as user-definable settings?
-                a = 100:25:750;                             % wavelet scales: frequencies examined. 
-                b = 2:3;                                    % Derivative of Gaussian wavelets examined
-                c = round(obj.recording.sampleRate/250)+1;  % pWid:  Approx Pulse Width in points (odd, rounded)
-                d = round(obj.recording.sampleRate/80);     % buff: Points to take around each pulse for finding pulse peaks
-                e = obj.ipiMin;                             % lowIPI: estimate of a very low IPI (even, rounded)
-                f = 1.1;                                    % pulse peak height has to be at least k times the side windows
-                g = 5;                                      % thresh: Proportion of smoothed threshold over which pulses are counted. (wide mean, then set threshold as a fifth of that mean) - key for eliminating sine song.....
-                
-                %parameters for winnowing pulses: 
-                %first winnow: (returns pulseInfo)
-                h = obj.pulseMinHeight;                     %factor times the mean of xempty - only pulses larger than this amplitude are counted as true pulses
-                
-                %second winnow: (returns pulseInfo2)
-                i = obj.ipiMax;                             % if no other pulse within this many samples, do not count as a pulse (the idea is that a single pulse, not within IPI range of another pulse, is likely not a true pulse)
-                j = obj.pulseMaxScale;                      % if best matched scale is greater than this frequency, then don't include pulse as true pulse
-                k = obj.pulseMinDist;                       % if pulse peaks are this close together, only keep the larger pulse (this value should be less than the species-typical IPI)
-                
-                if true
-                    [~, pulses, ~, ~, ~, ~, ~] = PulseSegmentation(audioData, obj.backgroundNoise.data, putativePulse, a, b, c, d, e, f, g, h, i, j, k, obj.recording.sampleRate);
-                else
-                    % Split and loop
-                    pulses = {};
-                    windowSamples = 4000;   %640000;
-                    windowOverlap = windowSamples / 16;
-                    windows = ceil((length(audioData) - windowOverlap) / windowSamples);
-                    for window = 1:windows
-                        startSample = max(1, (window - 1) * windowSamples - windowOverlap);
-                        endSample = min(window * windowSamples + windowOverlap, length(audioData));
-                        windowPulses = putativePulse;
-                        for pulse = 1:length(windowPulses)
-                            windowPulses(pulse).start = windowPulses(pulse).start - startSample;
-                            windowPulses(pulse).stop = windowPulses(pulse).stop - startSample;
-                        end
-                        posInd = windowPulses.start >= 0;
-                        windowPulses.start = windowPulses.start(posInd);
-                        windowPulses.stop = windowPulses.stop(posInd);
-                        [~, windowPulses, ~, ~, ~, ~, ~] = PulseSegmentation(audioData(startSample:endSample), obj.backgroundNoise.data, windowPulses, a, b, c, d, e, f, g, h, i, j, k, obj.recording.sampleRate);
+            obj.updateProgress('Running wavelet transformation...');
+            [Pulses.cmhSong, Pulses.cmhNoise, Pulses.cmh_dog, Pulses.cmh_sc, Pulses.sc] = ...
+                WaveletTransform(xsong, noise.d, Params.fc, Params.DoGwvlt, Params.Fs);
 
-                        % Merge new pulses with existing.
-                        if isempty(pulses)
-                            pulses = windowPulses;
-                        else
-                        end
-                    end
-                end
+            obj.updateProgress('Segmenting pulses...');
+            Pulses.Wavelet = PulseSegmenter(Pulses.cmhSong, Pulses.cmhNoise, Params.pWid, Params.minIPI, Params.thresh, Params.Fs);
+
+            obj.updateProgress('Culling pulses heuristically...');
+            [Pulses.Wavelet, Pulses.AmpCull, Pulses.IPICull] = CullPulses(Pulses.Wavelet, Pulses.cmh_dog, Pulses.cmh_sc, Pulses.sc, ...
+                                                                          xsong, noise.d, Params.fc, Params.pWid, Params.minAmplitude, ...
+                                                                          Params.maxIPI, Params.frequency, Params.close);
+            
+            obj.updateProgress('Culling pulses with likelihood model...');
+            [Pulses.pulse_model, Pulses.Lik_pulse] = FitPulseModel(cpm, Pulses.AmpCull.x);
+            [Pulses.pulse_model2, Pulses.Lik_pulse2] = FitPulseModel(cpm, Pulses.IPICull.x);
+            Pulses.ModelCull = ModelCullPulses(Pulses.AmpCull, Pulses.Lik_pulse.LLR_fh, [0 max(Pulses.Lik_pulse.LLR_fh)+1]);
+            Pulses.ModelCull2 = ModelCullPulses(Pulses.IPICull, Pulses.Lik_pulse2.LLR_fh, [0 max(Pulses.Lik_pulse2.LLR_fh)+1]);
+            Pulses.OldPulseModel = cpm;
+            
+            if ~isempty(Pulses.(Params.mask_pulses))
+                obj.updateProgress('Masking pulses...');
+                tmp = MaskPulses(Data.d, Pulses.(Params.mask_pulses));
             else
-                pulses = {};
+                tmp = Data.d;
             end
-            
-            clear putativePulse
-            
-            if isfield(pulses, 'x')
-                obj.updateProgress('Running multitaper analysis on pulse-masked signal...', 6/9)
-                maskedAudioData = pulse_mask(audioData, pulses);
-                maskedSSF = sinesongfinder(maskedAudioData, obj.recording.sampleRate, obj.taperTBP, obj.taperNum, obj.windowLength, obj.windowStepSize, obj.pValue, obj.lowFreqCutoff, obj.highFreqCutoff);
-                clear maskedAudioData
-            else
-                maskedSSF = songSSF;
-            end
-            
-            obj.updateProgress('Finding putative sine and power...', 7/9)
-            maskedSine = lengthfinder4(maskedSSF, obj.sineFreqMin, obj.sineFreqMax, obj.sineGapMaxPercent, obj.sineEventsMin);
-            
-            obj.updateProgress('Removing overlapping sine song...', 8/9)
-            % TBD: expose this as a user-definable setting?
-            max_pulse_pause = 0.200; %max_pulse_pause in seconds, used to winnow apparent sine between pulses        
-            if maskedSine.num_events == 0 || isempty(pulses) || numel(pulses.w0) == 0 || ~isfield(pulses, 'w1') || ...
-                (numel(pulses.w0) > 1000 && strcmp(questdlg(['More than 1000 pulses were detected.' char(10) char(10) 'Do you wish to continue?'], 'Tempo', 'No', 'Yes', 'Yes'), 'No'))
-                winnowedSine = maskedSine;
-            else
-                winnowedSine = winnow_sine(maskedSine, pulses, maskedSSF, max_pulse_pause, obj.sineFreqMin, obj.sineFreqMax);
-            end
+
+            obj.updateProgress('Running multitaper analysis...');
+            Sines.MultiTaper = MultiTaperFTest(tmp, Params.Fs, Params.NW, Params.K, Params.dT, Params.dS, Params.pval, Params.fwindow);
+
+            obj.updateProgress('Segmenting sine song...');
+            Sines.TimeHarmonicMerge = SineSegmenter(tmp, Sines.MultiTaper, Params.Fs, Params.dT, Params.dS, ...
+                                                    Params.sine_low_freq, Params.sine_high_freq, Params.sine_range_percent);
+
+            obj.updateProgress('Winnowing sine song...');
+            [Sines.PulsesCull, Sines.LengthCull] = WinnowSine(tmp, Sines.TimeHarmonicMerge, Pulses.(Params.mask_pulses), Sines.MultiTaper, ...
+                                                              Params.Fs, Params.dS, Params.max_pulse_pause, Params.sine_low_freq, ...
+                                                              Params.sine_high_freq, Params.discard_less_sec);
             
             obj.updateProgress('Adding features...', 9/9)
-            if winnowedSine.num_events > 0
-                for i = 1:size(winnowedSine.start, 1)
-                    x_start = timeRange(1) + winnowedSine.start(i);
-                    x_stop = timeRange(1) + winnowedSine.stop(i);
-                    if isfield(winnowedSine, 'MeanFundFreq')
-                        feature = Feature('Sine Song', [x_start x_stop], ...
-                                          'meanFundFreq', winnowedSine.MeanFundFreq(i), ...
-                                          'medianFundFreq', winnowedSine.MedianFundFreq(i));
-                        features{end + 1} = feature; %#ok<AGROW>
-                    else
-                        feature = Feature('Sine Song', [x_start x_stop]);
-                        features{end + 1} = feature; %#ok<AGROW>
-                    end
+            for i = 1:length(Sines.LengthCull.start)
+                x_start = timeRange(1) + Sines.LengthCull.start(i) / obj.recording.sampleRate;
+                x_stop = timeRange(1) + Sines.LengthCull.stop(i) / obj.recording.sampleRate;
+                if false    %isfield(winnowedSine, 'MeanFundFreq')
+                    feature = Feature('Sine Song', [x_start x_stop], ...
+                                      'meanFundFreq', winnowedSine.MeanFundFreq(i), ...
+                                      'medianFundFreq', winnowedSine.MedianFundFreq(i));
+                    features{end + 1} = feature; %#ok<AGROW>
+                else
+                    feature = Feature('Sine Song', [x_start x_stop]);
+                    features{end + 1} = feature; %#ok<AGROW>
                 end
             end
             
-            if isfield(pulses, 'wc')
-                pulseCount = length(pulses.wc);
-                for i = 1:pulseCount
-                    x = timeRange(1) + double(pulses.wc(i)) / obj.recording.sampleRate;
-                    a = timeRange(1) + double(pulses.w0(i)) / obj.recording.sampleRate;
-                    b = timeRange(1) + double(pulses.w1(i)) / obj.recording.sampleRate;
-                    feature = Feature('Pulse', x, ...
-                                      'pulseWindow', [a b], ...
-                                      'dogOrder', pulses.dog(i), ...
-                                      'frequencyAtMax', pulses.fcmx(i), ...
-                                      'scaleAtMax', pulses.scmx(i));
-                    features{end + 1} = feature; %#ok<AGROW>
-                end
+            for i = 1:length(Pulses.ModelCull2.wc)
+                x = timeRange(1) + double(Pulses.ModelCull2.wc(i)) / obj.recording.sampleRate;
+                a = timeRange(1) + double(Pulses.ModelCull2.w0(i)) / obj.recording.sampleRate;
+                b = timeRange(1) + double(Pulses.ModelCull2.w1(i)) / obj.recording.sampleRate;
+                feature = Feature('Pulse', x, ...
+                                  'pulseWindow', [a b], ...
+                                  'dogOrder', Pulses.ModelCull2.dog(i), ...
+                                  'frequencyAtMax', Pulses.ModelCull2.fcmx(i), ...
+                                  'scaleAtMax', Pulses.ModelCull2.scmx(i));
+                features{end + 1} = feature; %#ok<AGROW>
             end
         end
         

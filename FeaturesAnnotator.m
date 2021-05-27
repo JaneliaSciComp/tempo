@@ -36,8 +36,16 @@ classdef FeaturesAnnotator < FeaturesReporter
         function obj = FeaturesAnnotator(controller)
             obj = obj@FeaturesReporter(controller);
             
-            savedSets = getpref('Tempo', 'AnnotationFeatureSets', []);
-            lastChosenSet = getpref('Tempo', 'AnnotationLastChosenFeatureSet', '');
+            if ispref('Tempo', 'AnnotationFeatureSets');
+                savedSets = getpref('Tempo', 'AnnotationFeatureSets');
+            else
+                savedSets = struct('name', {}, 'features', {});
+            end
+            if ispref('Tempo', 'AnnotationLastChosenFeatureSet');
+                lastChosenSet = getpref('Tempo', 'AnnotationLastChosenFeatureSet');
+            else
+                lastChosenSet = '';
+            end
             if isempty(savedSets)
                 obj.featureSet(1).name = '';
                 obj.featureSet(1).key = '';
@@ -256,7 +264,11 @@ classdef FeaturesAnnotator < FeaturesReporter
         function updateFeatureSetsPopup(obj)
             menuItems = {};
             curItem = [];
-            savedSets = getpref('Tempo', 'AnnotationFeatureSets', []);
+            if ispref('Tempo', 'AnnotationFeatureSets');
+                savedSets = getpref('Tempo', 'AnnotationFeatureSets');
+            else
+                savedSets = struct('name', {}, 'features', {});
+            end
             for i = 1:length(savedSets)
                 menuItems{end + 1} = savedSets(i).name; %#ok<AGROW>
                 if strcmp(savedSets(i).name, obj.lastChosenFeatureSetName)
@@ -287,7 +299,11 @@ classdef FeaturesAnnotator < FeaturesReporter
                     newSet.name = setName{1};
                     newSet.features = obj.featureSet;
                     
-                    savedSets = getpref('Tempo', 'AnnotationFeatureSets', struct('name', {}, 'features', {}));
+                    if ispref('Tempo', 'AnnotationFeatureSets')
+                        savedSets = getpref('Tempo', 'AnnotationFeatureSets');
+                    else
+                        savedSets = struct('name', {}, 'features', {});
+                    end
                     
                     if ismember(setName, menuItems(1:length(savedSets)))
                         answer = questdlg(['Are you sure you wish to replace "' newSet.name '"?'], 'Tempo', 'Cancel', 'Replace', 'Replace');
@@ -312,7 +328,11 @@ classdef FeaturesAnnotator < FeaturesReporter
                 setName = chosenItem(8:end-3);
                 answer = questdlg(['Are you sure you wish to delete "' setName '"?'], 'Tempo', 'Cancel', 'Delete', 'Delete');
                 if strcmp(answer, 'Delete')
-                    savedSets = getpref('Tempo', 'AnnotationFeatureSets', []);
+                    if ispref('Tempo', 'AnnotationFeatureSets');
+                        savedSets = getpref('Tempo', 'AnnotationFeatureSets');
+                    else
+                        savedSets = struct('name', {}, 'features', {});
+                    end
                     for i = 1:length(savedSets)
                         if strcmp(savedSets(i).name, setName)
                             savedSets(i) = [];
@@ -324,7 +344,11 @@ classdef FeaturesAnnotator < FeaturesReporter
                 obj.updateFeatureSetsPopup();
             elseif ~isempty(chosenItem)
                 % Use a feature set.
-                savedSets = getpref('Tempo', 'AnnotationFeatureSets', []);
+                if ispref('Tempo', 'AnnotationFeatureSets');
+                    savedSets = getpref('Tempo', 'AnnotationFeatureSets');
+                else
+                    savedSets = struct('name', {}, 'features', {});
+                end
                 for i = 1:length(savedSets)
                     if strcmp(savedSets(i).name, chosenItem)
                         obj.lastChosenFeatureSetName = chosenItem;
@@ -352,8 +376,10 @@ classdef FeaturesAnnotator < FeaturesReporter
             end
             
             obj.settingsEdited = true;
-            
             uiresume;
+
+            notify(obj, 'FeatureTypesDidChange');
+            notify(obj, 'FeaturesDidChange', FeaturesChangedEventData('update', obj.features()));
         end
         
         
@@ -380,20 +406,29 @@ classdef FeaturesAnnotator < FeaturesReporter
                             beep
                         end
                     else
-                        % Add a point feature at the start of the current time.
-                        feature = Feature(featureDef.name, panel.controller.currentTime, ...
-                                          'Color', featureDef.color);
+                        if panel.controller.selectedRange(1) == panel.controller.selectedRange(2)
+                            % Add a point feature at the start of the current time.
+                            feature = Feature(featureDef.name, panel.controller.currentTime, ...
+                                              'Color', featureDef.color);
+                        else
+                            % The selection is  a range.
+                            beep
+                        end
                     end
                     
-                    if ~isempty(feature)
-                        obj.addFeatures({feature});
-                        
-                        panel.selectFeature(feature);
-                        
-                        panel.controller.addUndoableAction(['Add ' feature.type], ...
-                                                           @() obj.removeFeatures({feature}), ...
-                                                           @() obj.addFeatures({feature}), ...
-                                                           panel);
+                    if ~isempty(feature) 
+                        if ~any(cellfun(@(x) strcmp(x.type,feature.type) && all(x.range==feature.range), obj.features()))
+                            obj.addFeatures({feature});
+
+                            panel.selectFeature(feature);
+
+                            panel.controller.addUndoableAction(['Add ' feature.type], ...
+                                                               @() obj.removeFeatures({feature}), ...
+                                                               @() obj.addFeatures({feature}), ...
+                                                               panel);
+                        else
+                            beep
+                        end
                     end
                     
                     handled = true;

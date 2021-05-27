@@ -4,6 +4,12 @@ Analyzing
 
 Tempo comes with tools for automatically detecting features in audio files.  Currently there are tools for detecting fly song and mouse vocalization.  To run one of the tools choose :menuselection:`Edit -> Detect Features` or click the equivalent icon on the toolbar.  
 
+-----------
+Differences
+-----------
+
+This detector looks for differences between existing sets of features.  It will show which features would need to be added and which would need to be removed to make the sets identical.  Thresholds for how different features can be in time and frequency can be set.
+
 --------
 Fly Song
 --------

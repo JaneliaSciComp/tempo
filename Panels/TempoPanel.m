@@ -227,11 +227,15 @@ classdef TempoPanel < handle
         
         function handleHidePanel(obj, ~, ~)
             obj.controller.hidePanel(obj);
+            
+            obj.controller.resetKeyboardFocus();
         end
         
         
         function handleShowPanel(obj, ~, ~)
             obj.controller.showPanel(obj);
+            
+            obj.controller.resetKeyboardFocus();
         end
         
         
@@ -249,6 +253,8 @@ classdef TempoPanel < handle
         
         function handleShowHelp(obj, ~, ~)
             TempoHelp().openPage('UserInterface', class(obj));
+            
+            obj.controller.resetKeyboardFocus();
         end
         
         

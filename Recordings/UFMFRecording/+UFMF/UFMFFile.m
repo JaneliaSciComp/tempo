@@ -346,8 +346,8 @@ classdef UFMFFile < handle
                 obj.setupBGModel();
             end
             
-            obj.updateBGModel(frameImage, 0.0);
             obj.bgModel.isAutomatic = false;
+            obj.updateBGModel(frameImage, 0.0);
         end
         
         
@@ -759,8 +759,8 @@ classdef UFMFFile < handle
                                                         1 / n, uint8(frameImage));
             end
             
-            if obj.printStats
-                fprintf('UFMF: BG update %d at %s\n', obj.bgModel.sampleCount, num2str(timeStamp));
+            if obj.printStats && obj.bgModel.isAutomatic
+                fprintf('UFMF: automatic BG update %d at %s\n', obj.bgModel.sampleCount, num2str(timeStamp));
             end
         end
         
